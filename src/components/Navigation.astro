@@ -1,0 +1,48 @@
+---
+---
+
+<nav class="navigation">
+  <div class="nav-container">
+    <a href="/" class="nav-link">home</a>
+    <a href="/blog" class="nav-link">blog</a>
+    <a href="/books" class="nav-link">books</a>
+    <a href="/about" class="nav-link">about</a>
+  </div>
+</nav>
+
+<style>
+  .navigation {
+    padding: 2rem 0;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    gap: 2rem;
+  }
+
+  .nav-link {
+    color: #1a1a1a;
+    text-decoration: none;
+    font-size: 0.95rem;
+    text-transform: lowercase;
+    transition: opacity 0.2s;
+  }
+
+  .nav-link:hover {
+    opacity: 0.6;
+  }
+
+  @media (max-width: 768px) {
+    .navigation {
+      padding: 1.5rem 0;
+    }
+
+    .nav-container {
+      padding: 0 1.5rem;
+    }
+  }
+</style>

@@ -1,0 +1,302 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const allBooks = await getCollection('books');
+
+// Group books by status
+const currentlyReading = allBooks.filter(book => book.data.status === 'currently-reading');
+const read = allBooks.filter(book => book.data.status === 'read');
+const wantToRead = allBooks.filter(book => book.data.status === 'want-to-read');
+
+// Sort read books by completed date (most recent first)
+const sortedRead = read.sort((a, b) => {
+  const dateA = a.data.completedDate?.valueOf() || 0;
+  const dateB = b.data.completedDate?.valueOf() || 0;
+  return dateB - dateA;
+});
+
+const totalBooks = allBooks.length;
+---
+
+<BaseLayout 
+  title="Books" 
+  description="A collection of books I've read, am reading, or want to read. Aggregated from multiple sources."
+>
+  <main class="books-container">
+    <div class="books-content">
+      <header class="books-header">
+        <h1 class="books-title">Library</h1>
+        <p class="books-subtitle">
+          A unified view of my reading across different platforms. 
+          <a href="/blog/pseudocode/" class="link">How was this made? →</a>
+        </p>
+      </header>
+
+      {currentlyReading.length > 0 && (
+        <section class="books-section">
+          <h2 class="section-title">Currently Reading</h2>
+          <div class="books-grid">
+            {currentlyReading.map((book) => (
+              <article class="book-card">
+                {book.data.coverUrl && (
+                  <img 
+                    src={book.data.coverUrl} 
+                    alt={`${book.data.title} cover`}
+                    class="book-cover"
+                    loading="lazy"
+                  />
+                )}
+                <div class="book-info">
+                  <h3 class="book-title">{book.data.title}</h3>
+                  <p class="book-author">{book.data.author}</p>
+                  {book.data.startedDate && (
+                    <time class="book-date" datetime={book.data.startedDate.toISOString()}>
+                      Started {book.data.startedDate.toLocaleDateString('en-us', {
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </time>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section class="books-section">
+        <h2 class="section-title">
+          My Bookshelf
+          <span class="book-count">{sortedRead.length} of {totalBooks} books</span>
+        </h2>
+        <div class="books-grid">
+          {sortedRead.map((book) => (
+            <article class="book-card">
+              {book.data.coverUrl && (
+                <img 
+                  src={book.data.coverUrl} 
+                  alt={`${book.data.title} cover`}
+                  class="book-cover"
+                  loading="lazy"
+                />
+              )}
+              <div class="book-info">
+                <h3 class="book-title">{book.data.title}</h3>
+                <p class="book-author">{book.data.author}</p>
+                {book.data.rating && (
+                  <div class="book-rating">
+                    {'★'.repeat(Math.round(book.data.rating))}
+                    {'☆'.repeat(5 - Math.round(book.data.rating))}
+                  </div>
+                )}
+                {book.data.completedDate && (
+                  <time class="book-date" datetime={book.data.completedDate.toISOString()}>
+                    {book.data.completedDate.toLocaleDateString('en-us', {
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </time>
+                )}
+                {book.data.source && (
+                  <span class="book-source">{book.data.source}</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+        {sortedRead.length > 30 && (
+          <button class="show-more-btn">Show more books →</button>
+        )}
+      </section>
+
+      {wantToRead.length > 0 && (
+        <section class="books-section">
+          <h2 class="section-title">Want to Read</h2>
+          <div class="books-grid">
+            {wantToRead.map((book) => (
+              <article class="book-card">
+                {book.data.coverUrl && (
+                  <img 
+                    src={book.data.coverUrl} 
+                    alt={`${book.data.title} cover`}
+                    class="book-cover"
+                    loading="lazy"
+                  />
+                )}
+                <div class="book-info">
+                  <h3 class="book-title">{book.data.title}</h3>
+                  <p class="book-author">{book.data.author}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .books-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+  }
+
+  .books-content {
+    max-width: 100%;
+  }
+
+  .books-header {
+    margin-bottom: 4rem;
+  }
+
+  .books-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .books-subtitle {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.6;
+  }
+
+  .link {
+    color: #1a1a1a;
+    text-decoration: underline;
+    text-decoration-color: #ccc;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.2s;
+  }
+
+  .link:hover {
+    text-decoration-color: #1a1a1a;
+  }
+
+  .books-section {
+    margin-bottom: 4rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .book-count {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #999;
+  }
+
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 2rem;
+  }
+
+  .book-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .book-cover {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #f5f5f5;
+  }
+
+  .book-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .book-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #1a1a1a;
+    margin: 0;
+  }
+
+  .book-author {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .book-rating {
+    font-size: 0.75rem;
+    color: #ffa500;
+    margin-top: 0.25rem;
+  }
+
+  .book-date {
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.25rem;
+  }
+
+  .book-source {
+    font-size: 0.7rem;
+    color: #999;
+    text-transform: capitalize;
+    margin-top: 0.25rem;
+  }
+
+  .show-more-btn {
+    margin-top: 2rem;
+    background: none;
+    border: none;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    transition: opacity 0.2s;
+  }
+
+  .show-more-btn:hover {
+    opacity: 0.6;
+  }
+
+  @media (max-width: 768px) {
+    .books-container {
+      padding: 2rem 1.5rem;
+    }
+
+    .books-title {
+      font-size: 2rem;
+    }
+
+    .books-subtitle {
+      font-size: 0.95rem;
+    }
+
+    .books-grid {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>

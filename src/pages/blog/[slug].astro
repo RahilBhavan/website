@@ -1,0 +1,221 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const blogPosts = await getCollection('blog', ({ data }) => {
+    return data.draft !== true;
+  });
+
+  return blogPosts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+---
+
+<BaseLayout title={post.data.title} description={post.data.description}>
+  <article class="post-container">
+    <div class="post-header">
+      <a href="/blog" class="back-link">← Blog</a>
+      <h1 class="post-title">{post.data.title}</h1>
+      <div class="post-meta">
+        <span class="post-author">Rahil Bhavan</span>
+        {post.data.tags && post.data.tags.length > 0 && (
+          <span class="post-tag">{post.data.tags[0]}</span>
+        )}
+      </div>
+      <div class="post-meta-secondary">
+        <time 
+          class="post-meta-date"
+          datetime={post.data.publishDate.toISOString()}
+        >
+          {post.data.publishDate.toLocaleDateString('en-us', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </time>
+        <span class="post-meta-separator">•</span>
+        <span class="post-read-time">6 min read</span>
+      </div>
+    </div>
+    <div class="post-content">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .post-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+  }
+
+  .post-header {
+    margin-bottom: 3rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+    transition: opacity 0.2s;
+  }
+
+  .back-link:hover {
+    opacity: 0.6;
+  }
+
+  .post-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #1a1a1a;
+  }
+
+  .post-author {
+    font-weight: 400;
+  }
+
+  .post-tag {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+
+  .post-meta-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+
+  .post-meta-date {
+    color: #666;
+  }
+
+  .post-meta-separator {
+    color: #999;
+  }
+
+  .post-read-time {
+    color: #666;
+  }
+
+  .post-content {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: #1a1a1a;
+  }
+
+  .post-content :global(p:first-of-type strong) {
+    font-weight: 600;
+  }
+
+  .post-content :global(h2) {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .post-content :global(h3) {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .post-content :global(p) {
+    margin: 1.25rem 0;
+  }
+
+  .post-content :global(ul),
+  .post-content :global(ol) {
+    margin: 1.25rem 0;
+    padding-left: 2rem;
+  }
+
+  .post-content :global(li) {
+    margin: 0.5rem 0;
+  }
+
+  .post-content :global(code) {
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  }
+
+  .post-content :global(pre) {
+    background-color: #f5f5f5;
+    padding: 1.25rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+
+  .post-content :global(pre code) {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  .post-content :global(blockquote) {
+    border-left: 3px solid #e5e5e5;
+    padding-left: 1.5rem;
+    margin: 1.5rem 0;
+    color: #666;
+    font-style: italic;
+  }
+
+  .post-content :global(a) {
+    color: #1a1a1a;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .post-content :global(a:hover) {
+    opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    .post-container {
+      padding: 2rem 1.5rem;
+    }
+
+    .post-title {
+      font-size: 2rem;
+    }
+
+    .post-content {
+      font-size: 1rem;
+    }
+  }
+</style>
+

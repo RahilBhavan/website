@@ -4,12 +4,34 @@
  */
 
 import { readdir, readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import type { RawBook } from './types.js';
 
 export async function collectManualBooks(): Promise<RawBook[]> {
   const booksDir = join(process.cwd(), 'src/content/books');
-  const files = await readdir(booksDir);
+  
+  // Check if directory exists before trying to read it
+  if (!existsSync(booksDir)) {
+    if (!process.env.CI) {
+      console.log('   ℹ No manual books directory found, skipping manual collection');
+    }
+    return [];
+  }
+
+  let files: string[];
+  try {
+    files = await readdir(booksDir);
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      if (!process.env.CI) {
+        console.log('   ℹ No manual books directory found, skipping manual collection');
+      }
+      return [];
+    }
+    throw error;
+  }
+  
   const markdownFiles = files.filter(f => f.endsWith('.md'));
 
   const books: RawBook[] = [];

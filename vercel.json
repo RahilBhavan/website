@@ -1,11 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "astro",
-  "crons": [
-    {
-      "path": "/api/cron/sync-books",
-      "schedule": "0 */6 * * *"
-    }
-  ]
+  "framework": "astro"
 }

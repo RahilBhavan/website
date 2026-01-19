@@ -66,9 +66,6 @@ OPENAI_API_KEY=sk-your-openai-api-key
 # For webhook authentication
 WEBHOOK_SECRET=your-random-secret-string
 
-# For Vercel Cron authentication
-VERCEL_CRON_SECRET=your-random-secret-string
-
 # Control features
 ENABLE_METADATA_ENRICHMENT=true
 GENERATE_INSIGHTS=true
@@ -155,22 +152,7 @@ permissions:
   contents: write
 ```
 
-## Step 5: Configure Vercel Cron
-
-Vercel Cron is already configured in `vercel.json`. To enable:
-
-1. **Upgrade to Vercel Pro** (Cron requires Pro plan)
-   - Or use GitHub Actions as alternative (free)
-
-2. **Set VERCEL_CRON_SECRET** environment variable
-   - Generate a random secret: `openssl rand -hex 32`
-   - Add to Vercel environment variables
-
-3. **Verify cron is active**
-   - Vercel Dashboard → Your Project → Cron Jobs
-   - Should show `/api/cron/sync-books` scheduled
-
-## Step 6: Test the Deployment
+## Step 5: Test the Deployment
 
 ### Test Manual Sync
 
@@ -195,11 +177,7 @@ Vercel Cron is already configured in `vercel.json`. To enable:
    - Wait for scheduled run or trigger manually
    - Check logs for success
 
-2. **Vercel Cron:**
-   - Check Vercel Dashboard → Cron Jobs
-   - Verify execution logs
-
-## Step 7: Verify Everything Works
+## Step 6: Verify Everything Works
 
 1. **Check data files are generated:**
    - Visit `https://your-domain.com/books`
@@ -212,7 +190,6 @@ Vercel Cron is already configured in `vercel.json`. To enable:
 
 3. **Check API endpoints:**
    - `/api/sync-books` - Manual trigger
-   - `/api/cron/sync-books` - Cron endpoint
 
 ## Troubleshooting
 
@@ -240,13 +217,6 @@ Vercel Cron is already configured in `vercel.json`. To enable:
 - **Check:** API key has credits/quota
 - **Note:** Insights are optional, system works without them
 
-### Cron Not Running
-
-**Issue:** Vercel Cron not executing
-- **Check:** You're on Vercel Pro plan
-- **Check:** `VERCEL_CRON_SECRET` is set
-- **Alternative:** Use GitHub Actions (free alternative)
-
 ## Deployment Checklist
 
 - [ ] Code pushed to GitHub
@@ -255,7 +225,6 @@ Vercel Cron is already configured in `vercel.json`. To enable:
 - [ ] Goodreads cookies exported and uploaded
 - [ ] GitHub Actions secrets configured
 - [ ] GitHub Actions workflow enabled
-- [ ] Vercel Cron configured (if using Pro)
 - [ ] Manual sync tested
 - [ ] Books page displays correctly
 - [ ] Analytics page displays correctly
@@ -289,23 +258,6 @@ Vercel Cron is already configured in `vercel.json`. To enable:
 3. Commit and push to GitHub
 4. Vercel auto-deploys on push
 5. Monitor deployment logs
-
-## Alternative: GitHub Actions Only (Free)
-
-If you don't have Vercel Pro, you can use GitHub Actions exclusively:
-
-1. **Disable Vercel Cron:**
-   - Remove cron config from `vercel.json`
-   - Or keep it (it just won't run without Pro)
-
-2. **Rely on GitHub Actions:**
-   - Runs every 6 hours (free)
-   - Commits changes automatically
-   - Triggers Vercel rebuild
-
-3. **Manual triggers:**
-   - Use `/api/sync-books` endpoint
-   - Or trigger GitHub Action manually
 
 ## Support
 

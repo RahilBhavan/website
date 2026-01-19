@@ -7,10 +7,14 @@ export async function getStaticPaths() {
     return data.draft !== true;
   });
 
-  return blogPosts.map((post) => ({
-    params: { slug: post.id },
-    props: { post },
-  }));
+  return blogPosts.map((post) => {
+    // Remove .md or .mdx extension from id to create clean URLs
+    const slug = post.id.replace(/\.(md|mdx)$/, '');
+    return {
+      params: { slug },
+      props: { post },
+    };
+  });
 }
 
 const { post } = Astro.props;

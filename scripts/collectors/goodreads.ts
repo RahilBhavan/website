@@ -196,7 +196,6 @@ export async function collectGoodreadsBooks(
   goodreadsUserId?: string
 ): Promise<RawBook[]> {
   if (!goodreadsUserId) {
-    console.log('No Goodreads user ID provided, skipping Goodreads collection');
     return [];
   }
 

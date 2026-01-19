@@ -65,8 +65,14 @@ async function aggregateBooks(incremental: boolean = false): Promise<NormalizedB
   // Get Goodreads user ID from environment
   const goodreadsUserId = process.env.GOODREADS_USER_ID;
   
+  if (!goodreadsUserId && !process.env.CI) {
+    console.log('   ℹ No Goodreads user ID provided, skipping Goodreads collection');
+  }
+  
   // Use incremental sync if enabled, otherwise full sync
-  const goodreadsPromise = isIncremental
+  const goodreadsPromise = !goodreadsUserId
+    ? Promise.resolve([])
+    : isIncremental
     ? syncGoodreadsIncremental(goodreadsUserId)
     : Promise.all([
         collectGoodreadsBooksBrowser(goodreadsUserId),

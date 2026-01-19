@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "npm run aggregate:books && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "aggregate:books": "tsx scripts/vision-books.ts",
+    "sync:books": "tsx scripts/workers/scheduler.ts",
+    "export:goodreads-cookies": "tsx scripts/export-goodreads-cookies.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",
@@ -15,10 +18,19 @@
     "@astrojs/tailwind": "^5.1.0",
     "astro": "^5.0.0",
     "astro-seo": "^0.8.0",
+    "axios": "^1.13.2",
+    "chart.js": "^4.5.1",
+    "cheerio": "^1.1.2",
+    "date-fns": "^4.1.0",
+    "openai": "^6.16.0",
     "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
+    "@astrojs/vercel": "^9.0.4",
     "@types/node": "^22.0.0",
+    "dotenv": "^17.2.3",
+    "playwright": "^1.57.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.0"
   }
 }

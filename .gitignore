@@ -16,7 +16,11 @@ pnpm-debug.log*
 
 # environment variables
 .env
+.env.local
 .env.production
+
+# Goodreads authentication
+scripts/.goodreads-cookies.json
 
 # macOS-specific
 .DS_Store

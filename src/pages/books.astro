@@ -1,22 +1,59 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-const allBooks = await getCollection('books');
+// Type definitions for aggregated books
+interface AggregatedBook {
+  title: string;
+  author: string;
+  coverUrl?: string;
+  isbn?: string;
+  source: string;
+  status: 'currently-reading' | 'read' | 'want-to-read';
+  startedDate?: string;
+  completedDate?: string;
+  rating?: number;
+  review?: string;
+  tags?: string[];
+  sources: string[];
+}
 
-// Group books by status
-const currentlyReading = allBooks.filter(book => book.data.status === 'currently-reading');
-const read = allBooks.filter(book => book.data.status === 'read');
-const wantToRead = allBooks.filter(book => book.data.status === 'want-to-read');
+// Read books data from JSON file
+const booksFilePath = join(process.cwd(), 'src/data/books.json');
+let booksData: AggregatedBook[] = [];
+try {
+  const fileContent = readFileSync(booksFilePath, 'utf-8');
+  const parsed = JSON.parse(fileContent);
+  booksData = (Array.isArray(parsed) ? parsed : []) as AggregatedBook[];
+} catch (error) {
+  console.error('Error reading books.json:', error);
+  booksData = [];
+}
+
+// Filter out any invalid entries and group by status
+const allBooks = booksData.filter(book => book && book.title && book.author);
+const currentlyReading = allBooks.filter(book => book.status === 'currently-reading');
+const read = allBooks.filter(book => book.status === 'read');
+const wantToRead = allBooks.filter(book => book.status === 'want-to-read');
 
 // Sort read books by completed date (most recent first)
 const sortedRead = read.sort((a, b) => {
-  const dateA = a.data.completedDate?.valueOf() || 0;
-  const dateB = b.data.completedDate?.valueOf() || 0;
+  const dateA = a.completedDate ? new Date(a.completedDate).valueOf() : 0;
+  const dateB = b.completedDate ? new Date(b.completedDate).valueOf() : 0;
   return dateB - dateA;
 });
 
 const totalBooks = allBooks.length;
+
+// Extract unique values for filters
+const allGenres = Array.from(new Set(allBooks.flatMap(book => book.tags || []))).sort();
+const allSources = Array.from(new Set(allBooks.flatMap(book => book.sources || []))).sort();
+const allYears = Array.from(new Set(
+  allBooks
+    .filter(book => book.completedDate)
+    .map(book => new Date(book.completedDate!).getFullYear())
+)).sort((a, b) => b - a);
 ---
 
 <BaseLayout 
@@ -29,9 +66,67 @@ const totalBooks = allBooks.length;
         <h1 class="books-title">Library</h1>
         <p class="books-subtitle">
           A unified view of my reading across different platforms. 
+          <a href="/analytics/" class="link">View Analytics →</a>
           <a href="/blog/pseudocode/" class="link">How was this made? →</a>
         </p>
       </header>
+
+      {/* Filters and Search */}
+      <section class="filters-section">
+        <div class="search-box">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Search books by title or author..."
+            class="search-input"
+          />
+        </div>
+        
+        <div class="filters">
+          <select id="genre-filter" class="filter-select">
+            <option value="">All Genres</option>
+            {allGenres.map(genre => (
+              <option value={genre}>{genre}</option>
+            ))}
+          </select>
+          
+          <select id="year-filter" class="filter-select">
+            <option value="">All Years</option>
+            {allYears.map(year => (
+              <option value={year.toString()}>{year}</option>
+            ))}
+          </select>
+          
+          <select id="rating-filter" class="filter-select">
+            <option value="">All Ratings</option>
+            <option value="5">5 Stars</option>
+            <option value="4">4+ Stars</option>
+            <option value="3">3+ Stars</option>
+          </select>
+          
+          <select id="source-filter" class="filter-select">
+            <option value="">All Sources</option>
+            {allSources.map(source => (
+              <option value={source}>{source}</option>
+            ))}
+          </select>
+          
+          <select id="sort-select" class="filter-select">
+            <option value="date-desc">Date (Newest)</option>
+            <option value="date-asc">Date (Oldest)</option>
+            <option value="rating-desc">Rating (High to Low)</option>
+            <option value="rating-asc">Rating (Low to High)</option>
+            <option value="title-asc">Title (A-Z)</option>
+            <option value="title-desc">Title (Z-A)</option>
+            <option value="author-asc">Author (A-Z)</option>
+          </select>
+        </div>
+        
+        <div class="filter-results">
+          <span id="results-count">{sortedRead.length} books</span>
+          <button id="clear-filters" class="clear-btn">Clear Filters</button>
+        </div>
+      </section>
 
       {currentlyReading.length > 0 && (
         <section class="books-section">
@@ -39,20 +134,20 @@ const totalBooks = allBooks.length;
           <div class="books-grid">
             {currentlyReading.map((book) => (
               <article class="book-card">
-                {book.data.coverUrl && (
+                {book.coverUrl && (
                   <img 
-                    src={book.data.coverUrl} 
-                    alt={`${book.data.title} cover`}
+                    src={book.coverUrl} 
+                    alt={`${book.title} cover`}
                     class="book-cover"
                     loading="lazy"
                   />
                 )}
                 <div class="book-info">
-                  <h3 class="book-title">{book.data.title}</h3>
-                  <p class="book-author">{book.data.author}</p>
-                  {book.data.startedDate && (
-                    <time class="book-date" datetime={book.data.startedDate.toISOString()}>
-                      Started {book.data.startedDate.toLocaleDateString('en-us', {
+                  <h3 class="book-title">{book.title}</h3>
+                  <p class="book-author">{book.author}</p>
+                  {book.startedDate && (
+                    <time class="book-date" datetime={new Date(book.startedDate).toISOString()}>
+                      Started {new Date(book.startedDate).toLocaleDateString('en-us', {
                         month: 'short',
                         year: 'numeric'
                       })}
@@ -70,44 +165,55 @@ const totalBooks = allBooks.length;
           My Bookshelf
           <span class="book-count">{sortedRead.length} of {totalBooks} books</span>
         </h2>
-        <div class="books-grid">
-          {sortedRead.map((book) => (
-            <article class="book-card">
-              {book.data.coverUrl && (
+        <div class="books-grid" id="books-grid">
+          {sortedRead.map((book) => {
+            const bookYear = book.completedDate ? new Date(book.completedDate).getFullYear().toString() : '';
+            return (
+            <article 
+              class="book-card" 
+              data-title={book.title.toLowerCase()} 
+              data-author={book.author.toLowerCase()} 
+              data-genres={(book.tags || []).join(',')} 
+              data-year={bookYear}
+              data-rating={book.rating?.toString() || ''} 
+              data-sources={(book.sources || []).join(',')}
+            >
+              {book.coverUrl && (
                 <img 
-                  src={book.data.coverUrl} 
-                  alt={`${book.data.title} cover`}
+                  src={book.coverUrl} 
+                  alt={`${book.title} cover`}
                   class="book-cover"
                   loading="lazy"
                 />
               )}
               <div class="book-info">
-                <h3 class="book-title">{book.data.title}</h3>
-                <p class="book-author">{book.data.author}</p>
-                {book.data.rating && (
+                <h3 class="book-title">{book.title}</h3>
+                <p class="book-author">{book.author}</p>
+                {book.rating && (
                   <div class="book-rating">
-                    {'★'.repeat(Math.round(book.data.rating))}
-                    {'☆'.repeat(5 - Math.round(book.data.rating))}
+                    {'★'.repeat(Math.round(book.rating))}
+                    {'☆'.repeat(5 - Math.round(book.rating))}
                   </div>
                 )}
-                {book.data.completedDate && (
-                  <time class="book-date" datetime={book.data.completedDate.toISOString()}>
-                    {book.data.completedDate.toLocaleDateString('en-us', {
+                {book.completedDate && (
+                  <time class="book-date" datetime={new Date(book.completedDate).toISOString()}>
+                    {new Date(book.completedDate).toLocaleDateString('en-us', {
                       month: 'short',
                       year: 'numeric'
                     })}
                   </time>
                 )}
-                {book.data.source && (
-                  <span class="book-source">{book.data.source}</span>
+                {book.sources && book.sources.length > 0 && (
+                  <span class="book-source">{book.sources.join(', ')}</span>
                 )}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
-        {sortedRead.length > 30 && (
-          <button class="show-more-btn">Show more books →</button>
-        )}
+        <div id="no-results" class="no-results" style="display: none;">
+          <p>No books match your filters. Try adjusting your search criteria.</p>
+        </div>
       </section>
 
       {wantToRead.length > 0 && (
@@ -116,17 +222,17 @@ const totalBooks = allBooks.length;
           <div class="books-grid">
             {wantToRead.map((book) => (
               <article class="book-card">
-                {book.data.coverUrl && (
+                {book.coverUrl && (
                   <img 
-                    src={book.data.coverUrl} 
-                    alt={`${book.data.title} cover`}
+                    src={book.coverUrl} 
+                    alt={`${book.title} cover`}
                     class="book-cover"
                     loading="lazy"
                   />
                 )}
                 <div class="book-info">
-                  <h3 class="book-title">{book.data.title}</h3>
-                  <p class="book-author">{book.data.author}</p>
+                  <h3 class="book-title">{book.title}</h3>
+                  <p class="book-author">{book.author}</p>
                 </div>
               </article>
             ))}
@@ -274,6 +380,85 @@ const totalBooks = allBooks.length;
     opacity: 0.6;
   }
 
+  .filters-section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+  }
+
+  .search-box {
+    margin-bottom: 1rem;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #1a1a1a;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-select {
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+  }
+
+  .filter-select:focus {
+    outline: none;
+    border-color: #1a1a1a;
+  }
+
+  .filter-results {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .clear-btn:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+  }
+
+  .book-card[style*="display: none"] {
+    display: none !important;
+  }
+
   @media (max-width: 768px) {
     .books-container {
       padding: 2rem 1.5rem;
@@ -298,5 +483,152 @@ const totalBooks = allBooks.length;
       align-items: flex-start;
       gap: 0.5rem;
     }
+
+    .filters {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
+
+<script>
+  (function() {
+    const booksGrid = document.getElementById('books-grid');
+    const searchInput = document.getElementById('search-input');
+    const genreFilter = document.getElementById('genre-filter');
+    const yearFilter = document.getElementById('year-filter');
+    const ratingFilter = document.getElementById('rating-filter');
+    const sourceFilter = document.getElementById('source-filter');
+    const sortSelect = document.getElementById('sort-select');
+    const resultsCount = document.getElementById('results-count');
+    const noResults = document.getElementById('no-results');
+    const clearFilters = document.getElementById('clear-filters');
+
+    if (!booksGrid) return;
+
+    const bookCards = Array.from(booksGrid.querySelectorAll('.book-card'));
+    const totalBooks = bookCards.length;
+
+    function filterAndSort() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const selectedGenre = genreFilter.value;
+      const selectedYear = yearFilter.value;
+      const selectedRating = ratingFilter.value;
+      const selectedSource = sourceFilter.value;
+      const sortBy = sortSelect.value;
+
+      let visibleBooks = bookCards.filter(card => {
+        const title = card.dataset.title || '';
+        const author = card.dataset.author || '';
+        const genres = card.dataset.genres || '';
+        const year = card.dataset.year || '';
+        const rating = card.dataset.rating || '';
+        const sources = card.dataset.sources || '';
+
+        // Search filter
+        if (searchTerm && !title.includes(searchTerm) && !author.includes(searchTerm)) {
+          return false;
+        }
+
+        // Genre filter
+        if (selectedGenre && !genres.includes(selectedGenre)) {
+          return false;
+        }
+
+        // Year filter
+        if (selectedYear && year !== selectedYear) {
+          return false;
+        }
+
+        // Rating filter
+        if (selectedRating) {
+          const bookRating = parseInt(rating) || 0;
+          const minRating = parseInt(selectedRating);
+          if (bookRating < minRating) {
+            return false;
+          }
+        }
+
+        // Source filter
+        if (selectedSource && !sources.includes(selectedSource)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Sort books
+      visibleBooks.sort((a, b) => {
+        const titleA = a.querySelector('.book-title')?.textContent || '';
+        const titleB = b.querySelector('.book-title')?.textContent || '';
+        const authorA = a.querySelector('.book-author')?.textContent || '';
+        const authorB = b.querySelector('.book-author')?.textContent || '';
+        const dateA = a.dataset.year ? new Date(a.dataset.year, 0, 1).valueOf() : 0;
+        const dateB = b.dataset.year ? new Date(b.dataset.year, 0, 1).valueOf() : 0;
+        const ratingA = parseFloat(a.dataset.rating || '0');
+        const ratingB = parseFloat(b.dataset.rating || '0');
+
+        switch (sortBy) {
+          case 'date-desc':
+            return dateB - dateA;
+          case 'date-asc':
+            return dateA - dateB;
+          case 'rating-desc':
+            return ratingB - ratingA;
+          case 'rating-asc':
+            return ratingA - ratingB;
+          case 'title-asc':
+            return titleA.localeCompare(titleB);
+          case 'title-desc':
+            return titleB.localeCompare(titleA);
+          case 'author-asc':
+            return authorA.localeCompare(authorB);
+          default:
+            return 0;
+        }
+      });
+
+      // Hide all books first
+      bookCards.forEach(card => {
+        card.style.display = 'none';
+      });
+
+      // Show filtered and sorted books
+      visibleBooks.forEach(card => {
+        card.style.display = '';
+      });
+
+      // Update results count
+      resultsCount.textContent = `${visibleBooks.length} books`;
+
+      // Show/hide no results message
+      if (visibleBooks.length === 0) {
+        noResults.style.display = 'block';
+      } else {
+        noResults.style.display = 'none';
+      }
+
+      // Reorder in DOM
+      visibleBooks.forEach(card => {
+        booksGrid.appendChild(card);
+      });
+    }
+
+    // Event listeners
+    searchInput.addEventListener('input', filterAndSort);
+    genreFilter.addEventListener('change', filterAndSort);
+    yearFilter.addEventListener('change', filterAndSort);
+    ratingFilter.addEventListener('change', filterAndSort);
+    sourceFilter.addEventListener('change', filterAndSort);
+    sortSelect.addEventListener('change', filterAndSort);
+
+    clearFilters.addEventListener('click', () => {
+      searchInput.value = '';
+      genreFilter.value = '';
+      yearFilter.value = '';
+      ratingFilter.value = '';
+      sourceFilter.value = '';
+      sortSelect.value = 'date-desc';
+      filterAndSort();
+    });
+  })();
+</script>

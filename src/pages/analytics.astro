@@ -1,0 +1,590 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { format, parseISO } from 'date-fns';
+
+// Type definitions
+interface ReadingAnalytics {
+  overview: {
+    totalBooks: number;
+    currentlyReading: number;
+    wantToRead: number;
+    averageRating: number;
+    totalPages: number;
+  };
+  timeline: {
+    byYear: Array<{ year: number; count: number }>;
+    byMonth: Array<{ month: string; count: number }>;
+  };
+  genres: {
+    distribution: Array<{ genre: string; count: number; percentage: number }>;
+    evolution: Array<{ year: number; genres: Record<string, number> }>;
+  };
+  authors: {
+    topAuthors: Array<{ author: string; count: number; averageRating: number }>;
+    diversity: number;
+  };
+  ratings: {
+    distribution: Array<{ rating: number; count: number }>;
+    averageByYear: Array<{ year: number; average: number }>;
+  };
+  goals: {
+    booksThisYear: number;
+    targetThisYear: number;
+    progress: number;
+    onTrack: boolean;
+  };
+  insights: {
+    readingVelocity: {
+      booksPerMonth: number;
+      booksPerYear: number;
+      trend: string;
+    };
+    genrePreferences: {
+      topGenres: Array<{ genre: string; count: number; percentage: number }>;
+      genreEvolution: string;
+    };
+    authorDiversity: {
+      uniqueAuthors: number;
+      topAuthors: Array<{ author: string; count: number }>;
+      diversityScore: number;
+    };
+    readingStreak: {
+      currentStreak: number;
+      longestStreak: number;
+      consistency: string;
+    };
+    recommendations: Array<{
+      title: string;
+      author: string;
+      reason: string;
+    }>;
+    summary: string;
+    generatedAt: string;
+  } | null;
+  generatedAt: string;
+}
+
+// Load analytics data
+const analyticsPath = join(process.cwd(), 'src/data/analytics.json');
+let analytics: ReadingAnalytics | null = null;
+try {
+  const content = readFileSync(analyticsPath, 'utf-8');
+  analytics = JSON.parse(content);
+} catch (error) {
+  console.error('Error reading analytics.json:', error);
+}
+
+// Prepare chart data
+const timelineData = analytics?.timeline.byYear || [];
+const genreData = analytics?.genres.distribution.slice(0, 10) || [];
+const ratingData = analytics?.ratings.distribution || [];
+const monthlyData = analytics?.timeline.byMonth.slice(-12) || []; // Last 12 months
+---
+
+<BaseLayout 
+  title="Reading Analytics" 
+  description="Detailed analytics and insights about my reading habits, patterns, and trends."
+>
+  <main class="analytics-container">
+    <div class="analytics-content">
+      <header class="analytics-header">
+        <h1 class="analytics-title">Reading Analytics</h1>
+        <p class="analytics-subtitle">
+          Insights into reading patterns, trends, and preferences
+          {analytics?.generatedAt && (
+            <span class="last-updated">
+              Last updated: {format(parseISO(analytics.generatedAt), 'MMM d, yyyy')}
+            </span>
+          )}
+        </p>
+      </header>
+
+      {analytics ? (
+        <>
+          {/* Overview Stats */}
+          <section class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">{analytics.overview.totalBooks}</div>
+              <div class="stat-label">Total Books Read</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{analytics.overview.currentlyReading}</div>
+              <div class="stat-label">Currently Reading</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{analytics.overview.averageRating.toFixed(1)}</div>
+              <div class="stat-label">Average Rating</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{analytics.insights?.readingVelocity.booksPerMonth.toFixed(1) || '0'}</div>
+              <div class="stat-label">Books per Month</div>
+            </div>
+          </section>
+
+          {/* Reading Goals */}
+          {analytics.goals && (
+            <section class="goals-section">
+              <h2 class="section-title">Reading Goals</h2>
+              <div class="goal-card">
+                <div class="goal-header">
+                  <span class="goal-label">Books This Year</span>
+                  <span class="goal-progress">
+                    {analytics.goals.booksThisYear} / {analytics.goals.targetThisYear}
+                  </span>
+                </div>
+                <div class="progress-bar">
+                  <div 
+                    class="progress-fill" 
+                    style={`width: ${Math.min(analytics.goals.progress, 100)}%`}
+                  ></div>
+                </div>
+                <div class="goal-status">
+                  {analytics.goals.onTrack ? (
+                    <span class="status-badge success">On Track</span>
+                  ) : (
+                    <span class="status-badge warning">Behind Schedule</span>
+                  )}
+                  <span class="progress-text">{analytics.goals.progress.toFixed(1)}% complete</span>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Timeline Chart */}
+          <section class="chart-section">
+            <h2 class="section-title">Reading Timeline</h2>
+            <div class="chart-container">
+              <canvas id="timeline-chart"></canvas>
+            </div>
+          </section>
+
+          {/* Monthly Reading */}
+          <section class="chart-section">
+            <h2 class="section-title">Last 12 Months</h2>
+            <div class="chart-container">
+              <canvas id="monthly-chart"></canvas>
+            </div>
+          </section>
+
+          {/* Genre Distribution */}
+          <section class="chart-section">
+            <h2 class="section-title">Genre Distribution</h2>
+            <div class="chart-container">
+              <canvas id="genre-chart"></canvas>
+            </div>
+          </section>
+
+          {/* Rating Distribution */}
+          <section class="chart-section">
+            <h2 class="section-title">Rating Distribution</h2>
+            <div class="chart-container">
+              <canvas id="rating-chart"></canvas>
+            </div>
+          </section>
+
+          {/* Top Authors */}
+          {analytics.authors.topAuthors.length > 0 && (
+            <section class="authors-section">
+              <h2 class="section-title">Top Authors</h2>
+              <div class="authors-grid">
+                {analytics.authors.topAuthors.slice(0, 10).map((author) => (
+                  <div class="author-card">
+                    <div class="author-name">{author.author}</div>
+                    <div class="author-stats">
+                      <span class="author-count">{author.count} books</span>
+                      {author.averageRating > 0 && (
+                        <span class="author-rating">
+                          {'★'.repeat(Math.round(author.averageRating))}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* AI Insights */}
+          {analytics.insights && (
+            <section class="insights-section">
+              <h2 class="section-title">AI Insights</h2>
+              <div class="insights-card">
+                <p class="insights-summary">{analytics.insights.summary}</p>
+                
+                {analytics.insights.recommendations.length > 0 && (
+                  <div class="recommendations">
+                    <h3>Recommendations</h3>
+                    <ul class="recommendations-list">
+                      {analytics.insights.recommendations.map((rec) => (
+                        <li class="recommendation-item">
+                          <strong>{rec.title}</strong> by {rec.author}
+                          <p class="recommendation-reason">{rec.reason}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        <div class="no-data">
+          <p>No analytics data available. Run the aggregation script to generate insights.</p>
+        </div>
+      )}
+    </div>
+  </main>
+
+  <script define:vars={{ analyticsData: analytics }}>
+    import { Chart, registerables } from 'chart.js';
+    Chart.register(...registerables);
+
+    if (analyticsData) {
+      const analytics = analyticsData;
+
+      // Timeline Chart (Books by Year)
+      const timelineCtx = document.getElementById('timeline-chart');
+      if (timelineCtx && analytics.timeline?.byYear) {
+        new Chart(timelineCtx, {
+          type: 'line',
+          data: {
+            labels: analytics.timeline.byYear.map(d => d.year.toString()),
+            datasets: [{
+              label: 'Books Read',
+              data: analytics.timeline.byYear.map(d => d.count),
+              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.4,
+              fill: true,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            },
+          },
+        });
+      }
+
+      // Monthly Chart
+      const monthlyCtx = document.getElementById('monthly-chart');
+      if (monthlyCtx && analytics.timeline?.byMonth) {
+        new Chart(monthlyCtx, {
+          type: 'bar',
+          data: {
+            labels: analytics.timeline.byMonth.map(d => {
+              const [year, month] = d.month.split('-');
+              return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }),
+            datasets: [{
+              label: 'Books',
+              data: analytics.timeline.byMonth.map(d => d.count),
+              backgroundColor: 'rgba(34, 197, 94, 0.8)',
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            },
+          },
+        });
+      }
+
+      // Genre Chart
+      const genreCtx = document.getElementById('genre-chart');
+      if (genreCtx && analytics.genres?.distribution) {
+        new Chart(genreCtx, {
+          type: 'doughnut',
+          data: {
+            labels: analytics.genres.distribution.slice(0, 10).map(d => d.genre),
+            datasets: [{
+              data: analytics.genres.distribution.slice(0, 10).map(d => d.count),
+              backgroundColor: [
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(251, 191, 36, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(168, 85, 247, 0.8)',
+                'rgba(236, 72, 153, 0.8)',
+                'rgba(20, 184, 166, 0.8)',
+                'rgba(249, 115, 22, 0.8)',
+                'rgba(14, 165, 233, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+              ],
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'right' },
+            },
+          },
+        });
+      }
+
+      // Rating Chart
+      const ratingCtx = document.getElementById('rating-chart');
+      if (ratingCtx && analytics.ratings?.distribution) {
+        new Chart(ratingCtx, {
+          type: 'bar',
+          data: {
+            labels: analytics.ratings.distribution.map(d => '★'.repeat(d.rating) + '☆'.repeat(5 - d.rating)),
+            datasets: [{
+              label: 'Books',
+              data: analytics.ratings.distribution.map(d => d.count),
+              backgroundColor: 'rgba(251, 191, 36, 0.8)',
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            },
+          },
+        });
+      }
+    }
+  </script>
+
+  <style>
+    .analytics-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .analytics-header {
+      margin-bottom: 3rem;
+    }
+
+    .analytics-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .analytics-subtitle {
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .last-updated {
+      display: block;
+      font-size: 0.9rem;
+      color: #999;
+      margin-top: 0.5rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .goals-section, .chart-section, .authors-section, .insights-section {
+      margin-bottom: 3rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .goal-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .goal-label {
+      font-weight: 600;
+    }
+
+    .goal-progress {
+      color: #666;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 1rem;
+      background: #e5e7eb;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #22c55e);
+      transition: width 0.3s ease;
+    }
+
+    .goal-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .status-badge.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-badge.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .progress-text {
+      color: #666;
+      font-size: 0.875rem;
+    }
+
+    .chart-container {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      height: 300px;
+      position: relative;
+    }
+
+    .authors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .author-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+
+    .author-name {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .author-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .author-count {
+      color: #666;
+    }
+
+    .author-rating {
+      color: #fbbf24;
+    }
+
+    .insights-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .insights-summary {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      color: #333;
+    }
+
+    .recommendations h3 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .recommendations-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .recommendation-item {
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .recommendation-item strong {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .recommendation-reason {
+      color: #666;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: #666;
+    }
+  </style>
+</BaseLayout>

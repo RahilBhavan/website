@@ -1,0 +1,56 @@
+{
+  "overview": {
+    "totalBooks": 0,
+    "currentlyReading": 0,
+    "wantToRead": 0,
+    "averageRating": 0,
+    "totalPages": 0
+  },
+  "timeline": {
+    "byYear": [],
+    "byMonth": []
+  },
+  "genres": {
+    "distribution": [],
+    "evolution": []
+  },
+  "authors": {
+    "topAuthors": [],
+    "diversity": 0
+  },
+  "ratings": {
+    "distribution": [],
+    "averageByYear": []
+  },
+  "goals": {
+    "booksThisYear": 0,
+    "targetThisYear": 52,
+    "progress": 0,
+    "onTrack": false
+  },
+  "insights": {
+    "readingVelocity": {
+      "booksPerMonth": 0,
+      "booksPerYear": 0,
+      "trend": "stable"
+    },
+    "genrePreferences": {
+      "topGenres": [],
+      "genreEvolution": "Reading preferences are evolving."
+    },
+    "authorDiversity": {
+      "uniqueAuthors": 0,
+      "topAuthors": [],
+      "diversityScore": 0
+    },
+    "readingStreak": {
+      "currentStreak": 0,
+      "longestStreak": 0,
+      "consistency": "low"
+    },
+    "recommendations": [],
+    "summary": "You've read 0 books with a diverse range of authors and genres.",
+    "generatedAt": "2026-01-19T22:25:45.459Z"
+  },
+  "generatedAt": "2026-01-19T22:25:45.459Z"
+}

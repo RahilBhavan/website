@@ -197,19 +197,38 @@ async function generateAndSaveInsights(books: NormalizedBook[]): Promise<void> {
 async function main() {
   try {
     const incremental = process.env.INCREMENTAL_SYNC === 'true';
+    const existingBooks = loadExistingBooks();
     const books = await aggregateBooks(incremental);
-    await saveBooks(books);
     
-    // Generate insights and analytics
-    const shouldGenerateInsights = process.env.GENERATE_INSIGHTS !== 'false';
-    if (shouldGenerateInsights) {
-      await generateAndSaveInsights(books);
+    // Safety check: Don't overwrite existing books with empty array in CI
+    // This prevents losing books if env vars are missing or aggregation fails
+    if (books.length === 0 && existingBooks.length > 0 && process.env.CI) {
+      console.log(`\n⚠️  No books collected, but preserving ${existingBooks.length} existing books`);
+      console.log('   ℹ This usually means GOODREADS_USER_ID is not set in Vercel environment variables');
+      console.log('   ℹ Skipping save to preserve existing books.json\n');
+    } else {
+      // Normal flow: save the aggregated books
+      await saveBooks(books);
+    }
+    
+    // Generate insights and analytics (use aggregated books, or existing if none collected)
+    const booksForInsights = books.length > 0 ? books : existingBooks;
+    if (booksForInsights.length > 0) {
+      const shouldGenerateInsights = process.env.GENERATE_INSIGHTS !== 'false';
+      if (shouldGenerateInsights) {
+        await generateAndSaveInsights(booksForInsights);
+      }
     }
     
     console.log('\n🎉 Done!');
   } catch (error) {
     console.error('❌ Error aggregating books:', error);
-    process.exit(1);
+    // Don't exit with error in CI - preserve existing books.json
+    if (process.env.CI) {
+      console.log('⚠️  Build continuing with existing books.json (if any)');
+    } else {
+      process.exit(1);
+    }
   }
 }
 

@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Steve Jobs",
+    "author": "Walter Isaacson",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1511288482l/11084145.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-19T21:59:11.000Z",
+    "rating": 4,
+    "tags": [
+      "biography-&-autobiography"
+    ],
+    "normalizedTitle": "steve jobs",
+    "normalizedAuthor": "walter isaacson",
+    "id": "steve-jobs-walter-isaacson",
+    "sources": [
+      "goodreads"
+    ],
+    "review": "Based on more than 40 interviews with Jobs conducted over two years--as well as interviews with more than 100 family members, friends, adversaries, competitors, and colleagues--Isaacson has written a riveting story of the roller-coaster life and searingly intense personality of a creative entrepreneur whose passion for perfection and ferocious drive revolutionized six industries: personal computers, animated movies, music, phones, tablet computing, and digital publishing.",
+    "isbn": "9781451648546"
+  },
+  {
+    "title": "The Myth of Sisyphus",
+    "author": "Albert Camus",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1347654509l/91950.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-19T21:58:57.000Z",
+    "rating": 4,
+    "tags": [
+      "literary-collections"
+    ],
+    "normalizedTitle": "myth of sisyphus",
+    "normalizedAuthor": "albert camus",
+    "id": "myth-of-sisyphus-albert-camus",
+    "sources": [
+      "goodreads"
+    ],
+    "review": "The summation of the existentialist philosophy threaded throughout all his writing, Albert Camus' The Myth of Sisyphus is translated by Justin O'Brien with an introduction by James Wood in Penguin Classics. In this profound and moving philosophical statement, Camus poses the fundamental question: is life worth living? If human existence holds no significance, what can keep us from suicide? As Camus argues, if there is no God to give meaning to our lives, humans must take on that purpose themselv",
+    "isbn": "9780141182001"
+  }
+]

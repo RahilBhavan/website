@@ -10,7 +10,10 @@
     "astro": "astro",
     "aggregate:books": "tsx scripts/vision-books.ts",
     "sync:books": "tsx scripts/workers/scheduler.ts",
-    "export:goodreads-cookies": "tsx scripts/export-goodreads-cookies.ts"
+    "export:goodreads-cookies": "tsx scripts/export-goodreads-cookies.ts",
+    "export:goodreads-cookies:auto": "tsx scripts/export-goodreads-cookies-auto.ts",
+    "test:goodreads": "tsx scripts/test-goodreads.ts",
+    "debug:goodreads": "tsx scripts/debug-goodreads.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",

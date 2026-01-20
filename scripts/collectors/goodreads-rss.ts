@@ -43,7 +43,7 @@ function parseRSSFeed(xml: string): RawBook[] {
         author: author.trim(),
         coverUrl: coverUrl || undefined,
         source: 'goodreads',
-        status: 'read', // RSS feeds are typically for completed books
+        status: 'read', // Default, will be overridden by caller if needed
         completedDate,
         rating,
         tags: [],
@@ -65,28 +65,47 @@ export async function collectGoodreadsRSS(
     return [];
   }
 
-  const rssUrl = `https://www.goodreads.com/review/list_rss/${goodreadsUserId}?shelf=read`;
+  const allBooks: RawBook[] = [];
+  const shelves = ['read', 'currently-reading'];
 
-  try {
-    const response = await axios.get(rssUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-    });
+  for (const shelf of shelves) {
+    const rssUrl = `https://www.goodreads.com/review/list_rss/${goodreadsUserId}?shelf=${shelf}`;
 
-    if (response.status === 200 && response.data) {
-      const books = parseRSSFeed(response.data);
-      console.log(`   ✓ Goodreads RSS: ${books.length} books`);
-      return books;
+    try {
+      const response = await axios.get(rssUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
+      });
+
+      if (response.status === 200 && response.data) {
+        const books = parseRSSFeed(response.data);
+        
+        // Update status for currently-reading books
+        if (shelf === 'currently-reading') {
+          books.forEach(book => {
+            book.status = 'currently-reading';
+          });
+        }
+        
+        if (books.length > 0) {
+          console.log(`   ✓ Goodreads RSS (${shelf}): ${books.length} books`);
+        }
+        allBooks.push(...books);
+      }
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // Silently skip if shelf doesn't exist or is empty
+        continue;
+      } else {
+        console.warn(`   ⚠ Failed to fetch Goodreads RSS (${shelf}): ${error.message}`);
+      }
     }
-
-    return [];
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      console.warn(`   ⚠ Goodreads RSS feed not found. User ${goodreadsUserId} may not have a public RSS feed enabled.`);
-    } else {
-      console.warn(`   ⚠ Failed to fetch Goodreads RSS: ${error.message}`);
-    }
-    return [];
   }
+
+  if (allBooks.length > 0) {
+    console.log(`   ✓ Goodreads RSS: ${allBooks.length} total books`);
+  }
+  
+  return allBooks;
 }

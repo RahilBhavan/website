@@ -1,24 +1,44 @@
 {
   "readingVelocity": {
-    "booksPerMonth": 0,
-    "booksPerYear": 0,
-    "trend": "stable"
+    "booksPerMonth": 2,
+    "booksPerYear": 2,
+    "trend": "increasing"
   },
   "genrePreferences": {
-    "topGenres": [],
+    "topGenres": [
+      {
+        "genre": "biography-&-autobiography",
+        "count": 1,
+        "percentage": 50
+      },
+      {
+        "genre": "literary-collections",
+        "count": 1,
+        "percentage": 50
+      }
+    ],
     "genreEvolution": "Reading preferences are evolving."
   },
   "authorDiversity": {
-    "uniqueAuthors": 0,
-    "topAuthors": [],
-    "diversityScore": 0
+    "uniqueAuthors": 2,
+    "topAuthors": [
+      {
+        "author": "Walter Isaacson",
+        "count": 1
+      },
+      {
+        "author": "Albert Camus",
+        "count": 1
+      }
+    ],
+    "diversityScore": 1
   },
   "readingStreak": {
-    "currentStreak": 0,
-    "longestStreak": 0,
-    "consistency": "low"
+    "currentStreak": 1,
+    "longestStreak": 1,
+    "consistency": "medium"
   },
   "recommendations": [],
-  "summary": "You've read 0 books with a diverse range of authors and genres.",
-  "generatedAt": "2026-01-19T22:25:45.459Z"
+  "summary": "You've read 2 books with a diverse range of authors and genres.",
+  "generatedAt": "2026-01-20T22:04:27.195Z"
 }

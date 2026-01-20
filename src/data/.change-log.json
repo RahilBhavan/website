@@ -1,4 +1,17 @@
 {
-  "newBooks": [],
-  "lastCheck": "2026-01-19T22:34:33.096Z"
+  "newBooks": [
+    {
+      "id": "steve-jobs-walter-isaacson",
+      "title": "Steve Jobs",
+      "author": "Walter Isaacson",
+      "addedAt": "2026-01-20T22:04:27.191Z"
+    },
+    {
+      "id": "myth-of-sisyphus-albert-camus",
+      "title": "The Myth of Sisyphus",
+      "author": "Albert Camus",
+      "addedAt": "2026-01-20T22:04:27.192Z"
+    }
+  ],
+  "lastCheck": "2026-01-20T22:04:27.192Z"
 }

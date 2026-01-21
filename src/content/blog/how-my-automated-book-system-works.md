@@ -12,7 +12,7 @@ draft: false
 
 **Hook:** Have you ever tracked your reading across multiple platforms—Goodreads, Audible, physical books, notes—and wished you had a single unified view? I built an automated system that does exactly that, and it runs every time I deploy my blog.
 
-**Context:** As someone who reads across different platforms and formats, I found myself manually maintaining reading lists in multiple places. This was tedious, error-prone, and made it impossible to get a complete picture of my reading habits. The solution? An automated pipeline that aggregates data from all sources, normalizes it, deduplicates entries, enriches missing metadata, and even generates AI-powered insights.
+**Context:** As someone who reads across different platforms and formats, I found myself manually maintaining reading lists in multiple places. This was tedious, error-prone, and made it impossible to get a complete picture of my reading habits. The solution? An automated pipeline that aggregates data from all sources, normalizes it, deduplicates entries, enriches missing metadata, and even generates AI-powered insights. This system is heavily inspired by [Ajay Misra's implementation](https://www.ajaymisra.com/posts/psuedocode) on [ajaymisra.com](https://www.ajaymisra.com).
 
 **Preview:** In this post, I'll walk you through how my automated book system works at a high level—from collecting data from multiple sources to generating analytics and insights. You'll learn about the pipeline architecture, how it handles failures gracefully, and how it integrates into my blog's build process.
 
@@ -25,7 +25,7 @@ The core idea is simple: create a **single source of truth** for all my reading 
 - **Automatic**: Runs as part of the build process, no manual intervention
 - **Intelligent**: Handles duplicates, enriches missing data, and generates insights
 
-The system is inspired by [Ajay Misra's pseudocode post](https://www.ajaymisra.com/posts/psuedocode) and follows a similar architecture pattern—collectors gather raw data, an integration layer normalizes and deduplicates, and enrichment fills in gaps.
+The system is inspired by [Ajay Misra's pseudocode post](https://www.ajaymisra.com/posts/psuedocode) on [ajaymisra.com](https://www.ajaymisra.com) and follows a similar architecture pattern—collectors gather raw data, an integration layer normalizes and deduplicates, and enrichment fills in gaps. Ajay's approach to multi-source data aggregation and fuzzy matching provided the conceptual foundation for this implementation.
 
 ## The Pipeline: From Sources to Insights
 
@@ -88,7 +88,7 @@ The normalization layer standardizes:
 
 When the same book appears in multiple sources (e.g., you manually added it and it's also on Goodreads), the system uses **fuzzy matching** to identify duplicates:
 
-- **Similarity threshold**: 92% match required (based on word-based Jaccard similarity)
+- **Similarity threshold**: 92% match required (based on word-based Jaccard similarity, following [Ajay Misra's implementation](https://www.ajaymisra.com/posts/psuedocode))
 - **Matching criteria**: Both author and title must be similar
 - **Merge strategy**: Combines data from all sources, preferring:
   - More complete data (ratings, dates, covers)
@@ -358,12 +358,12 @@ This opens a browser window—log in to Goodreads, and cookies will be saved aut
 
 - Check out the [Books page](/books) to see the system in action
 - Explore the [Analytics page](/analytics) for reading insights
-- Read about the [pseudocode inspiration](/blog/pseudocode/) behind this system
+- Read [Ajay Misra's original pseudocode post](https://www.ajaymisra.com/posts/psuedocode) on [ajaymisra.com](https://www.ajaymisra.com) that inspired this implementation
 - Try building your own aggregation pipeline for your data sources
 
 ## Related Posts
 
-- [Pseudocode: The Architecture Behind My Book System](/blog/pseudocode/) - The conceptual foundation and design decisions
+- [Ajay Misra's Pseudocode Post](https://www.ajaymisra.com/posts/psuedocode) on [ajaymisra.com](https://www.ajaymisra.com) - The original inspiration and conceptual foundation for this system
 - [Why I Built a Drone for Zimbabwe's Roads (Part 1)](/blog/why-i-built-a-drone-for-zimbabwes-roads-part-1/) - Another automation project with similar principles
 
 ---

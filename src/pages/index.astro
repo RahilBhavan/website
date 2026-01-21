@@ -64,7 +64,7 @@ const recentPosts = sortedPosts.slice(0, 3);
               const slug = post.id.replace(/\.(md|mdx)$/, '');
               return (
               <article class="post-item">
-                <a href={`/blog/${slug}/`} class="post-item-link">
+                <a href={`/blog/${slug}`} class="post-item-link">
                   <h3 class="post-item-title">{post.data.title}</h3>
                   {post.data.description && (
                     <p class="post-item-description">{post.data.description}</p>

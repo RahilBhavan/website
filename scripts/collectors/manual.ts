@@ -32,7 +32,8 @@ export async function collectManualBooks(): Promise<RawBook[]> {
     throw error;
   }
   
-  const markdownFiles = files.filter(f => f.endsWith('.md'));
+  // Filter out template files (files starting with _) and only get .md files
+  const markdownFiles = files.filter(f => f.endsWith('.md') && !f.startsWith('_'));
 
   const books: RawBook[] = [];
 

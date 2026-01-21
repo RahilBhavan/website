@@ -1,0 +1,3 @@
+# Blog Images Directory
+
+Place blog post images in this directory. Images are served from the root, so reference them as `/images/blog/filename.jpg` in your markdown files.

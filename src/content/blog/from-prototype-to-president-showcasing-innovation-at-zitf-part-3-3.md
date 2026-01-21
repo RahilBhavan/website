@@ -36,7 +36,7 @@ The visibility from ZITF opened doors to the highest levels of industry and gove
 
 ### Presenting to the President
 
-One of the most pivotal moments of the project was the opportunity to present the drone to the **President of Zimbabwe**. This came when I was headhunted by the ministry of education for my recent news articles on the drone, in doing so I was invited to The Zimbabwe Presidentional Innovation Fiar. I had the chance to explain the engineering behind the CNC chassis and the AI model, demonstrating how homegrown technology could solve national challenges like road safety and maintenance efficiency.
+One of the most pivotal moments of the project was the opportunity to present the drone to the **President of Zimbabwe**. This came when I was headhunted by the ministry of education for my recent news articles on the drone. In doing so, I was invited to The Zimbabwe Presidential Innovation Fair. I had the chance to explain the engineering behind the CNC chassis and the AI model, demonstrating how homegrown technology could solve national challenges like road safety and maintenance efficiency.
 
 ![Presentation to the President of Zimbabwe](/images/blog/president-presentation.jpg)
 *Presenting the pothole detection drone to the President of Zimbabwe*
@@ -45,8 +45,8 @@ One of the most pivotal moments of the project was the opportunity to present th
 
 Beyond the public sector, we engaged with the private sector, specifically presenting to the CEO of **Econet Wireless**, Dr. Douglas Mboweni.
 
-* **The Discussion:** We explored how 5G connectivity could enhance the drone's capabilities, allowing for real-time cloud data streaming. Furthermore I got invited to intern at the company over my A-Level Break.
-* **The Vision:** We framed the project as a foundational element of a "Smart City" initiative, showing that Zimbabwe has the technical talent to build its own future. Specifically its application for mine fields, agriculture and data collection.
+* **The Discussion:** We explored how 5G connectivity could enhance the drone's capabilities, allowing for real-time cloud data streaming. Furthermore, I was invited to intern at the company over my A-Level break.
+* **The Vision:** We framed the project as a foundational element of a "Smart City" initiative, showing that Zimbabwe has the technical talent to build its own future. Specifically, its applications for mine fields, agriculture, and data collection.
 
 ![Presentation to Econet leadership](/images/blog/econet-presentation.jpg)
 *Discussing the drone's potential with Econet Wireless leadership*

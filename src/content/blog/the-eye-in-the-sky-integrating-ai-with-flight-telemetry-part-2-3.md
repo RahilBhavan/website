@@ -23,7 +23,7 @@ In this post, I'll dive into the software architecture, explaining how I connect
 
 ## The Hardware Stack
 
-This isn't just a standard drone; it's a flying edge server. Here is the specific loadout:
+This isn't just a standard drone; it's a flying edge server. Here's the specific loadout:
 
 1. **The Pilot (Cube Orange + Here3 GPS):**
    - The Cube Orange handles the flight physics, stability, and motor control.
@@ -151,4 +151,4 @@ finally:
 2. **Nano Model:** I'm using `pothole_v8_nano.pt`. On edge devices, you trade a tiny bit of accuracy for massive gains in Frames Per Second (FPS).
 3. **Asynchronous Uploads:** In a production version, the `requests.post` would be pushed to a separate thread. We never want the network call to pause the video processing loop, or we might miss a pothole while waiting for a cell tower ping.
 
-In Part 3, we will look at the map data visualization and how to turn these CSV coordinates into a heatmap for the Department of Transport.
+In Part 3, we'll look at the map data visualization and how to turn these CSV coordinates into a heatmap for the Department of Transport.

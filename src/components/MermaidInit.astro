@@ -1,0 +1,96 @@
+---
+// Client component to initialize Mermaid diagrams
+// This component automatically renders all mermaid code blocks in the page
+---
+
+<script is:inline>
+  // Load Mermaid from CDN and initialize
+  (function() {
+    // Check if Mermaid is already loaded
+    if (window.mermaid) {
+      initMermaid();
+      return;
+    }
+
+    // Load Mermaid from CDN
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    script.onload = initMermaid;
+    script.onerror = function() {
+      console.error('Failed to load Mermaid from CDN');
+    };
+    document.head.appendChild(script);
+
+    function initMermaid() {
+      if (!window.mermaid) {
+        setTimeout(initMermaid, 100);
+        return;
+      }
+
+      // Initialize Mermaid
+      window.mermaid.initialize({
+        startOnLoad: false,
+        theme: 'default',
+        securityLevel: 'loose',
+        fontFamily: 'inherit',
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis',
+        },
+        sequence: {
+          useMaxWidth: true,
+        },
+        gantt: {
+          useMaxWidth: true,
+        },
+      });
+
+      // Render all mermaid code blocks
+      function renderMermaidDiagrams() {
+        const mermaidBlocks = document.querySelectorAll(
+          'pre code.language-mermaid, pre code.language-mmd'
+        );
+
+        mermaidBlocks.forEach((block, index) => {
+          const code = block.textContent || '';
+          if (!code.trim()) return;
+
+          const id = `mermaid-${Date.now()}-${index}`;
+
+          // Create a container div
+          const container = document.createElement('div');
+          container.className = 'mermaid-diagram';
+          container.id = id;
+
+          // Replace the code block with the container
+          const pre = block.parentElement;
+          if (pre && pre.parentElement) {
+            pre.replaceWith(container);
+
+            // Render the diagram
+            window.mermaid
+              .render(id, code)
+              .then(({ svg }) => {
+                container.innerHTML = svg;
+              })
+              .catch((error) => {
+                console.error('Mermaid rendering error:', error);
+                container.innerHTML = `<p style="color: red; padding: 1rem;">Error rendering diagram: ${error.message}</p>`;
+              });
+          }
+        });
+      }
+
+      // Run when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderMermaidDiagrams);
+      } else {
+        renderMermaidDiagrams();
+      }
+
+      // Also run after a short delay to catch dynamically loaded content
+      setTimeout(renderMermaidDiagrams, 100);
+    }
+  })();
+</script>

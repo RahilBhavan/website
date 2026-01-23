@@ -378,14 +378,14 @@ Type safety catches errors at compile time, not runtime.
 
 **Call to Action:**
 
-- Read [Part 1: Introduction](/blog/blog-part-1-introduction/) for the philosophy behind these choices
-- Check out [Part 3: Case Study and Future](/blog/blog-part-3-case-study-future/) for real-world implementation
+- Read [Part 1: Introduction](/blog/building-a-modern-blog-introduction-and-philosophy-part-1-3/) for the philosophy behind these choices
+- Check out [Part 3: Case Study and Future](/blog/building-a-modern-blog-case-study-and-future-directions-part-3-3/) for real-world implementation
 - Start building with these architectural patterns
 
 ## Related Posts
 
-- [Building a Modern Blog: Introduction (Part 1)](/blog/blog-part-1-introduction/) - The philosophy behind modern blog architecture
-- [Building a Modern Blog: Case Study and Future (Part 3)](/blog/blog-part-3-case-study-future/) - Real-world implementation and future directions
+- [Building a Modern Blog: Introduction (Part 1)](/blog/building-a-modern-blog-introduction-and-philosophy-part-1-3/) - The philosophy behind modern blog architecture
+- [Building a Modern Blog: Case Study and Future (Part 3)](/blog/building-a-modern-blog-case-study-and-future-directions-part-3-3/) - Real-world implementation and future directions
 - [How My Automated Book System Works](/blog/how-my-automated-book-system-works/) - Example of automation in a modern blog
 
 ---

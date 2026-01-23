@@ -190,14 +190,14 @@ This performance difference directly impacts reader engagement and SEO rankings.
 
 **Call to Action:**
 
-- Read [Part 2: Architecture](/blog/blog-part-2-architecture/) to see how these principles translate into technical decisions
-- Check out [Part 3: Case Study and Future](/blog/blog-part-3-case-study-future/) for real-world examples
+- Read [Part 2: Architecture](/blog/building-a-modern-blog-architecture-and-technical-decisions-part-2-3/) to see how these principles translate into technical decisions
+- Check out [Part 3: Case Study and Future](/blog/building-a-modern-blog-case-study-and-future-directions-part-3-3/) for real-world examples
 - Start building your own blog with these principles in mind
 
 ## Related Posts
 
-- [Building a Modern Blog: Architecture (Part 2)](/blog/blog-part-2-architecture/) - How philosophy translates into technical architecture
-- [Building a Modern Blog: Case Study and Future (Part 3)](/blog/blog-part-3-case-study-future/) - Real-world implementation and future directions
+- [Building a Modern Blog: Architecture (Part 2)](/blog/building-a-modern-blog-architecture-and-technical-decisions-part-2-3/) - How philosophy translates into technical architecture
+- [Building a Modern Blog: Case Study and Future (Part 3)](/blog/building-a-modern-blog-case-study-and-future-directions-part-3-3/) - Real-world implementation and future directions
 - [How My Automated Book System Works](/blog/how-my-automated-book-system-works/) - An example of automation in a modern blog
 
 ---

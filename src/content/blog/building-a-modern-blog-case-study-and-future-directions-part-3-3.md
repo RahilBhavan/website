@@ -336,15 +336,15 @@ const blog = defineCollection({
 
 **Call to Action:**
 
-- Read [Part 1: Introduction](/blog/blog-part-1-introduction/) for the philosophy
-- Check out [Part 2: Architecture](/blog/blog-part-2-architecture/) for technical details
+- Read [Part 1: Introduction](/blog/building-a-modern-blog-introduction-and-philosophy-part-1-3/) for the philosophy
+- Check out [Part 2: Architecture](/blog/building-a-modern-blog-architecture-and-technical-decisions-part-2-3/) for technical details
 - Start building your own blog with these principles
 - Share your experiences and lessons learned
 
 ## Related Posts
 
-- [Building a Modern Blog: Introduction (Part 1)](/blog/blog-part-1-introduction/) - The philosophy behind modern blogs
-- [Building a Modern Blog: Architecture (Part 2)](/blog/blog-part-2-architecture/) - Technical architecture and stack choices
+- [Building a Modern Blog: Introduction (Part 1)](/blog/building-a-modern-blog-introduction-and-philosophy-part-1-3/) - The philosophy behind modern blogs
+- [Building a Modern Blog: Architecture (Part 2)](/blog/building-a-modern-blog-architecture-and-technical-decisions-part-2-3/) - Technical architecture and stack choices
 - [How My Automated Book System Works](/blog/how-my-automated-book-system-works/) - Real-world automation example
 
 ---

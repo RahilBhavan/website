@@ -1,7 +1,7 @@
 ---
 title: "The Eye in the Sky: Integrating AI with Flight Telemetry (Part 2/3)"
 description: "Part 2 of the Pothole Drone Series: How to sync YOLO Computer Vision with ArduPilot telemetry using Python and MAVLink."
-publishDate: 2026-01-22
+publishDate: 2026-01-21
 tags:
   - Python
   - AI

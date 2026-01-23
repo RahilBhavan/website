@@ -1,7 +1,7 @@
 ---
 title: "Engineering a Solution: Why I Built a Drone for Zimbabwe's Roads (Part 1/3)"
 description: "Part 1 of the Pothole Drone Series: Designing a custom CNC aluminum airframe to solve municipal infrastructure challenges in Bulawayo."
-publishDate: 2026-01-21
+publishDate: 2026-01-20
 tags:
   - CNC
   - Zimbabwe
@@ -36,7 +36,7 @@ Most hobbyist drones use plastic or carbon fiber frames. For this project, I too
 
 Throughout this process I saw to expand my skills of CAD and rapid prototyping, in which through thousands of failed prints, clogged extruders and uneven build plates I managed to develop a few iterations of the drone frame.
 
-![Drone frame iteration showing 3D printed components and CNC aluminum plate](/path/to/drone-image.jpg)
+![Drone frame iteration showing 3D printed components and CNC aluminum plate](/images/blog/drone-frame-iteration.jpg)
 *Early iteration of the drone frame showing 3D printed components and the custom CNC aluminum build plate*
 
 ## Mechanical Challenges

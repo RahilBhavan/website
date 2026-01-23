@@ -1,7 +1,7 @@
 ---
 title: "How My Automated Book System Works"
 description: "A high-level walkthrough of my automated book aggregation pipeline that unifies reading data from multiple sources, enriches metadata, and generates AI-powered insights."
-publishDate: 2026-01-20
+publishDate: 2026-01-19
 tags: ["automation", "data-pipeline", "books", "typescript", "astro"]
 draft: false
 ---

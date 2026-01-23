@@ -1,7 +1,7 @@
 ---
 title: "From Prototype to President: Showcasing Innovation at ZITF (Part 3/3)"
 description: "Part 3 of the Pothole Drone Series: Partnering with Bulawayo City Council, winning 2nd Place at ZITF, and presenting to the President of Zimbabwe."
-publishDate: 2026-01-23
+publishDate: 2026-01-22
 tags:
   - ZITF
   - Engineering

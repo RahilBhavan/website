@@ -4,7 +4,6 @@ description: "An autonomous drone system using YOLOv8 computer vision and ArduPi
 problem: "Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. Hidden potholes disrupt supply chains and endanger lives. The local City Council couldn't fix what they couldn't find—manual road inspections were slow, expensive, and incomplete."
 solution: "Built a custom drone with CNC aluminum airframe, Raspberry Pi 5 edge computing, and YOLOv8 AI to autonomously detect potholes in real-time. The system syncs GPS coordinates with computer vision detections, creating an instant map of road defects for municipal maintenance teams."
 demoUrl: "https://www.youtube.com/watch?v=LpTeKHJ6wRc"
-githubUrl: ""
 completedDate: 2024-06-15
 ---
 

@@ -6,7 +6,7 @@ tags: ["defi", "security", "rust", "smart-contracts", "blockchain"]
 draft: false
 ---
 
-# The Guardian of the Chain: Sleep Soundly (Part 1/3)
+# The Guardian of the Chain: Sleep Soundly (Part 1/3) {#guardian-part-1}
 
 ## TL;DR
 

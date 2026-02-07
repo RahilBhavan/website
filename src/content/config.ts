@@ -20,7 +20,11 @@ const projects = defineCollection({
     problem: z.string(),
     solution: z.string(),
     demoUrl: z.string().url().optional(),
-    githubUrl: z.string().url().optional(),
+    // Allow empty string; treat as undefined so optional URL validation passes
+    githubUrl: z
+      .union([z.string().url(), z.literal('')])
+      .optional()
+      .transform((s) => (s === '' ? undefined : s)),
     completedDate: z.coerce.date(),
   }),
 });

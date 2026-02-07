@@ -6,7 +6,7 @@ tags: ["rust", "architecture", "blockchain", "defi", "systems-design"]
 draft: false
 ---
 
-# The Guardian of the Chain: Under the Hood (Part 2/3)
+# The Guardian of the Chain: Under the Hood (Part 2/3) {#guardian-part-2}
 
 ## TL;DR
 

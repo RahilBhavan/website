@@ -3,7 +3,6 @@ title: "Smart Contract Invariant Monitor & Guardian"
 description: "A production-grade Rust-based system for real-time DeFi security through runtime invariant verification. Automatically detects and responds to protocol violations, proven to prevent $197M+ in potential losses."
 problem: "DeFi protocols face constant security threats. Even with audits and formal verification, hacks happen. Traditional monitoring is reactive—by the time you see an alert, funds are often already in Tornado Cash. We need runtime verification that can detect violations in seconds, not minutes."
 solution: "Built a Rust-based system that monitors protocol invariants every block, detects violations in real-time, and can automatically pause protocols via Flashbots when critical issues are found. The Guardian simulates every action before execution, ensuring safety while providing sub-15-second response times."
-githubUrl: ""
 completedDate: 2024-12-01
 ---
 

@@ -6,7 +6,7 @@ tags: ["case-study", "defi", "security", "euler-finance", "roadmap"]
 draft: false
 ---
 
-# The Guardian of the Chain: In Practice & Future (Part 3/3)
+# The Guardian of the Chain: In Practice & Future (Part 3/3) {#guardian-part-3}
 
 ## TL;DR
 

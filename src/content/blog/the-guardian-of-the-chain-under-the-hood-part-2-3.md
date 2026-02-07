@@ -1,6 +1,6 @@
 ---
 title: "The Guardian of the Chain: Under the Hood (Part 2/3)"
-description: "Part 2 of the Guardian series: Deep dive into Rust architecture, blockchain reorg handling, and the safety-first Guardian pipeline."
+description: "Part 2 of the Guardian series: Rust architecture of the exploit-analyzer—crates, JSON config, provider pooling, and reorg-safe replay."
 publishDate: 2026-01-27
 tags: ["rust", "architecture", "blockchain", "defi", "systems-design"]
 draft: false
@@ -8,219 +8,140 @@ draft: false
 
 # The Guardian of the Chain: Under the Hood (Part 2/3)
 
+## TL;DR
+
+- **Stack:** Rust workspace with crates for invariant spec, Ethereum state, evaluation engine, case-study replay, and run storage.
+- **CLI:** `exploit-analyzer`—seed, list, show, analyze, replay—drives replay and writes Markdown + JSON artifacts.
+- **Reliability:** Provider pooling and reorg-safe indexing (finality depth) so replays stay correct when RPC or chain forks.
+- **Config:** JSON for invariants (no custom DSL); supports types like `reserve_ratio_min`, `health_factor_min`, and others.
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Background](#background)
+- [Architecture: Crates and Data Flow](#architecture-crates-and-data-flow)
+- [Reliability: Provider Pooling](#reliability-provider-pooling)
+- [Reorg-Safe Replay and Finality Depth](#reorg-safe-replay-and-finality-depth)
+- [JSON over DSL](#json-over-dsl)
+- [Runnable Workflow Examples](#runnable-workflow-examples)
+- [Common Pitfalls to Avoid](#common-pitfalls-to-avoid)
+- [Conclusion](#conclusion)
+- [Related Posts](#related-posts)
+
 ## Introduction
 
-**Hook:** Building a system that can autonomously pause a billion-dollar protocol requires a level of engineering rigor beyond a typical "bot." Every design decision must prioritize safety, reliability, and correctness.
+**Hook:** Replaying historical exploits and evaluating invariants block-by-block means dealing with flaky RPCs, reorgs, and large state. The design has to be reliable and reproducible.
 
-**Context:** In [Part 1](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/), we introduced the Smart Contract Invariant Monitor & Guardian and explained why runtime verification matters. Today, we're popping the hood to see how it works—the Rust architecture, the chaos of blockchain state, and the safety-first pipeline that prevents false positives.
+**Context:** In [Part 1](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) we introduced the **exploit-analyzer** CLI and why invariant-based replay matters. Here we open the hood: the Rust crates, how config flows into evaluation, and how the system handles provider failures and chain reorganizations.
 
-**Preview:** This post covers the technical architecture—from provider pooling and reorg handling to the Guardian's simulation-first execution pipeline. You'll learn how we built a system that's both fast enough to catch exploits in real-time and safe enough to trust with protocol control.
+**Preview:** This post walks through the architecture (invariant spec, eth-state, invariant-eval, case-studies, run-store), the choice of JSON for config, and runnable commands so you can try the workflow yourself.
 
 ## Background
 
-Building production-grade blockchain infrastructure requires handling unique challenges:
+Replay-based analysis has to:
 
-- **Non-linear blockchains**: Forks and reorgs mean blocks can disappear
-- **Unreliable RPC providers**: Nodes go down, rate limits are hit, data can lag
-- **MEV and front-running**: Rescue transactions must be protected
-- **State complexity**: Protocols interact with unpredictable external state
+- **Fetch state at specific blocks** via RPC (reserves, liabilities, prices, etc.).
+- **Evaluate invariants** consistently and record the first violation block.
+- **Handle real-world chaos:** RPC rate limits, node outages, and chain reorgs.
 
-We chose **Rust** for its type safety, memory safety, and concurrency features—essential for a system that must be both fast and reliable.
+The project uses **Rust** for performance, type safety, and async RPC handling. The architecture doc explicitly favors **no auto-pause** in the core tool—reducing liability and keeping the CLI focused on analysis; optional Guardian contracts exist separately for teams that want on-chain pause capability.
 
-## The Architecture
+## Architecture: Crates and Data Flow
 
-The project is organized as a Rust workspace with clear separation of concerns. Here are the key crates:
+The repo is a Rust workspace. The **exploit-analyzer** binary and supporting crates are under `monitor/`. Key components (from the [architecture docs](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/architecture.md)):
 
-### Core Components
+### Core Crates
 
-**`eth-state`**: The eyes. Handles all RPC communication.
-- Provider pooling and failover
-- Request retry logic with exponential backoff
-- Health monitoring and automatic provider rotation
+| Crate | Role |
+|-------|------|
+| **`invariant-spec`** | JSON schema and parsing for invariant configs. Supports types such as `reserve_ratio_min`, `health_factor_min`, `price_deviation_max`, `erc20_supply_matches_sum_balances`. |
+| **`eth-state`** | RPC layer: block-pinned state, multicall batching, **provider pooling** (multi-provider failover, health checks, retries), **reorg-safe indexing**, and **finality depth**. |
+| **`invariant-eval`** | Evaluation engine: load specs, fetch contract state, evaluate invariants, emit violation events. |
+| **`case-studies`** | Historical exploit replay: fork at given blocks, block-by-block evaluation, report generation. |
+| **`run-store`** | Persistence for runs and results (e.g. SQLite). |
 
-**`invariant-eval`**: The brain. Logic for checking invariants.
-- Invariant evaluation engine
-- State fetching and caching
-- Severity classification
+### Data Flow
 
-**`simulation`**: The imagination. Forks the chain to test "what if?"
-- Local Anvil fork management
-- Transaction simulation
-- State verification
-
-**`guardian`**: The hand. Executes transactions.
-- Transaction construction
-- Flashbots integration
-- Execution monitoring
-
-## Reliability at Scale: Provider Pooling
-
-One of the biggest pain points in blockchain indexing is RPC reliability. Nodes go down, rate limits are hit, and data can lag.
-
-### The Problem
-
-A single RPC provider is a single point of failure:
-- Provider outage = monitor goes down
-- Rate limiting = missed blocks
-- Data lag = stale state
-
-### The Solution: Provider Pool
-
-Instead of relying on a single Infura or Alchemy URL, you provide a list. The system:
-
-1. **Round-robins requests**: Distributes load across providers
-2. **Automatically penalizes unhealthy providers**: Tracks success rates and response times
-3. **Retries failed requests**: Exponential backoff with provider rotation
-4. **Health monitoring**: Continuously evaluates provider performance
-
-**Implementation:**
-```rust
-// Simplified example
-struct ProviderPool {
-    providers: Vec<Arc<Provider>>,
-    health_scores: HashMap<ProviderId, HealthScore>,
-}
-
-impl ProviderPool {
-    async fn get_state(&self, block: BlockNumber) -> Result<State> {
-        // Try providers in order of health
-        for provider in self.ranked_providers() {
-            match provider.get_state(block).await {
-                Ok(state) => {
-                    self.record_success(provider.id);
-                    return Ok(state);
-                }
-                Err(e) => {
-                    self.record_failure(provider.id, e);
-                    continue;
-                }
-            }
-        }
-        Err(AllProvidersFailed)
-    }
-}
+```
+JSON config → invariant-spec (parse) → invariant-eval (evaluate per block)
+                     ↑
+Ethereum RPC ← eth-state (fetch state, handle reorgs / finality)
+                     ↓
+            Violation events → Reports (Markdown) + JSON artifacts
 ```
 
-This ensures that your monitor doesn't crash just because one node provider is having a bad day.
+The **exploit-analyzer** CLI wires these together: it loads config, runs the replay (or case-study analysis), and writes the output directory (report, violations, run metadata).
 
-## Handling Chaos: Block Indexing & Reorgs
+## Reliability: Provider Pooling
 
-Blockchains aren't linear. They fork and reorg. A naive monitor might alert on a violation in Block A, only for Block A to be "uncled" and replaced by Block B where everything is fine.
+A single RPC URL is a single point of failure: outages, rate limits, or lag can break a long replay.
 
-### The Reorg Problem
+### What the Repo Does
 
-**Scenario:**
-1. Monitor processes Block 100, detects violation
-2. Sends alert: "CRITICAL: Solvency broken in Block 100"
-3. Block 100 gets reorged, replaced by Block 100'
-4. Block 100' shows protocol is healthy
-5. **False alarm**
+**`eth-state`** implements **provider pooling**:
 
-### The Solution: Canonical Chain Tracking
+- Multiple RPC endpoints (e.g. Alchemy, Infura, or your own node).
+- Health tracking and automatic failover.
+- Retries with backoff and rotation.
 
-Our `BlockIndexer` maintains a **Canonical Chain**. It tracks the parent hashes of every block. If it detects a mismatch (a reorg), it:
+So when you run `analyze` or `replay`, the same design that would power an always-on daemon makes your CLI runs resilient to one provider failing.
 
-1. **Pauses monitoring**: Stops processing new blocks
-2. **Rolls back database**: Reverts to the common ancestor
-3. **Re-processes the new valid chain**: Replays blocks from the fork point
+### Example: Passing RPC URL
 
-**Implementation:**
-```rust
-struct BlockIndexer {
-    canonical_chain: Vec<BlockHash>,
-    processed_blocks: HashSet<BlockHash>,
-}
+You supply at least one RPC URL; more can be configured where supported:
 
-impl BlockIndexer {
-    fn process_block(&mut self, block: Block) -> Result<()> {
-        // Check if parent matches expected
-        if block.parent_hash != self.canonical_chain.last() {
-            // Reorg detected!
-            self.handle_reorg(block.parent_hash)?;
-        }
-        
-        // Add to canonical chain
-        self.canonical_chain.push(block.hash);
-        Ok(())
-    }
-}
+```bash
+export RPC_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+
+cargo run --bin exploit-analyzer -- analyze \
+  --exploit-id "<EXPLOIT_ID>" \
+  --config config/case-studies/euler.json \
+  --rpc-url "$RPC_URL" \
+  --output output/euler-analysis
 ```
 
-### Finality Depth
+Use a reliable mainnet endpoint (e.g. Alchemy or Infura) to avoid mid-run failures.
 
-We also support a `finality_depth` configuration, ensuring we only alert on blocks that have a high probability of being final. This prevents false alarms from temporary forks.
+## Reorg-Safe Replay and Finality Depth
 
-**Configuration:**
+Blockchains fork and reorg. A block that looks canonical now might be replaced later. For replay, you want to either run over **already-final** blocks or rely on logic that tracks the canonical chain and finality.
+
+### What the Repo Does
+
+The architecture describes:
+
+- **Reorg-safe indexing:** Canonical chain tracking and rollback so that reorgs don’t produce wrong violation timelines.
+- **Finality depth:** Only treat blocks as “final” after a configurable number of confirmations (e.g. 12), which avoids false violations on short-lived forks.
+
+So when you analyze a historical exploit, the system is built to respect chain reorganizations and finality rather than naively trusting the first block you see.
+
+### Config Snippet (Finality)
+
+Where applicable, finality can be configured so that only blocks beyond a certain depth are considered:
+
 ```json
 {
-  "finality_depth": 12,
-  "comment": "Only alert on blocks that are 12 blocks deep"
+  "finality_depth": 12
 }
 ```
 
-## The Guardian Pipeline: "Measure Twice, Cut Once"
-
-The most critical part of the system is the **Guardian Pipeline**. We cannot afford to pause a protocol accidentally.
-
-### The Pipeline Flow
-
-When a violation is detected, the pipeline flows as follows:
-
-1. **Watcher**: Receives the block via a low-latency WebSocket connection
-2. **Evaluation**: Confirms the invariant is violated (double-check)
-3. **Severity Check**: Is this `CRITICAL`? (We don't pause for `LOW` severity warnings)
-4. **Simulation (The Safety Net)**:
-   - The system spins up an internal **Anvil** instance (Foundry)
-   - It forks the mainnet state at the exact block of the violation
-   - It *simulates* the pause transaction
-   - **Crucially**: It verifies that the pause transaction *succeeds* and doesn't revert
-5. **Execution**:
-   - If the simulation passes, we construct a transaction
-   - We send it via **Flashbots** to a private mempool
-   - This prevents MEV bots from seeing our pause transaction and trying to front-run it
-
-### Why Simulation Matters
-
-**Without Simulation:**
-- Guardian sees violation
-- Guardian immediately sends `pause()` transaction
-- Transaction reverts (maybe protocol is already paused?)
-- **Wasted gas, no protection**
-
-**With Simulation:**
-- Guardian sees violation
-- Guardian simulates `pause()` on local fork
-- Simulation succeeds → Guardian executes
-- Simulation fails → Guardian logs error, doesn't execute
-- **No wasted gas, guaranteed execution**
-
-### Flashbots Integration
-
-We use **Flashbots** to send rescue transactions to a private mempool. This prevents:
-
-- **Front-running**: MEV bots can't see our transaction and try to exploit before we pause
-- **Sandwich attacks**: Attackers can't sandwich our pause transaction
-- **Public visibility**: The transaction only becomes public when it's included in a block
+(Exact key names and location depend on the config schema in the repo; see `config/case-studies/euler.json` or the docs.)
 
 ## JSON over DSL
 
-We made a conscious design decision to use **JSON** for configuration rather than a custom Domain Specific Language (DSL).
+Invariants are defined in **JSON**, not a custom DSL.
 
 ### Why JSON?
 
-**Advantages:**
-- **Universal**: Everyone understands JSON
-- **Tooling**: Existing parsers, validators, editors
-- **No learning curve**: No custom syntax to learn
-- **Less bugs**: No parser bugs, no syntax errors
+- **Universal:** Easy to edit, version, and share.
+- **Tooling:** Standard parsers and validation.
+- **No new syntax:** Anyone who can read a contract ABI can adjust configs.
 
-**Disadvantages:**
-- Less expressive than a DSL
-- Can be verbose for complex invariants
+Trade-off: less expressive than a full DSL, but sufficient for the supported invariant types.
 
-### Example Configuration
+### Example Invariant Config
 
-You can define a complex invariant like this:
+Conceptually, a reserve-ratio invariant looks like this (align with actual schema in the repo):
 
 ```json
 {
@@ -231,102 +152,110 @@ You can define a complex invariant like this:
     "reserves_method": "getReserves()",
     "liabilities_method": "getLiabilities()"
   },
-  "severity": "CRITICAL",
-  "alert_channels": ["slack", "pagerduty"]
+  "severity": "CRITICAL"
 }
 ```
 
-This makes the system accessible to anyone who can read a contract ABI, not just Rust developers.
+The **exploit-analyzer** reads such configs from files like `config/case-studies/euler.json` and uses them during `analyze` and `replay`.
 
-## Examples & Case Studies
+## Runnable Workflow Examples
 
-### Example: Provider Failover in Action
+All commands assume you’re in the repo root and have built the project (`cd monitor && cargo build --release`).
 
-**Scenario:** Primary RPC provider (Infura) goes down during high-traffic period.
+### 1. Seed and list exploits
 
-**What happens:**
-1. Monitor detects Infura is timing out
-2. Automatically switches to Alchemy
-3. Continues processing blocks without interruption
-4. Logs provider health metrics
-5. Retries Infura periodically, switches back when healthy
+```bash
+cd monitor
 
-**Outcome:** Zero missed blocks, zero false alarms.
+# Seed the exploit database (includes Euler Finance)
+cargo run --bin exploit-analyzer -- seed
 
-### Example: Reorg Handling
+# List available exploits and note the exploit ID for Euler
+cargo run --bin exploit-analyzer -- list
+```
 
-**Scenario:** Block 100 shows violation, but gets reorged.
+### 2. Run Euler analysis
 
-**What happens:**
-1. Monitor processes Block 100, detects violation
-2. Before alerting, checks finality depth (12 blocks)
-3. Block 100 is only 2 blocks deep → waits
-4. Block 100 gets reorged at block 3
-5. Monitor rolls back, re-processes new chain
-6. New Block 100 shows no violation
-7. **No false alarm sent**
+```bash
+# Set your RPC URL (required)
+export RPC_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
 
-**Outcome:** Only alerts on final blocks, preventing false alarms.
+# Replace <EXPLOIT_ID> with the ID from `list`
+cargo run --bin exploit-analyzer -- analyze \
+  --exploit-id "<EXPLOIT_ID>" \
+  --config config/case-studies/euler.json \
+  --rpc-url "$RPC_URL" \
+  --blocks-before 100 \
+  --blocks-after 10 \
+  --output output/euler-analysis
+```
+
+### 3. Replay a custom block range
+
+```bash
+cargo run --bin exploit-analyzer -- replay \
+  --config config/invariants.json \
+  --rpc-url "$RPC_URL" \
+  --start-block 18000000 \
+  --end-block 18000100 \
+  --output output/custom-replay
+```
+
+### 4. Inspect outputs
+
+```bash
+ls output/euler-analysis/
+cat output/euler-analysis/Euler-Finance-*/report.md
+cat output/euler-analysis/Euler-Finance-*/violations.json
+cat output/euler-analysis/Euler-Finance-*/run-metadata.json
+```
 
 ## Common Pitfalls to Avoid
 
-### Pitfall 1: Ignoring Provider Health
+### Pitfall 1: Single RPC provider
 
-**What goes wrong:** You use a single RPC provider, and when it goes down, your monitor stops working.
+**What goes wrong:** One endpoint goes down or gets rate-limited mid-replay; the run fails or stalls.
 
-**Why it happens:** It's easier to configure one provider than multiple.
+**How to avoid it:** Use a stable RPC URL; prefer providers with high rate limits. The codebase is designed for multiple providers and failover—configure them where the tool supports it.
 
-**How to avoid it:**
-- Always use multiple RPC providers
-- Monitor provider health metrics
-- Implement automatic failover
-- Set up alerts for provider issues
+### Pitfall 2: Ignoring finality and reorgs
 
-### Pitfall 2: Not Handling Reorgs
+**What goes wrong:** You treat violations on very recent blocks as definitive, but the chain can reorg.
 
-**What goes wrong:** Your monitor alerts on a violation, but the block gets reorged and the violation disappears.
+**How to avoid it:** For historical analysis, use block ranges that are already final. Rely on the built-in finality depth and reorg handling when running the analyzer.
 
-**Why it happens:** Reorgs are rare, so it's easy to forget about them.
+### Pitfall 3: Wrong or missing exploit ID
 
-**How to avoid it:**
-- Always track canonical chain
-- Use finality depth configuration
-- Test reorg handling in development
-- Monitor reorg frequency
+**What goes wrong:** `analyze` fails or analyzes the wrong exploit because the ID is missing or incorrect.
 
-### Pitfall 3: Skipping Simulation
-
-**What goes wrong:** Guardian executes a rescue transaction that reverts, wasting gas and failing to protect the protocol.
-
-**Why it happens:** Simulation adds latency, and it's tempting to skip it for speed.
-
-**How to avoid it:**
-- Never skip simulation
-- Verify simulation results before execution
-- Log all simulation outcomes
-- Test simulation with various scenarios
+**How to avoid it:** Always run `cargo run --bin exploit-analyzer -- list` first and use the exact exploit ID (e.g. for Euler) in `--exploit-id`.
 
 ## Conclusion
 
-**Summary:** Building a production-grade Guardian system requires handling the chaos of blockchain state—reorgs, RPC failures, and MEV attacks. By using Rust for safety and performance, implementing provider pooling and reorg handling, and following a simulation-first execution pipeline, we've built a system that's both fast and safe.
+**Summary:** The Guardian project’s **under-the-hood** story is a Rust workspace built for **reliable, replay-based invariant analysis**: clear crates (invariant-spec, eth-state, invariant-eval, case-studies, run-store), JSON config, provider pooling, and reorg-safe behavior with finality depth. The **exploit-analyzer** CLI ties this together for seed/list/analyze/replay and produces Markdown reports and JSON artifacts.
 
-**Key Takeaways:**
+**Key takeaways:**
 
-- **Provider pooling** ensures reliability even when individual providers fail
-- **Reorg handling** prevents false alarms from temporary blockchain forks
-- **Simulation-first pipeline** guarantees rescue transactions will succeed
-- **Flashbots integration** protects rescue transactions from front-running
+- **Crates** separate spec parsing, RPC/state, evaluation, case-study replay, and persistence.
+- **Provider pooling** and **reorg-safe indexing** make replays robust to RPC and chain chaos.
+- **JSON config** keeps invariants easy to define and share without a custom DSL.
 
-**Call to Action:**
+**Call to action:**
 
-- Read [Part 1: Sleep Soundly](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) for the introduction
-- Check out [Part 3: In Practice & Future](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) for a real-world case study
-- Start building your own monitoring system with these patterns
+- Read [Part 1: Sleep Soundly](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) for the problem and the tool’s role.
+- Read [Part 3: In Practice & Future](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) for the Euler walkthrough and roadmap.
+- Clone the repo and run the [Quick Start](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) commands.
 
 ## Related Posts
 
-- [The Guardian of the Chain: Sleep Soundly (Part 1)](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) - Introduction to invariant monitoring
-- [The Guardian of the Chain: In Practice & Future (Part 3)](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) - Euler Finance case study and roadmap
+- [The Guardian of the Chain: Sleep Soundly (Part 1)](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) — Introduction and invariant-based replay
+- [The Guardian of the Chain: In Practice & Future (Part 3)](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) — Euler Finance case study and roadmap
+
+## Additional Resources
+
+- [Smart Contract Invariant Monitor & Guardian](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-) — GitHub repository
+- [Architecture](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/architecture.md) — Components and data flow
+- [Quick Start Guide](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) — 5-minute setup
 
 ---
 

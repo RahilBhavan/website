@@ -1,6 +1,6 @@
 ---
 title: "The Guardian of the Chain: In Practice & Future (Part 3/3)"
-description: "Part 3 of the Guardian series: Real-world case study of the Euler Finance exploit and future roadmap for the Smart Contract Invariant Monitor & Guardian."
+description: "Part 3 of the Guardian series: Step-by-step Euler Finance exploit replay with the exploit-analyzer, results interpretation, and project roadmap."
 publishDate: 2026-01-28
 tags: ["case-study", "defi", "security", "euler-finance", "roadmap"]
 draft: false
@@ -8,344 +8,211 @@ draft: false
 
 # The Guardian of the Chain: In Practice & Future (Part 3/3)
 
+## TL;DR
+
+- **Euler Finance:** March 2023, ~$197M exploit; replay with the **exploit-analyzer** shows invariant violation would have been detected **7 minutes (35 blocks)** before the major drain.
+- **Walkthrough:** Clone repo → build → seed → list → analyze (with exploit ID and Euler config) → inspect Markdown report and JSON artifacts.
+- **Secrets:** Never put private keys in config files; use environment variables and keep keys out of version control.
+- **Roadmap:** Multi-chain, ML anomaly detection, enterprise integrations, and more invariant types are on the horizon.
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Background: Euler Finance Exploit](#background-euler-finance-exploit)
+- [Case Study: Replay and Results](#case-study-replay-and-results)
+- [Step-by-Step: Run the Euler Analysis Yourself](#step-by-step-run-the-euler-analysis-yourself)
+- [Getting Started With Your Own Config](#getting-started-with-your-own-config)
+- [The Road Ahead: Future Improvements](#the-road-ahead-future-improvements)
+- [Common Pitfalls to Avoid](#common-pitfalls-to-avoid)
+- [Conclusion](#conclusion)
+- [Related Posts](#related-posts)
+
 ## Introduction
 
-**Hook:** On March 13, 2023, Euler Finance was exploited for nearly **$197 million**. We used our system to "replay" history and see if we could have caught it. The results prove that runtime invariant monitoring isn't just theoretical—it can save hundreds of millions of dollars.
+**Hook:** On March 13, 2023, Euler Finance was exploited for nearly **$197 million**. The **exploit-analyzer** lets you replay that timeline with invariant checks and see exactly when a violation would have been detected.
 
-**Context:** We've covered the [concept](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) and the [architecture](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/). Now, let's look at the Smart Contract Invariant Monitor & Guardian in action with a real-world case study, and explore the future roadmap for the project.
+**Context:** In [Part 1](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) we introduced the CLI and invariant-based replay; in [Part 2](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/) we walked through the Rust architecture. Here we run the **Euler Finance case study** step-by-step, interpret the outputs, and outline the roadmap.
 
-**Preview:** This final post combines practical experience with forward-looking insights. You'll learn how the system would have detected the Euler Finance exploit, see the results of our replay analysis, and explore emerging features and improvements planned for the platform.
+**Preview:** You’ll get a concrete walkthrough (clone, build, seed, list, analyze, view results), correct clone and config examples with **no private keys in files**, and a concise roadmap for where the project is headed.
 
-## Background
+## Background: Euler Finance Exploit
 
-The Euler Finance exploit was one of the largest DeFi hacks in 2023. It involved a complex attack that exploited a flaw in the protocol's internal accounting system. The attack demonstrated the importance of real-time monitoring and the value of invariant-based security.
+Euler Finance was a lending protocol: users deposit assets and borrow against them. Solvency is the core invariant: **reserves ≥ liabilities**. In March 2023, an attacker exploited a flaw in the protocol’s internal accounting (a “donation” that skewed accounting), leading to a ~$197M drain.
 
-### The Euler Finance Protocol
+Replaying blocks with a **reserve_ratio_min** invariant (e.g. reserves / liabilities ≥ 1.0) shows the **first block** where that invariant is violated and the **detection lead time**—how many blocks or minutes before the main exploit. That’s what the analyzer produces.
 
-Euler Finance was a lending protocol that allowed users to deposit assets and borrow against them. Like all lending protocols, it needed to maintain solvency—the total value of reserves must always be greater than or equal to total liabilities.
-
-### The Exploit
-
-The attack involved a "donation" that messed up the protocol's internal accounting, allowing the attacker to drain funds by exploiting the accounting discrepancy.
-
-## Case Study: The Euler Finance Exploit
-
-### The Attack Timeline
-
-On March 13, 2023, Euler Finance was exploited for nearly **$197 million**. The attack was complex, involving multiple transactions that manipulated the protocol's internal state.
+## Case Study: Replay and Results
 
 ### The Invariant
 
-The core issue was that the protocol's solvency check failed. We defined a `reserve_ratio_min` invariant:
+For the Euler case study, the config uses a solvency-style invariant:
 
-- **Formula**: `Reserves / Liabilities >= 1.0`
-- **Severity**: `CRITICAL`
-- **Action**: If violated, Guardian should pause the protocol
+- **Type:** `reserve_ratio_min`
+- **Condition:** Reserves / Liabilities ≥ 1.0
+- **Severity:** CRITICAL
 
-### The Replay Analysis
+When the ratio drops below 1.0, the analyzer records a violation and the block number.
 
-Using the monitor's replay feature (`--case-study euler`), we analyzed the blocks leading up to the hack:
+### What the Replay Shows
 
-**Block 16817990**: System Healthy
-- Reserve ratio: 1.0
-- Protocol status: Normal
-- No violations detected
+The analyzer replays a block range around the exploit (e.g. 100 blocks before, 10 after) and evaluates the invariant every block. From the [Quick Start guide](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md), a typical run reports something like:
 
-**Block 16817991**: Attacker Begins Setup
-- Attacker initiates donation transaction
-- Reserve ratio: 1.0 (still healthy)
-- Protocol status: Normal
+- **First violation block:** When the invariant first fails (e.g. reserve ratio &lt; 1.0).
+- **Detection lead time:** ~**35 blocks** before the main exploit (~**7 minutes** at ~12s per block).
+- **Total violations:** Count over the replayed range.
+- **Outputs:** `report.md`, `violations.json`, `run-metadata.json`.
 
-**Block 16817992-16817995**: Attack Preparation
-- Multiple transactions setting up the exploit
-- Reserve ratio: 1.0 (still within tolerance)
-- Protocol status: Normal
+So the **same invariant logic** would have flagged the issue **7 minutes before** the major drain—proof that invariant-based replay can answer “when could we have known?”
 
-**Block 16817996**: **VIOLATION DETECTED**
-- Reserve ratio dropped to **0.95**
-- The monitor flagged this as a `CRITICAL` violation
-- Guardian would have been triggered at this point
+### Interpreting the Artifacts
 
-**Block 16817997-16817999**: Exploit Continues
-- Attacker continues draining funds
-- Reserve ratio continues to drop
-- Protocol is still unpaused (Guardian wasn't active)
+- **`report.md`:** Human-readable summary, first violation block, timeline. Use this to quickly see “would we have caught it, and how early?”
+- **`violations.json`:** Every violation event (block, values, severity) for scripts or dashboards.
+- **`run-metadata.json`:** Run-level metrics (e.g. detection lead time, block range) for record-keeping or CI.
 
-**Block 16818000**: Massive Drain
-- The actual massive drain happened here
-- **This was 4 blocks (approximately 7 minutes) after the violation was detected**
+## Step-by-Step: Run the Euler Analysis Yourself
 
-### The Result
-
-If the Guardian had been active:
-
-1. **Block 16817996**: Violation detected (ratio = 0.95)
-2. **Block 16817996 + 1 second**: Guardian simulates `pause()` transaction
-3. **Block 16817996 + 2 seconds**: Simulation succeeds, Guardian executes via Flashbots
-4. **Block 16817997**: Protocol paused, exploit stopped
-5. **Result**: Protocol paused **4 blocks before the massive drain**
-
-This proves that runtime invariant monitoring isn't just theoretical; it can save hundreds of millions of dollars.
-
-### Key Insights
-
-**Detection Speed:**
-- Violation detected within 1 block (12 seconds)
-- Guardian response time: 2-3 seconds
-- Total time to protection: ~15 seconds
-
-**Prevention:**
-- Would have prevented ~$197M in losses
-- Protocol would have been paused before major drain
-- Users would have been protected
-
-**False Positives:**
-- No false positives in this case study
-- Invariant correctly identified the exploit
-- Severity classification was accurate
-
-## Getting Started
-
-Want to run this for your protocol? Here's how to get started:
-
-### Step 1: Clone the Repository
+### 1. Clone and build
 
 ```bash
-git clone https://github.com/your-org/guardian-chain
-cd guardian-chain
+git clone https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-.git
+cd "Smart Contract Invariant Monitor and Guardian "
+cd monitor
+cargo build --release
 ```
 
-### Step 2: Define Your Invariants
-
-Create a `config.json` file with your protocol's invariants:
-
-```json
-{
-  "invariants": [
-    {
-      "type": "reserve_ratio_min",
-      "params": {
-        "contract": "0xYourProtocol...",
-        "min_ratio": 1.0,
-        "reserves_method": "getReserves()",
-        "liabilities_method": "getLiabilities()"
-      },
-      "severity": "CRITICAL"
-    }
-  ],
-  "rpc_providers": [
-    "https://mainnet.infura.io/v3/YOUR_KEY",
-    "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
-  ],
-  "finality_depth": 12
-}
-```
-
-### Step 3: Run the Monitor
+### 2. Seed the exploit database
 
 ```bash
-cargo run --bin monitor-daemon -- --config config.json
+cargo run --bin exploit-analyzer -- seed
 ```
 
-### Step 4: (Optional) Enable Guardian
+This populates known exploits, including Euler Finance.
 
-If you want automatic protection, configure the Guardian:
+### 3. List exploits and get the Euler ID
 
-```json
-{
-  "guardian": {
-    "enabled": true,
-    "private_key": "0x...",
-    "flashbots_relay": "https://relay.flashbots.net",
-    "rescue_function": "pause()"
-  }
-}
+```bash
+cargo run --bin exploit-analyzer -- list
 ```
 
-Check out `QUICKSTART.md` for a 5-minute setup guide with more details.
+Use the exploit ID shown for the Euler Finance entry (e.g. in the format suggested by the list output). You’ll pass it as `--exploit-id` in the next step.
+
+### 4. Set RPC URL and run analysis
+
+Use a mainnet RPC endpoint (e.g. Alchemy or Infura). **Never commit API keys or secrets to the repo.**
+
+```bash
+export RPC_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+
+# Replace <EXPLOIT_ID> with the ID from `list`
+cargo run --bin exploit-analyzer -- analyze \
+  --exploit-id "<EXPLOIT_ID>" \
+  --config config/case-studies/euler.json \
+  --rpc-url "$RPC_URL" \
+  --blocks-before 100 \
+  --blocks-after 10 \
+  --output output/euler-analysis
+```
+
+### 5. View results
+
+```bash
+ls output/euler-analysis/
+cat output/euler-analysis/Euler-Finance-*/report.md
+cat output/euler-analysis/Euler-Finance-*/violations.json
+cat output/euler-analysis/Euler-Finance-*/run-metadata.json
+```
+
+You should see the first violation block, detection lead time (~35 blocks / ~7 minutes), and full violation timeline.
+
+## Getting Started With Your Own Config
+
+To replay a **custom block range** with your own invariants:
+
+1. **Define invariants** in a JSON config (see Part 2 for structure). Use the same schema as `config/case-studies/euler.json` or `config/invariants.json` in the repo.
+2. **Use environment variables for secrets.** Do **not** put RPC API keys or private keys in config files or in git.
+
+   ```bash
+   export RPC_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+   ```
+
+   If you later use Guardian or other features that need a signing key, keep it in an env var (e.g. `GUARDIAN_PRIVATE_KEY`) and load it in code or tooling—never commit it.
+
+3. **Run a replay:**
+
+   ```bash
+   cargo run --bin exploit-analyzer -- replay \
+     --config config/invariants.json \
+     --rpc-url "$RPC_URL" \
+     --start-block 18000000 \
+     --end-block 18000100 \
+     --output output/custom-replay
+   ```
+
+> **Warning:** Never store private keys or API keys in config files or version control. Use environment variables or a secrets manager and restrict access.
 
 ## The Road Ahead: Future Improvements
 
-This project is open source and evolving. Here's what's on our roadmap (and where you can contribute!):
+The project is open source and evolving. Possible directions (not commitments):
 
-### 1. Multi-Chain Maturity
+1. **Multi-chain:** Support for L2s (Arbitrum, Optimism, Base) and different finality rules; cross-chain invariant analysis.
+2. **Anomaly detection:** ML or statistical methods beyond binary invariants (e.g. gas or volume anomalies).
+3. **Enterprise integrations:** Secret management (e.g. Azure Key Vault, GCP Secret Manager, AWS Secrets Manager), SSO.
+4. **Alerting:** Richer alert channels (e.g. SMTP, SMS, custom webhooks) and aggregation.
+5. **Performance:** Parallel block and invariant processing, horizontal scaling for large replays.
+6. **Invariant types:** Time-based, cross-protocol, or composite invariants; pluggable types.
 
-**Current State:** Laser-focused on Ethereum Mainnet.
-
-**Planned:**
-- First-class support for L2s (Arbitrum, Optimism, Base)
-- Non-EVM chains (Solana, Cosmos)
-- Respect unique finality rules for each chain
-- Cross-chain invariant monitoring
-
-**Why it matters:** DeFi is multi-chain. Protocols need protection across all chains they operate on.
-
-### 2. Anomaly Detection (ML)
-
-**Current State:** Invariants are binary (True/False).
-
-**Planned:**
-- Machine Learning models to detect statistical anomalies
-- Monitor gas usage patterns
-- Track transaction volume anomalies
-- Detect unusual flash loan frequency
-
-**Why it matters:** Some exploits look like "weird" behavior that technically follows the rules. ML can catch these patterns that binary invariants miss.
-
-### 3. Enterprise Integrations
-
-**Current State:** Placeholders for enterprise secret management.
-
-**Planned:**
-- **Azure Key Vault** integration
-- **GCP Secret Manager** integration
-- **AWS Secrets Manager** integration
-- Enterprise SSO support
-
-**Why it matters:** Institutional adoption requires enterprise-grade secret management and compliance.
-
-### 4. Better Alerting
-
-**Current State:** Webhook-based alerts (Slack, Discord, PagerDuty).
-
-**Planned:**
-- Native SMTP email support (using the `lettre` crate)
-- SMS alerts via Twilio
-- Custom webhook templates
-- Alert aggregation and deduplication
-
-**Why it matters:** Different teams prefer different alert channels. Native email support reduces dependencies.
-
-### 5. Parallel Processing
-
-**Current State:** Sequential block and invariant processing.
-
-**Planned:**
-- Parallel block processing
-- Parallel invariant evaluation
-- Optimized for multi-core hardware
-- Horizontal scaling support
-
-**Why it matters:** To handle thousands of invariants across millions of blocks, we need to maximize hardware utilization.
-
-### 6. Advanced Invariant Types
-
-**Current State:** Basic invariant types (ratio, balance, etc.).
-
-**Planned:**
-- Time-based invariants (e.g., "no large withdrawals in last 5 minutes")
-- Cross-protocol invariants (e.g., "our DEX price should match Uniswap")
-- Composite invariants (combining multiple checks)
-- Custom invariant plugins
-
-**Why it matters:** Protocols have unique security requirements. More invariant types enable better protection.
-
-## Examples & Case Studies
-
-### Example: Multi-Protocol Monitoring
-
-**Scenario:** A protocol interacts with multiple other protocols (composability).
-
-**Challenge:** An exploit in Protocol A might affect Protocol B.
-
-**Solution:** Define cross-protocol invariants:
-```json
-{
-  "type": "cross_protocol_balance",
-  "params": {
-    "our_protocol": "0xProtocolA...",
-    "external_protocol": "0xProtocolB...",
-    "expected_relationship": "our_balance >= external_balance * 0.9"
-  }
-}
-```
-
-**Outcome:** Detects issues in external protocols that affect your protocol.
-
-### Example: Anomaly Detection
-
-**Scenario:** Normal protocol behavior shows 10-50 transactions per block. Suddenly, 500 transactions appear.
-
-**Challenge:** This might be an exploit, but it doesn't violate any binary invariant.
-
-**Solution:** ML model detects statistical anomaly:
-- Gas usage spike
-- Transaction volume anomaly
-- Unusual flash loan pattern
-
-**Outcome:** Early warning of potential exploit before it completes.
+Check the [GitHub repo](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-) and docs for the latest roadmap and contribution guidelines.
 
 ## Common Pitfalls to Avoid
 
-### Pitfall 1: Over-Reliance on Binary Invariants
+### Pitfall 1: Over-reliance on a single invariant type
 
-**What goes wrong:** You only define binary invariants (true/false), missing subtle exploits.
+**What goes wrong:** You only check one thing (e.g. reserve ratio) and miss other failure modes.
 
-**Why it happens:** Binary invariants are easier to define and reason about.
+**How to avoid it:** Start with critical invariants (e.g. solvency), then add others (health factors, oracle deviation) and tune severity. Replay past incidents to validate.
 
-**How to avoid it:**
-- Combine binary invariants with anomaly detection
-- Monitor multiple metrics (gas, volume, frequency)
-- Use severity levels to catch "weird" behavior
-- Regularly review and update invariants
+### Pitfall 2: Secrets in config or git
 
-### Pitfall 2: Ignoring Cross-Protocol Risks
+**What goes wrong:** RPC API keys or private keys end up in JSON files and get committed.
 
-**What goes wrong:** You monitor your protocol, but an exploit in a protocol you interact with affects you.
+**How to avoid it:** Use environment variables (e.g. `RPC_URL`, `GUARDIAN_PRIVATE_KEY`) and never commit secrets. Add `*.env` and secret-containing configs to `.gitignore`.
 
-**Why it happens:** It's easier to monitor your own protocol than all external dependencies.
+### Pitfall 3: Wrong block range or exploit ID
 
-**How to avoid it:**
-- Define cross-protocol invariants
-- Monitor key external protocols
-- Set up alerts for external protocol exploits
-- Use composability risk analysis
+**What goes wrong:** Replay misses the exploit or analyzes the wrong event.
 
-### Pitfall 3: Not Testing Guardian in Production-Like Conditions
-
-**What goes wrong:** Guardian works in development but fails in production due to network conditions, gas prices, or Flashbots issues.
-
-**Why it happens:** Production conditions are hard to replicate in development.
-
-**How to avoid it:**
-- Test on testnets with production-like conditions
-- Use mainnet forks for simulation
-- Test Flashbots integration thoroughly
-- Monitor Guardian execution in production
-- Set up alerts for Guardian failures
+**How to avoid it:** Use `list` and `show <id>` to confirm exploit IDs and block numbers. For custom replays, choose start/end blocks so the range covers the event you care about.
 
 ## Conclusion
 
-**Summary:** The Smart Contract Invariant Monitor & Guardian provides real-time security for DeFi protocols. The Euler Finance case study proves that runtime invariant monitoring can save hundreds of millions of dollars by detecting exploits before they complete. The future roadmap includes multi-chain support, ML-based anomaly detection, and enterprise features.
+**Summary:** Part 3 walked through the **Euler Finance** case study: what the exploit was, how the **exploit-analyzer** replays it with a reserve-ratio invariant, and how to run the same analysis yourself. The replay shows invariant violation would have been detected **7 minutes before** the major drain. We also covered clone/build/seed/list/analyze, correct use of env vars for secrets (no private keys in config), and a concise roadmap.
 
-**Key Takeaways:**
+**Key takeaways:**
 
-- **Runtime monitoring works**: The Euler case study proves detection within seconds
-- **Guardian can prevent losses**: Automatic response can pause protocols before major drains
-- **Continuous improvement**: The roadmap addresses real-world needs (multi-chain, ML, enterprise)
-- **Open source**: Community contributions drive innovation
+- **Replay is reproducible:** Clone, build, seed, list, analyze—then inspect report and JSON.
+- **Detection lead time is measurable:** The Euler run demonstrates ~35 blocks / ~7 minutes lead time.
+- **Secrets stay out of config and git:** Use environment variables (and optional secrets managers) for keys and API tokens.
+- **Roadmap:** Multi-chain, anomaly detection, enterprise features, and more invariant types are potential next steps.
 
-**Call to Action:**
+**Call to action:**
 
-- Read [Part 1: Sleep Soundly](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) for the introduction
-- Check out [Part 2: Under the Hood](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/) for technical details
-- Contribute to the project on GitHub
-- Start monitoring your protocol with invariants
+- Read [Part 1: Sleep Soundly](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) and [Part 2: Under the Hood](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/) if you haven’t yet.
+- Run the [Quick Start](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) and try the Euler analysis.
+- Contribute or open issues on [GitHub](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-).
 
-> **💡 Tip:** Start with simple invariants (solvency, reserve ratios) and gradually add more sophisticated checks as you understand your protocol's behavior patterns.
-
-> **⚠️ Warning:** Always test Guardian in a safe environment before enabling it in production. A false positive that pauses your protocol can be costly.
-
-> **📝 Note:** The project is open source and actively developed. Check the GitHub repository for the latest features and improvements.
-
----
-
-*Sleep soundly. The Guardian is watching.*
+> **Tip:** Start with the built-in Euler case study and config; then duplicate and adapt the config for your own protocol and block ranges.
 
 ## Related Posts
 
-- [The Guardian of the Chain: Sleep Soundly (Part 1)](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) - Introduction to invariant monitoring
-- [The Guardian of the Chain: Under the Hood (Part 2)](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/) - Rust architecture and blockchain handling
+- [The Guardian of the Chain: Sleep Soundly (Part 1)](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) — Introduction and invariant-based replay
+- [The Guardian of the Chain: Under the Hood (Part 2)](/blog/the-guardian-of-the-chain-under-the-hood-part-2-3/) — Rust architecture and workflow
+
+## Additional Resources
+
+- [Smart Contract Invariant Monitor & Guardian](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-) — GitHub repository
+- [Quick Start Guide](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) — 5-minute setup and Euler run
+- [Architecture](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/architecture.md) — Components and data flow
 
 ---
 

@@ -21,6 +21,9 @@ const sortedPosts = blogPosts.sort(
     <div class="posts-grid">
       {sortedPosts.map((post) => {
         const slug = post.id.replace(/\.(md|mdx)$/, '');
+        const wordCount = post.body ? post.body.split(/\s+/g).length : 0;
+        const readingTime = Math.max(1, Math.round(wordCount / 200));
+        
         return (
         <article class="post-card">
           <a href={`/blog/${slug}`} class="post-link">
@@ -29,16 +32,19 @@ const sortedPosts = blogPosts.sort(
               {post.data.description && (
                 <p class="post-description">{post.data.description}</p>
               )}
-              <time 
-                class="post-date"
-                datetime={post.data.publishDate.toISOString()}
-              >
-                {post.data.publishDate.toLocaleDateString('en-us', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </time>
+              <div class="post-footer">
+                <time 
+                  class="post-date"
+                  datetime={post.data.publishDate.toISOString()}
+                >
+                  {post.data.publishDate.toLocaleDateString('en-us', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </time>
+                <span class="post-reading-time">{readingTime} min read</span>
+              </div>
             </div>
           </a>
         </article>
@@ -117,10 +123,24 @@ const sortedPosts = blogPosts.sort(
     margin: 0;
   }
 
-  .post-date {
-    font-size: 0.875rem;
-    color: #999;
+  .post-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-top: auto;
+    font-size: 0.875rem;
+  }
+
+  .post-date {
+    color: #999;
+  }
+
+  .post-reading-time {
+    color: #999;
+    font-size: 0.8rem;
+    background: #f5f5f5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
   }
 
   @media (max-width: 768px) {

@@ -11,7 +11,67 @@
       "title": "The Myth of Sisyphus",
       "author": "Albert Camus",
       "addedAt": "2026-01-20T22:04:27.192Z"
+    },
+    {
+      "id": "how-to-build-a-car-adrian-newey",
+      "title": "How To Build A Car",
+      "author": "Adrian Newey",
+      "addedAt": "2026-02-07T16:07:09.284Z"
+    },
+    {
+      "id": "race-car-vehicle-dynamics-william-f-milliken",
+      "title": "Race Car Vehicle Dynamics",
+      "author": "William F. Milliken",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "project-hail-mary-andy-weir",
+      "title": "Project Hail Mary",
+      "author": "Andy Weir",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "1984-george-orwell",
+      "title": "1984",
+      "author": "George Orwell",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "book-of-disquiet-fernando-pessoa",
+      "title": "The Book of Disquiet",
+      "author": "Fernando Pessoa",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "return-of-the-king-jrr-tolkien",
+      "title": "The Return of the King",
+      "author": "J.R.R. Tolkien",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "two-towers-jrr-tolkien",
+      "title": "The Two Towers",
+      "author": "J.R.R. Tolkien",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "fellowship-of-the-ring-jrr-tolkien",
+      "title": "The Fellowship of the Ring",
+      "author": "J.R.R. Tolkien",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "hobbit-or-there-and-back-again-jrr-tolkien",
+      "title": "The Hobbit, or There and Back Again",
+      "author": "J.R.R. Tolkien",
+      "addedAt": "2026-02-07T16:07:09.285Z"
+    },
+    {
+      "id": "autobiography-of-a-yogi-paramahansa-yogananda",
+      "title": "Autobiography of a Yogi",
+      "author": "Paramahansa Yogananda",
+      "addedAt": "2026-02-07T16:07:09.285Z"
     }
   ],
-  "lastCheck": "2026-01-21T17:49:11.046Z"
+  "lastCheck": "2026-02-26T21:09:19.553Z"
 }

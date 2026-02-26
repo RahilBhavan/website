@@ -289,11 +289,19 @@ This demonstrates the system's resilience—partial failures don't break the ent
 - Include as much metadata as possible in manual entries (ratings, dates, covers)
 - The system merges data from all sources, so Goodreads data can supplement manual entries
 
-> **💡 Tip:** The system is designed to work with partial data. Even if some sources fail or data is incomplete, you'll still get a functional books page with whatever data is available.
+import Callout from '../../components/Callout.astro';
 
-> **⚠️ Warning:** Don't commit cookies or API keys to version control. Use environment variables and `.gitignore` to keep sensitive data secure.
+<Callout type="tip" title="Tip">
+  The system is designed to work with partial data. Even if some sources fail or data is incomplete, you'll still get a functional books page with whatever data is available.
+</Callout>
 
-> **📝 Note:** The system runs automatically on every build (`npm run build`), so your books page stays up-to-date without manual intervention.
+<Callout type="warning" title="Warning">
+  Don't commit cookies or API keys to version control. Use environment variables and `.gitignore` to keep sensitive data secure.
+</Callout>
+
+<Callout type="note" title="Note">
+  The system runs automatically on every build (`npm run build`), so your books page stays up-to-date without manual intervention.
+</Callout>
 
 ## How to Run It
 

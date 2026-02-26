@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 import MermaidInit from '../../components/MermaidInit.astro';
+import SeriesLinks from '../../components/SeriesLinks.astro';
 
 export const prerender = true;
 
@@ -21,47 +22,138 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await post.render();
+const { Content, headings } = await post.render();
+
+// Calculate reading time
+const wordCount = post.body ? post.body.split(/\s+/g).length : 0;
+const readingTimeMinutes = Math.max(1, Math.round(wordCount / 200));
+const readingTime = `${readingTimeMinutes} min read`;
 ---
 
 <BaseLayout title={post.data.title} description={post.data.description}>
-  <article class="post-container">
-    <div class="post-header">
-      <a href="/blog" class="back-link">← Blog</a>
-      <h1 class="post-title">{post.data.title}</h1>
-      <div class="post-meta">
-        <span class="post-author">Rahil Bhavan</span>
-        {post.data.tags && post.data.tags.length > 0 && (
-          <span class="post-tag">{post.data.tags[0]}</span>
-        )}
+  <div class="post-layout">
+    {headings && headings.length > 0 && (
+      <aside class="toc-sidebar">
+        <div class="toc-container">
+          <h2 class="toc-title">On this page</h2>
+          <nav>
+            <ul>
+              {headings
+                .filter((h) => h.depth <= 3)
+                .map((h) => (
+                  <li class={`toc-item depth-${h.depth}`}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+            </ul>
+          </nav>
+        </div>
+      </aside>
+    )}
+    
+    <article class="post-container">
+      <div class="post-header">
+        <a href="/blog" class="back-link">← Blog</a>
+        <h1 class="post-title">{post.data.title}</h1>
+        <div class="post-meta">
+          <span class="post-author">Rahil Bhavan</span>
+          {post.data.tags && post.data.tags.length > 0 && (
+            <span class="post-tag">{post.data.tags[0]}</span>
+          )}
+        </div>
+        <div class="post-meta-secondary">
+          <time 
+            class="post-meta-date"
+            datetime={post.data.publishDate.toISOString()}
+          >
+            {post.data.publishDate.toLocaleDateString('en-us', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </time>
+          <span class="post-meta-separator">•</span>
+          <span class="post-read-time">{readingTime}</span>
+        </div>
       </div>
-      <div class="post-meta-secondary">
-        <time 
-          class="post-meta-date"
-          datetime={post.data.publishDate.toISOString()}
-        >
-          {post.data.publishDate.toLocaleDateString('en-us', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </time>
-        <span class="post-meta-separator">•</span>
-        <span class="post-read-time">6 min read</span>
+
+      {post.data.series && (
+        <SeriesLinks 
+          seriesName={post.data.series.name} 
+          currentPart={post.data.series.part} 
+        />
+      )}
+
+      <div class="post-content">
+        <Content />
       </div>
-    </div>
-    <div class="post-content">
-      <Content />
-    </div>
-  </article>
+    </article>
+  </div>
   <MermaidInit />
 </BaseLayout>
 
 <style>
-  .post-container {
-    max-width: 800px;
+  .post-layout {
+    display: flex;
+    max-width: 1200px;
     margin: 0 auto;
+    position: relative;
+    gap: 4rem;
+  }
+
+  .toc-sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    display: none; /* Hidden on mobile */
+  }
+
+  @media (min-width: 1024px) {
+    .toc-sidebar {
+      display: block;
+    }
+  }
+
+  .toc-container {
+    position: sticky;
+    top: 4rem;
+    padding: 1rem 0;
+  }
+
+  .toc-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #666;
+    margin-bottom: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .toc-item {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .toc-item a {
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .toc-item a:hover {
+    color: #1a1a1a;
+  }
+
+  .toc-item.depth-3 {
+    padding-left: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .post-container {
+    flex: 1;
+    max-width: 800px;
     padding: 4rem 2rem;
+    min-width: 0; /* Important for flex child with code blocks */
   }
 
   .post-header {

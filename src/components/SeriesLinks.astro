@@ -1,0 +1,97 @@
+---
+import { getCollection } from 'astro:content';
+
+interface Props {
+  seriesName: string;
+  currentPart: number;
+}
+
+const { seriesName, currentPart } = Astro.props;
+
+const allPosts = await getCollection('blog', ({ data }) => {
+  return data.series?.name === seriesName && data.draft !== true;
+});
+
+const seriesPosts = allPosts.sort((a, b) => a.data.series!.part - b.data.series!.part);
+---
+
+{seriesPosts.length > 1 && (
+  <div class="series-nav">
+    <div class="series-header">
+      <span class="series-label">Series: </span>
+      <span class="series-name">{seriesName}</span>
+    </div>
+    <ul class="series-list">
+      {seriesPosts.map((post) => (
+        <li class={`series-item ${post.data.series?.part === currentPart ? 'current' : ''}`}>
+          {post.data.series?.part === currentPart ? (
+            <span class="series-current-part">Part {post.data.series?.part}: {post.data.title}</span>
+          ) : (
+            <a href={`/blog/${post.id.replace(/\.(md|mdx)$/, '')}`} class="series-link">
+              Part {post.data.series?.part}: {post.data.title}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+<style>
+  .series-nav {
+    margin: 3rem 0;
+    padding: 1.5rem;
+    background-color: #f9fafb;
+    border-left: 4px solid #1a1a1a;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .series-header {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .series-label {
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .series-name {
+    color: #1a1a1a;
+  }
+
+  .series-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .series-item {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+  }
+
+  .series-current-part {
+    color: #1a1a1a;
+    font-weight: 600;
+  }
+
+  .series-link {
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .series-link:hover {
+    color: #1a1a1a;
+    text-decoration: underline;
+  }
+
+  .series-item.current::before {
+    content: "→";
+    margin-right: 0.5rem;
+    color: #1a1a1a;
+  }
+</style>

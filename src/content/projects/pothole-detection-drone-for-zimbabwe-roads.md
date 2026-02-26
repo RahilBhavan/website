@@ -323,9 +323,15 @@ while True:
 
 **Screenshots & Demos:**
 - Technical breakdown video: [YouTube](https://www.youtube.com/watch?v=LpTeKHJ6wRc)
-- ZITF display showing drone at Bulawayo City Council stand
-- Presentation to President of Zimbabwe
-- Econet leadership presentation
+
+![ZITF display showing the drone at the Bulawayo City Council stand](../../assets/images/blog/zitf-display.jpg)
+*The custom-built pothole detection drone on display at the Bulawayo City Council stand during the Zimbabwe International Trade Fair (ZITF). The project received significant attention and was awarded 2nd Place for innovation.*
+
+![Presentation to the President of Zimbabwe](../../assets/images/blog/president-presentation.jpg)
+*A pivotal moment for the project: presenting the drone and its AI-powered vision system to the President of Zimbabwe at the Zimbabwe Presidential Innovation Fair. The presentation highlighted how local engineering can address national infrastructure challenges.*
+
+![Presentation to Econet leadership](../../assets/images/blog/econet-presentation.jpg)
+*Discussing the integration of 5G connectivity and "Smart City" initiatives with Dr. Douglas Mboweni, CEO of Econet Wireless. The discussion explored real-time cloud data streaming for road maintenance and other municipal applications.*
 
 **Diagrams:**
 - System architecture showing Master-Slave separation

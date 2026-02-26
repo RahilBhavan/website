@@ -1,0 +1,66 @@
+---
+interface Props {
+  type?: 'note' | 'warning' | 'tip' | 'quote';
+  title?: string;
+}
+
+const { type = 'note', title } = Astro.props;
+
+const icons = {
+  note: 'ℹ️',
+  warning: '⚠️',
+  tip: '💡',
+  quote: '"'
+};
+
+const styles = {
+  note: 'background-color: #f8fafc; border-left: 4px solid #3b82f6;',
+  warning: 'background-color: #fffbeb; border-left: 4px solid #f59e0b;',
+  tip: 'background-color: #f0fdf4; border-left: 4px solid #10b981;',
+  quote: 'background-color: #f9fafb; border-left: 4px solid #111;'
+};
+---
+
+<div class="callout" style={styles[type]}>
+  <div class="callout-header">
+    <span class="callout-icon">{icons[type]}</span>
+    {title && <span class="callout-title">{title}</span>}
+  </div>
+  <div class="callout-content">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .callout {
+    padding: 1.5rem;
+    margin: 2.5rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  .callout-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .callout-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8rem;
+    color: #444;
+  }
+
+  .callout-content {
+    color: #333;
+  }
+
+  .callout-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+</style>

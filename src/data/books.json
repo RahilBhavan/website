@@ -1,5 +1,165 @@
 [
   {
+    "title": "How To Build A Car",
+    "author": "Adrian Newey",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1509876857l/35657708.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-22T05:40:54.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "how to build a car",
+    "normalizedAuthor": "adrian newey",
+    "id": "how-to-build-a-car-adrian-newey",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "Race Car Vehicle Dynamics",
+    "author": "William F. Milliken",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1356483238l/888159.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-22T05:40:43.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "race car vehicle dynamics",
+    "normalizedAuthor": "william f milliken",
+    "id": "race-car-vehicle-dynamics-william-f-milliken",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "Project Hail Mary",
+    "author": "Andy Weir",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1764703833l/54493401.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-22T05:40:18.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "project hail mary",
+    "normalizedAuthor": "andy weir",
+    "id": "project-hail-mary-andy-weir",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "1984",
+    "author": "George Orwell",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1657781256l/61439040.jpg",
+    "source": "goodreads",
+    "status": "read",
+    "completedDate": "2026-01-21T22:02:18.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "1984",
+    "normalizedAuthor": "george orwell",
+    "id": "1984-george-orwell",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "The Book of Disquiet",
+    "author": "Fernando Pessoa",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1631144816l/45974.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:01:37.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "book of disquiet",
+    "normalizedAuthor": "fernando pessoa",
+    "id": "book-of-disquiet-fernando-pessoa",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "The Return of the King",
+    "author": "J.R.R. Tolkien",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1654216226l/61215384.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:01:22.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "return of the king",
+    "normalizedAuthor": "jrr tolkien",
+    "id": "return-of-the-king-jrr-tolkien",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "The Two Towers",
+    "author": "J.R.R. Tolkien",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1654216149l/61215372.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:01:16.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "two towers",
+    "normalizedAuthor": "jrr tolkien",
+    "id": "two-towers-jrr-tolkien",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "The Fellowship of the Ring",
+    "author": "J.R.R. Tolkien",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1654215925l/61215351.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:01:09.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "fellowship of the ring",
+    "normalizedAuthor": "jrr tolkien",
+    "id": "fellowship-of-the-ring-jrr-tolkien",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "The Hobbit, or There and Back Again",
+    "author": "J.R.R. Tolkien",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1546071216l/5907.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:00:58.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "hobbit or there and back again",
+    "normalizedAuthor": "jrr tolkien",
+    "id": "hobbit-or-there-and-back-again-jrr-tolkien",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
+    "title": "Autobiography of a Yogi",
+    "author": "Paramahansa Yogananda",
+    "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1347427162l/639864.jpg",
+    "source": "goodreads",
+    "status": "currently-reading",
+    "completedDate": "2026-01-21T22:00:30.000Z",
+    "rating": 4,
+    "tags": [],
+    "normalizedTitle": "autobiography of a yogi",
+    "normalizedAuthor": "paramahansa yogananda",
+    "id": "autobiography-of-a-yogi-paramahansa-yogananda",
+    "sources": [
+      "goodreads"
+    ]
+  },
+  {
     "title": "Steve Jobs",
     "author": "Walter Isaacson",
     "coverUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1511288482l/11084145.jpg",
@@ -7,17 +167,13 @@
     "status": "currently-reading",
     "completedDate": "2026-01-19T21:59:11.000Z",
     "rating": 4,
-    "tags": [
-      "biography-&-autobiography"
-    ],
+    "tags": [],
     "normalizedTitle": "steve jobs",
     "normalizedAuthor": "walter isaacson",
     "id": "steve-jobs-walter-isaacson",
     "sources": [
       "goodreads"
-    ],
-    "review": "Based on more than 40 interviews with Jobs conducted over two years--as well as interviews with more than 100 family members, friends, adversaries, competitors, and colleagues--Isaacson has written a riveting story of the roller-coaster life and searingly intense personality of a creative entrepreneur whose passion for perfection and ferocious drive revolutionized six industries: personal computers, animated movies, music, phones, tablet computing, and digital publishing.",
-    "isbn": "9781451648546"
+    ]
   },
   {
     "title": "The Myth of Sisyphus",
@@ -27,16 +183,12 @@
     "status": "currently-reading",
     "completedDate": "2026-01-19T21:58:57.000Z",
     "rating": 4,
-    "tags": [
-      "literary-collections"
-    ],
+    "tags": [],
     "normalizedTitle": "myth of sisyphus",
     "normalizedAuthor": "albert camus",
     "id": "myth-of-sisyphus-albert-camus",
     "sources": [
       "goodreads"
-    ],
-    "review": "The summation of the existentialist philosophy threaded throughout all his writing, Albert Camus' The Myth of Sisyphus is translated by Justin O'Brien with an introduction by James Wood in Penguin Classics. In this profound and moving philosophical statement, Camus poses the fundamental question: is life worth living? If human existence holds no significance, what can keep us from suicide? As Camus argues, if there is no God to give meaning to our lives, humans must take on that purpose themselv",
-    "isbn": "9780141182001"
+    ]
   }
 ]

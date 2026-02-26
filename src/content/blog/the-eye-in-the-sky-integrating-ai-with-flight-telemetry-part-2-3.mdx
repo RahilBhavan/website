@@ -8,6 +8,9 @@ tags:
   - ComputerVision
   - RaspberryPi
   - EdgeComputing
+series:
+  name: "Pothole Detection Drone"
+  part: 2
 draft: false
 ---
 
@@ -24,6 +27,9 @@ In this post, I'll dive into the software architecture, explaining how I connect
 ## The Hardware Stack
 
 This isn't just a standard drone; it's a flying edge server. Here's the specific loadout:
+
+![The drone on display showing its custom hardware stack](../../assets/images/blog/zitf-display.jpg)
+*The drone's hardware stack on display. Visible is the integration of the Cube Orange flight controller and the Raspberry Pi 5 "brain" that powers the YOLOv8 vision pipeline.*
 
 1. **The Pilot (Cube Orange + Here3 GPS):**
    - The Cube Orange handles the flight physics, stability, and motor control.

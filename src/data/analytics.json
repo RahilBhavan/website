@@ -1,57 +1,105 @@
 {
   "overview": {
-    "totalBooks": 0,
-    "currentlyReading": 2,
+    "totalBooks": 1,
+    "currentlyReading": 11,
     "wantToRead": 0,
-    "averageRating": 0,
+    "averageRating": 4,
     "totalPages": 0
   },
   "timeline": {
-    "byYear": [],
-    "byMonth": []
+    "byYear": [
+      {
+        "year": 2026,
+        "count": 1
+      }
+    ],
+    "byMonth": [
+      {
+        "month": "2026-01",
+        "count": 1
+      }
+    ]
   },
   "genres": {
     "distribution": [],
-    "evolution": []
+    "evolution": [
+      {
+        "year": 2026,
+        "genres": {}
+      }
+    ]
   },
   "authors": {
-    "topAuthors": [],
-    "diversity": 0
+    "topAuthors": [
+      {
+        "author": "George Orwell",
+        "count": 1,
+        "averageRating": 4
+      }
+    ],
+    "diversity": 1
   },
   "ratings": {
-    "distribution": [],
-    "averageByYear": []
+    "distribution": [
+      {
+        "rating": 4,
+        "count": 1
+      }
+    ],
+    "averageByYear": [
+      {
+        "year": 2026,
+        "average": 4
+      }
+    ]
   },
   "goals": {
-    "booksThisYear": 0,
+    "booksThisYear": 1,
     "targetThisYear": 52,
-    "progress": 0,
+    "progress": 1.9,
     "onTrack": false
   },
   "insights": {
     "readingVelocity": {
-      "booksPerMonth": 2,
-      "booksPerYear": 2,
+      "booksPerMonth": 12,
+      "booksPerYear": 12,
       "trend": "increasing"
     },
     "genrePreferences": {
-      "topGenres": [
-        {
-          "genre": "biography-&-autobiography",
-          "count": 1,
-          "percentage": 50
-        },
-        {
-          "genre": "literary-collections",
-          "count": 1,
-          "percentage": 50
-        }
-      ],
+      "topGenres": [],
       "genreEvolution": "Reading preferences are evolving."
     },
     "authorDiversity": {
-      "uniqueAuthors": 2,
+      "uniqueAuthors": 9,
       "topAuthors": [
+        {
+          "author": "J.R.R. Tolkien",
+          "count": 4
+        },
+        {
+          "author": "Adrian Newey",
+          "count": 1
+        },
+        {
+          "author": "William F. Milliken",
+          "count": 1
+        },
+        {
+          "author": "Andy Weir",
+          "count": 1
+        },
+        {
+          "author": "George Orwell",
+          "count": 1
+        },
+        {
+          "author": "Fernando Pessoa",
+          "count": 1
+        },
+        {
+          "author": "Paramahansa Yogananda",
+          "count": 1
+        },
         {
           "author": "Walter Isaacson",
           "count": 1
@@ -61,16 +109,16 @@
           "count": 1
         }
       ],
-      "diversityScore": 1
+      "diversityScore": 0.75
     },
     "readingStreak": {
       "currentStreak": 1,
-      "longestStreak": 1,
+      "longestStreak": 11,
       "consistency": "medium"
     },
     "recommendations": [],
-    "summary": "You've read 2 books with a diverse range of authors and genres.",
-    "generatedAt": "2026-01-21T17:49:11.050Z"
+    "summary": "You've read 12 books with a diverse range of authors and genres.",
+    "generatedAt": "2026-02-26T21:09:19.558Z"
   },
-  "generatedAt": "2026-01-21T17:49:11.052Z"
+  "generatedAt": "2026-02-26T21:09:19.559Z"
 }

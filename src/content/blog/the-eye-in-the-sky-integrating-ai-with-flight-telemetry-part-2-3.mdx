@@ -31,6 +31,19 @@ This isn't just a standard drone; it's a flying edge server. Here's the specific
 ![The drone on display showing its custom hardware stack](../../assets/images/blog/zitf-display.jpg)
 *The drone's hardware stack on display. Visible is the integration of the Cube Orange flight controller and the Raspberry Pi 5 "brain" that powers the YOLOv8 vision pipeline.*
 
+#### Hardware Integration & Wiring
+
+Connecting the "pilot" (flight controller) and the "brain" (Raspberry Pi) required careful hardware selection and wiring to ensure reliability under flight vibrations.
+
+![Orange Cube Flight Controller](/images/projects/pothole-drone/2024/06/orange-cube-flight-controller.jpg)
+*The Orange Cube flight controller, which manages the drone's flight stability while communicating telemetry data to the Raspberry Pi.*
+
+![Raspberry Pi HQ Camera](/images/projects/pothole-drone/2024/06/raspberry-pi-hq-camera-module.jpg)
+*The high-quality 12MP camera module used for the vision pipeline, providing the resolution needed for accurate pothole detection from higher altitudes.*
+
+![Drone ESC and Wiring](/images/projects/pothole-drone/2024/06/drone-esc-wiring.jpg)
+*A look at the internal wiring and Electronic Speed Controllers (ESCs) that translate the flight controller's commands into high-power motor movements.*
+
 1. **The Pilot (Cube Orange + Here3 GPS):**
    - The Cube Orange handles the flight physics, stability, and motor control.
    - The Here3 GPS provides RTK-ready positioning precision, crucial for pinpointing exactly *where* a pothole is on a map.

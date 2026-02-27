@@ -125,6 +125,25 @@ The solution combines three key innovations:
 - **Frame**: Custom CNC aluminum build plate + 3D printed components (Ender 3)
 - **Camera**: Standard Pi Camera or USB camera
 
+#### Technical Gallery: Component Breakdown
+
+To achieve the reliability needed for municipal infrastructure monitoring, I selected high-performance components and designed a custom airframe.
+
+![Custom CNC Aluminum Build Plate](/images/projects/pothole-drone/2024/06/custom-cnc-aluminum-plate.jpg)
+*The heart of the airframe: a custom-designed CNC aluminum build plate for maximum rigidity and vibration dampening.*
+
+![Orange Cube Flight Controller](/images/projects/pothole-drone/2024/06/orange-cube-flight-controller.jpg)
+*The Orange Cube (CubePilot) provides triple-redundant IMUs for stable flight and supports the MAVLink protocol used for vision integration.*
+
+![Raspberry Pi HQ Camera and Mount](/images/projects/pothole-drone/2024/06/pi-camera-fisheye-mount.jpg)
+*The Raspberry Pi HQ Camera with a wide-angle lens, secured in a custom 3D-printed mount designed for road-facing detection.*
+
+![Brushless Motors and Propellers](/images/projects/pothole-drone/2024/06/drone-motors-propellers.jpg)
+*High-torque 880KV brushless motors paired with 10x7E propellers provide the lift needed for the heavy sensor payload.*
+
+![Drone Parts Layout](/images/projects/pothole-drone/2024/06/drone-parts-layout-wide.jpg)
+*A complete breakdown of the drone's bill of materials (BOM), from the flight controller and GPS to the power distribution board and ESCs.*
+
 **Software:**
 - **AI Model**: YOLOv8 Nano (optimized for edge inference)
 - **Flight Control**: ArduPilot firmware

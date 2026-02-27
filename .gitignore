@@ -27,3 +27,6 @@ scripts/.goodreads-cookies.json
 
 # Vercel
 .vercel/
+
+# Local consulting project (embedded repo, not part of site source)
+openEden\ Consulting\ Project/

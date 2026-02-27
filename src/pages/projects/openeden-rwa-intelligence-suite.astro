@@ -1,0 +1,435 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+export const prerender = true
+---
+
+<BaseLayout
+  title="OpenEden RWA Intelligence Suite"
+  description="Institutional-grade competitive analysis, on-chain velocity research, and USDO supply cohort modeling for OpenEden’s RWA protocol suite (PRISM + USDO)."
+  ogType="article"
+>
+  <div class="case-layout">
+    <article class="case-container">
+      <header class="case-header">
+        <a href="/projects" class="back-link">← Projects</a>
+        <h1 class="case-title">OpenEden RWA Intelligence Suite</h1>
+        <p class="case-subtitle">
+          A consulting engagement producing three research modules for OpenEden’s RWA products: <strong>PRISM</strong>,
+          <strong>USDO</strong>, and <strong>TBILL</strong> — with reproducible pipelines, charts, and test coverage.
+        </p>
+
+        <div class="meta-row">
+          <span class="meta-pill">Consulting</span>
+          <span class="meta-sep">•</span>
+          <span class="meta-pill">Python</span>
+          <span class="meta-sep">•</span>
+          <span class="meta-pill">pandas</span>
+          <span class="meta-sep">•</span>
+          <span class="meta-pill">Reproducible reports</span>
+          <span class="meta-sep">•</span>
+          <time class="meta-pill" datetime="2026-02-27">Feb 27, 2026</time>
+        </div>
+      </header>
+
+      <section class="kicker">
+        <div class="kicker-item">
+          <span class="kicker-label">Problem</span>
+          <span class="kicker-value">
+            OpenEden needed <strong>institutional-grade</strong> clarity on competitive positioning, real usage (velocity)
+            in XRPL vs Ethereum, and the structural drivers behind USDO supply drawdowns — in a form that could be
+            validated, reproduced, and handed off.
+          </span>
+        </div>
+        <div class="kicker-item">
+          <span class="kicker-label">Solution</span>
+          <span class="kicker-value">
+            Shipped a 3-module intelligence suite: (1) competitive landscape + objection handling, (2) on-chain velocity
+            + chain prioritization + 90-day actions, (3) supply cohort modeling with scenario planning and cohort-flow
+            artifacts — backed by cached raw data, analysis scripts, and unit tests.
+          </span>
+        </div>
+      </section>
+
+      <section class="content">
+        <h2>What shipped</h2>
+        <div class="deliverables">
+          <div class="deliverable-card">
+            <h3>Module 1 — Competitive Landscape</h3>
+            <p>
+              Competitive matrix for PRISM vs tokenized yield peers (Ondo, Maple, Superstate, Hamilton Lane), plus a
+              differentiated value prop and an investor objection handler with explicit confidence levels and sourcing.
+            </p>
+            <ul>
+              <li><strong>Outputs</strong>: Competitive matrix, self-critique of apples-to-oranges comparisons</li>
+              <li><strong>Decision utility</strong>: What’s knowable today vs what’s undisclosed / needs verification</li>
+            </ul>
+          </div>
+
+          <div class="deliverable-card">
+            <h3>Module 2 — On-chain Velocity & Holder Behavior</h3>
+            <p>
+              XRPL vs Ethereum TBILL activity analysis, a Doppler Finance case study, a weighted chain priority matrix
+              for USDO expansion, and three concrete 90-day recommendations to move XRPL from “storage” to “velocity”.
+            </p>
+            <ul>
+              <li><strong>Outputs</strong>: Case study, chain scoring model, 90-day action plan</li>
+              <li><strong>Key insight</strong>: a ~15,000× velocity gap (XRPL TBILL transfers vs Ethereum)</li>
+            </ul>
+          </div>
+
+          <div class="deliverable-card">
+            <h3>Module 3 — USDO Supply Scenarios & Cohort Context</h3>
+            <p>
+              A 12‑month bear/base/bull scenario model for USDO supply, plus a root-cause analysis of the post‑incentive
+              drawdown using cohort boundaries derived from structural inflection points in the supply series.
+            </p>
+            <ul>
+              <li><strong>Outputs</strong>: Scenarios + actions, hypotheses H1/H2/H3 with explicit data gaps</li>
+              <li><strong>Artifact</strong>: Cohort-flow structure for “peak → steady state” retention</li>
+            </ul>
+          </div>
+        </div>
+
+        <h2>Artifacts (charts + cohort flow)</h2>
+
+        <figure class="figure">
+          <img
+            src="/images/projects/openeden/module2_chart1.png"
+            loading="lazy"
+            decoding="async"
+            alt="Monthly transfer activity comparing XRPL and Ethereum TBILL token velocity"
+          />
+          <figcaption>Module 2 — Monthly transfer activity: XRPL vs Ethereum (velocity signal).</figcaption>
+        </figure>
+
+        <figure class="figure">
+          <img
+            src="/images/projects/openeden/module2_chart2.png"
+            loading="lazy"
+            decoding="async"
+            alt="Cumulative transfer counts plotted against unique holder snapshots"
+          />
+          <figcaption>Module 2 — Cumulative transfers vs unique holders (activity concentration).</figcaption>
+        </figure>
+
+        <figure class="figure">
+          <img
+            src="/images/projects/openeden/module2_chart3.png"
+            loading="lazy"
+            decoding="async"
+            alt="Estimated holder archetype breakdown by monthly transfer activity"
+          />
+          <figcaption>Module 2 — Holder archetypes by transfer behavior (who drives velocity).</figcaption>
+        </figure>
+
+        <figure class="figure">
+          <div class="svg-wrap" role="img" aria-label="USDO cohort flow from peak supply to steady state with redemptions and retention">
+            <svg viewBox="0 0 1200 520" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <style>
+                  .node { fill: #111; opacity: 0.92; }
+                  .label { font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; fill: #111; }
+                  .small { font-size: 12px; fill: #666; }
+                  .flow-retention { stroke: #1f77b4; stroke-opacity: 0.55; fill: none; }
+                  .flow-new { stroke: #2ca02c; stroke-opacity: 0.55; fill: none; }
+                  .flow-redemption { stroke: #d62728; stroke-opacity: 0.55; fill: none; }
+                </style>
+              </defs>
+
+              <!-- Columns -->
+              <text x="80" y="42" class="small">Sources</text>
+              <text x="420" y="42" class="small">Peak supply</text>
+              <text x="740" y="42" class="small">Post-drawdown</text>
+              <text x="1020" y="42" class="small">Steady state</text>
+
+              <!-- Nodes (x, y, w, h) -->
+              <rect x="70" y="110" width="22" height="72" rx="4" class="node" />
+              <text x="102" y="146" class="label">Cohort A (baseline)</text>
+              <text x="102" y="166" class="small">$50.1M</text>
+
+              <rect x="70" y="215" width="22" height="356" rx="4" class="node" />
+              <text x="102" y="252" class="label">New incentive capital</text>
+              <text x="102" y="272" class="small">$248.7M</text>
+
+              <rect x="410" y="110" width="22" height="428" rx="4" class="node" />
+              <text x="442" y="150" class="label">Cohort B (peak)</text>
+              <text x="442" y="170" class="small">$298.8M</text>
+
+              <rect x="730" y="140" width="22" height="128" rx="4" class="node" />
+              <text x="762" y="178" class="label">Cohort C</text>
+              <text x="762" y="198" class="small">$89.5M retained</text>
+
+              <rect x="730" y="286" width="22" height="300" rx="4" class="node" />
+              <text x="762" y="334" class="label">Redeemed (B→C)</text>
+              <text x="762" y="354" class="small">$209.3M</text>
+
+              <rect x="1010" y="160" width="22" height="90" rx="4" class="node" />
+              <text x="1042" y="195" class="label">Cohort D (steady)</text>
+              <text x="1042" y="215" class="small">$63.1M</text>
+
+              <rect x="1010" y="265" width="22" height="38" rx="4" class="node" />
+              <text x="1042" y="287" class="label">Redeemed (C→D)</text>
+              <text x="1042" y="307" class="small">$26.4M</text>
+
+              <!-- Flows (stroke-width approx proportional to $) -->
+              <!-- A + new capital → B -->
+              <path d="M 92 146 C 190 146, 310 146, 410 146" class="flow-retention" stroke-width="10" />
+              <path d="M 92 395 C 200 395, 320 395, 410 395" class="flow-new" stroke-width="50" />
+
+              <!-- B → C + redeemed -->
+              <path d="M 432 190 C 520 190, 640 190, 730 190" class="flow-retention" stroke-width="18" />
+              <path d="M 432 390 C 540 390, 650 430, 730 430" class="flow-redemption" stroke-width="42" />
+
+              <!-- C → D + redeemed -->
+              <path d="M 752 204 C 840 204, 940 204, 1010 204" class="flow-retention" stroke-width="13" />
+              <path d="M 752 240 C 860 260, 940 284, 1010 284" class="flow-redemption" stroke-width="5" />
+
+              <!-- Caption note -->
+              <text x="80" y="500" class="small">
+                Cohort-flow diagram derived from aggregate supply data (not per-wallet). Values: DeFiLlama stablecoins API — USDO (ID 241), as of 2026‑02‑27.
+              </text>
+            </svg>
+          </div>
+          <figcaption>Module 3 — Cohort flow (Sankey): peak → drawdown → steady state, with retention vs redemptions.</figcaption>
+        </figure>
+
+        <h2>How it’s built (reproducible by design)</h2>
+        <p>
+          The engagement is structured like a small product: raw data is cached, transformations are test-backed, and the
+          analysis produces deterministic Markdown deliverables.
+        </p>
+
+        <h3>Project structure</h3>
+        <pre><code>{`openEden Consulting Project/
+├── reports/                 # Final deliverables (Markdown)
+├── data/                    # Cached raw + processed artifacts (timestamped)
+├── src/
+│   ├── collectors/          # Data ingestion (RWA.xyz, DeFiLlama, etc.)
+│   ├── analytics/           # Metric computation + cohort analysis
+│   └── formatters/          # PDF generation, report artifacts
+└── tests/                   # Unit tests for transformations`}</code></pre>
+
+        <h3>Runbook</h3>
+        <pre><code>{`cd "openEden Consulting Project"
+
+# Run the full pipeline (collect → analyze)
+make run-all
+
+# Run tests
+make test`}</code></pre>
+
+        <h2>Results (high-signal takeaways)</h2>
+        <ul>
+          <li>
+            <strong>Velocity ≠ custody</strong>: XRPL holds a large share of tokenized T‑bills but shows negligible TBILL
+            transfer volume relative to Ethereum — the difference is composability and secondary-market rails.
+          </li>
+          <li>
+            <strong>Supply drawdowns are cohort-shaped</strong>: USDO’s post‑incentive contraction is best modeled as a
+            cohort retention problem (peak → steady state retention) rather than a “single narrative” issue.
+          </li>
+          <li>
+            <strong>Institutional tone + explicit uncertainty</strong>: every claim is sourced or flagged with
+            <code>[ASSUMPTION]</code>/<code>[DATA: as of]</code>, and low-confidence comparisons are called out directly.
+          </li>
+        </ul>
+      </section>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .case-layout {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .case-container {
+    flex: 1;
+    max-width: 860px;
+    padding: 4rem 2rem;
+    min-width: 0;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+    transition: opacity 0.2s;
+    font-family: var(--font-sans);
+  }
+
+  .back-link:hover {
+    opacity: 0.6;
+  }
+
+  .case-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .case-subtitle {
+    margin: 0 0 1.25rem 0;
+    color: #666;
+    line-height: 1.65;
+    font-family: var(--font-sans);
+  }
+
+  .meta-row {
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    color: #666;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+  }
+
+  .meta-pill {
+    background: #f5f5f5;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+  }
+
+  .meta-sep {
+    color: #bbb;
+  }
+
+  .kicker {
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: 1.25rem 0;
+    margin: 2rem 0 3rem 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .kicker-item {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .kicker-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #999;
+    font-family: var(--font-sans);
+  }
+
+  .kicker-value {
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+
+  .content {
+    font-size: 1.125rem;
+    line-height: 1.75;
+  }
+
+  .content :global(h2) {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 3rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .content :global(h3) {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .deliverables {
+    display: grid;
+    gap: 1.25rem;
+    margin: 1.5rem 0 2rem 0;
+  }
+
+  .deliverable-card {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    background: #ffffff;
+  }
+
+  .deliverable-card p {
+    margin: 0.75rem 0;
+    color: #333;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .deliverable-card ul {
+    margin-top: 1rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+    color: #333;
+  }
+
+  .figure {
+    margin: 2rem 0;
+  }
+
+  .figure img {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .svg-wrap {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #fff;
+    padding: 1rem;
+  }
+
+  figcaption {
+    margin-top: 0.75rem;
+    color: #666;
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
+  }
+
+  pre {
+    background-color: #f5f5f5;
+    padding: 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+
+  @media (max-width: 768px) {
+    .case-container {
+      padding: 2rem 1.5rem;
+    }
+
+    .case-title {
+      font-size: 2rem;
+    }
+
+    .content {
+      font-size: 1rem;
+    }
+  }
+</style>
+

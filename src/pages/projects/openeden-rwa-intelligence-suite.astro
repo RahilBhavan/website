@@ -6,7 +6,7 @@ export const prerender = true
 
 <BaseLayout
   title="OpenEden RWA Intelligence Suite"
-  description="Institutional-grade competitive analysis, on-chain velocity research, and USDO supply cohort modeling for OpenEden’s RWA protocol suite (PRISM + USDO)."
+  description="Competitive analysis, on-chain velocity research, and USDO supply cohort modeling for OpenEden’s RWA protocol suite (PRISM + USDO)."
   ogType="article"
 >
   <div class="case-layout">
@@ -15,8 +15,8 @@ export const prerender = true
         <a href="/projects" class="back-link">← Projects</a>
         <h1 class="case-title">OpenEden RWA Intelligence Suite</h1>
         <p class="case-subtitle">
-          A consulting engagement producing three research modules for OpenEden’s RWA products: <strong>PRISM</strong>,
-          <strong>USDO</strong>, and <strong>TBILL</strong> — with reproducible pipelines, charts, and test coverage.
+          A consulting engagement delivering three research modules for OpenEden’s RWA products: <strong>PRISM</strong>,
+          <strong>USDO</strong>, and <strong>TBILL</strong> — with reproducible pipelines, charts, and tests.
         </p>
 
         <div class="meta-row">
@@ -36,17 +36,17 @@ export const prerender = true
         <div class="kicker-item">
           <span class="kicker-label">Problem</span>
           <span class="kicker-value">
-            OpenEden needed <strong>institutional-grade</strong> clarity on competitive positioning, real usage (velocity)
-            in XRPL vs Ethereum, and the structural drivers behind USDO supply drawdowns — in a form that could be
-            validated, reproduced, and handed off.
+            OpenEden needed clear, reproducible analysis on competitive positioning, on-chain usage (velocity)
+            on XRPL vs Ethereum, and drivers behind USDO supply drawdowns — in a form that could be
+            validated and handed off.
           </span>
         </div>
         <div class="kicker-item">
           <span class="kicker-label">Solution</span>
           <span class="kicker-value">
-            Shipped a 3-module intelligence suite: (1) competitive landscape + objection handling, (2) on-chain velocity
-            + chain prioritization + 90-day actions, (3) supply cohort modeling with scenario planning and cohort-flow
-            artifacts — backed by cached raw data, analysis scripts, and unit tests.
+            Delivered three modules: (1) competitive landscape and objection handling, (2) on-chain velocity,
+            chain prioritization, and 90-day actions, (3) supply cohort modeling with scenario planning and
+            cohort-flow artifacts — with cached raw data, analysis scripts, and unit tests.
           </span>
         </div>
       </section>
@@ -58,11 +58,11 @@ export const prerender = true
             <h3>Module 1 — Competitive Landscape</h3>
             <p>
               Competitive matrix for PRISM vs tokenized yield peers (Ondo, Maple, Superstate, Hamilton Lane), plus a
-              differentiated value prop and an investor objection handler with explicit confidence levels and sourcing.
+              value prop and investor objection handler with confidence levels and sourcing where available.
             </p>
             <ul>
-              <li><strong>Outputs</strong>: Competitive matrix, self-critique of apples-to-oranges comparisons</li>
-              <li><strong>Decision utility</strong>: What’s knowable today vs what’s undisclosed / needs verification</li>
+              <li><strong>Outputs</strong>: Competitive matrix, notes on apples-to-oranges comparisons</li>
+              <li><strong>Scope</strong>: What’s knowable today vs what’s undisclosed / needs verification</li>
             </ul>
           </div>
 
@@ -74,7 +74,7 @@ export const prerender = true
             </p>
             <ul>
               <li><strong>Outputs</strong>: Case study, chain scoring model, 90-day action plan</li>
-              <li><strong>Key insight</strong>: a ~15,000× velocity gap (XRPL TBILL transfers vs Ethereum)</li>
+              <li><strong>Finding</strong>: Large velocity gap between XRPL and Ethereum TBILL transfer activity</li>
             </ul>
           </div>
 
@@ -85,8 +85,8 @@ export const prerender = true
               drawdown using cohort boundaries derived from structural inflection points in the supply series.
             </p>
             <ul>
-              <li><strong>Outputs</strong>: Scenarios + actions, hypotheses H1/H2/H3 with explicit data gaps</li>
-              <li><strong>Artifact</strong>: Cohort-flow structure for “peak → steady state” retention</li>
+              <li><strong>Outputs</strong>: Scenarios and actions, hypotheses H1/H2/H3 with noted data gaps</li>
+              <li><strong>Artifact</strong>: Cohort-flow diagram for “peak → steady state” retention</li>
             </ul>
           </div>
         </div>
@@ -194,10 +194,9 @@ export const prerender = true
           <figcaption>Module 3 — Cohort flow (Sankey): peak → drawdown → steady state, with retention vs redemptions.</figcaption>
         </figure>
 
-        <h2>How it’s built (reproducible by design)</h2>
+        <h2>How it’s built </h2>
         <p>
-          The engagement is structured like a small product: raw data is cached, transformations are test-backed, and the
-          analysis produces deterministic Markdown deliverables.
+          Raw data is cached, transformations have unit tests, and the analysis produces Markdown deliverables so the work can be re-run or updated.
         </p>
 
         <h3>Project structure</h3>
@@ -219,19 +218,19 @@ make run-all
 # Run tests
 make test`}</code></pre>
 
-        <h2>Results (high-signal takeaways)</h2>
+        <h2>Takeaways</h2>
         <ul>
           <li>
-            <strong>Velocity ≠ custody</strong>: XRPL holds a large share of tokenized T‑bills but shows negligible TBILL
-            transfer volume relative to Ethereum — the difference is composability and secondary-market rails.
+            <strong>Velocity ≠ custody</strong>: XRPL holds a large share of tokenized T‑bills but shows much lower TBILL
+            transfer volume than Ethereum — driven by composability and secondary-market rails.
           </li>
           <li>
-            <strong>Supply drawdowns are cohort-shaped</strong>: USDO’s post‑incentive contraction is best modeled as a
+            <strong>Supply drawdowns are cohort-shaped</strong>: USDO’s post‑incentive contraction fits a
             cohort retention problem (peak → steady state retention) rather than a “single narrative” issue.
           </li>
           <li>
-            <strong>Institutional tone + explicit uncertainty</strong>: every claim is sourced or flagged with
-            <code>[ASSUMPTION]</code>/<code>[DATA: as of]</code>, and low-confidence comparisons are called out directly.
+            <strong>Sourcing and uncertainty</strong>: Claims are sourced or flagged with
+            <code>[ASSUMPTION]</code>/<code>[DATA: as of]</code>; low-confidence comparisons are called out.
           </li>
         </ul>
       </section>

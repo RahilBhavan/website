@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "npm run aggregate:books && astro build",
+    "build": "bun run aggregate:books && astro build",
     "preview": "astro preview",
     "astro": "astro",
     "aggregate:books": "tsx scripts/vision-books.ts",

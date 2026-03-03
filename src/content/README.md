@@ -57,9 +57,11 @@ This directory contains templates for creating new blog posts, projects, and boo
   title: string;              // Required
   description: string;         // Required
   publishDate: Date;          // Required
-  updatedDate?: Date;          // Optional
-  tags?: string[];            // Optional, defaults to []
-  draft?: boolean;            // Optional, defaults to false
+  updatedDate?: Date;         // Optional
+  tags?: string[];           // Optional, defaults to []
+  draft?: boolean;           // Optional, defaults to false
+  series?: { name: string; part: number };  // Optional, for multi-part series (enables SeriesLinks)
+  readingTime?: string;      // Optional
 }
 ```
 

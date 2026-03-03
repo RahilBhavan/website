@@ -6,7 +6,7 @@ import vercel from '@astrojs/vercel';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://yourdomain.com', // TODO: Update with actual domain
+  site: 'https://rahilbhavan.com',
   output: 'server', // Enable server-side rendering for API routes
   adapter: vercel(),
   integrations: [

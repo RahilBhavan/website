@@ -2,343 +2,203 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const blogPosts = await getCollection('blog', ({ data }) => {
-  return data.draft !== true;
-});
+export const prerender = true;
 
-const sortedPosts = blogPosts.sort(
-  (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf()
-);
+const projects = (await getCollection('projects'))
+  .filter((p) => p.data.featured)
+  .sort((a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf());
 
-const recentPosts = sortedPosts.slice(0, 3);
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
+  .slice(0, 5);
+
+const slug = (id: string) => id.replace(/\.(md|mdx)$/, '');
+const year = (d: Date) => d.getFullYear();
+const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 ---
 
-<BaseLayout title="Home" description="Personal blog with thoughts, projects, and things I've learned.">
-  <main class="home-container">
-    <div class="home-content">
-      <!-- Personal Branding Section -->
-      <section class="intro-section">
-        <h1 class="home-title">Hi, I'm Rahil</h1>
-        <p class="intro-statement">
-          I like building things and understanding why improbable things happen.
-        </p>
-        <p class="intro-description">
-          My work has largely lived at the intersection of technology and real-world impact. 
-          I enjoy going down rabbit holes in opportunities I know little about, especially when 
-          they challenge how I think. The experiences that force a shift in perspective, whether 
-          comfortable or not, tend to stick with me the longest and matter the most.
-        </p>
-      </section>
+<BaseLayout title="Rahil Bhavan">
+  <main class="wrap page home">
+    <section class="intro">
+      <h1>I build risk models for on-chain lending, hardware that teaches, and Presto.</h1>
+      <p>
+        I'm an engineering student at the University of Michigan and a co-founder of
+        <a href="https://prestorecovery.com">Presto</a>, which finds music royalties that the MLC and
+        SoundExchange hold for the wrong party, or for nobody, and claims them.
+      </p>
+      <p>
+        Most of my other work is risk modelling for DeFi lending. I replayed Coinbase's $1.6B Morpho loan
+        book through seven crash paths (<a href="/projects/spine-coinbase-loan-book-risk-model">Spine</a>),
+        stress-tested stop-loss buffers on Aave and Morpho for
+        <a href="/projects/summer-fi-liquidation-risk-simulator">Summer.fi</a>, and did competitive and
+        on-chain analysis for <a href="/projects/openeden-rwa-intelligence-suite">OpenEden</a>. Before that
+        I built a <a href="/projects/pothole-detection-drone-for-zimbabwe-roads">pothole-mapping drone</a>
+        in Bulawayo that placed second at ZITF and was presented to the President of Zimbabwe, and an
+        <a href="/projects/8-bit-computer-from-ttl-logic">8-bit computer</a> from 200+ TTL chips that I
+        used to teach 30 students.
+      </p>
+      <p class="muted">Born in Los Angeles, raised in Zimbabwe.</p>
+    </section>
 
-      <!-- Personal Details Section -->
-      <section class="personal-details">
-        <div class="detail-item">
-          <span class="detail-label">Currently:</span>
-          <span class="detail-value">Building, learning, exploring</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Interests:</span>
-          <span class="detail-value">Technology, design, philosophy, continuous learning</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Connect:</span>
-          <span class="detail-value">
-            <a href="https://www.linkedin.com/in/rahil-bhavan" target="_blank" rel="noopener noreferrer" class="social-link">LinkedIn</a>
-            <span class="separator">·</span>
-            <a href="https://github.com/rahilbhavan" target="_blank" rel="noopener noreferrer" class="social-link">GitHub</a>
-            <span class="separator">·</span>
-            <a href="/about" class="social-link">About</a>
-          </span>
-        </div>
-      </section>
+    <section class="block">
+      <div class="block-head">
+        <h2 class="label">Currently</h2>
+        <span class="label">Sep 2026</span>
+      </div>
+      <p>
+        Building Presto's recovery engine and keeping
+        <a href="https://rahilbhavan.github.io/spine">Spine's dashboard</a> refreshing hourly. I take on a
+        small number of DeFi risk engagements; <a href="mailto:rahil@bhavanzim.com">email me</a>.
+      </p>
+    </section>
 
-      <!-- Blog Section -->
-      <section class="blog-section">
-        <h2 class="section-title">Recent Writing</h2>
+    <section class="block">
+      <div class="block-head">
+        <h2 class="label">Building</h2>
+        <a href="/projects" class="label more">All projects</a>
+      </div>
+      <ul class="rows">
+        {projects.map((p) => (
+          <li class="row">
+            <div class="row-main">
+              <a href={`/projects/${slug(p.id)}`} class="row-title">{p.data.title}</a>
+              <span class="row-sub">{p.data.tagline}</span>
+              <span class="row-links">
+                {p.data.demoUrl && <a href={p.data.demoUrl}>demo</a>}
+                {p.data.githubUrl && <a href={p.data.githubUrl}>code</a>}
+              </span>
+            </div>
+            <span class="row-meta">{year(p.data.completedDate)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
 
-        {recentPosts.length > 0 ? (
-          <div class="posts-list">
-            {recentPosts.map((post) => {
-              const slug = post.id.replace(/\.(md|mdx)$/, '');
-              return (
-              <article class="post-item">
-                <a href={`/blog/${slug}`} class="post-item-link">
-                  <h3 class="post-item-title">{post.data.title}</h3>
-                  {post.data.description && (
-                    <p class="post-item-description">{post.data.description}</p>
-                  )}
-                  <time 
-                    class="post-item-date"
-                    datetime={post.data.publishDate.toISOString()}
-                  >
-                    {post.data.publishDate.toLocaleDateString('en-us', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </a>
-              </article>
-              );
-            })}
-          </div>
-        ) : (
-          <p class="no-posts">No posts yet. Check back soon!</p>
-        )}
-        {sortedPosts.length > 3 && (
-          <a href="/blog" class="view-all-link">View all posts →</a>
-        )}
-      </section>
+    <section class="block">
+      <div class="block-head">
+        <h2 class="label">Writing</h2>
+        <a href="/writing" class="label more">All writing</a>
+      </div>
+      <ul class="rows">
+        {posts.map((post) => (
+          <li class="row">
+            <a href={`/writing/${slug(post.id)}`} class="row-title">{post.data.title}</a>
+            <span class="row-meta">{month(post.data.publishDate)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
 
-      <!-- Projects Section -->
-      <section class="projects-section">
-        <h2 class="section-title">Projects</h2>
-        <p class="projects-description">
-          Case studies, consulting work, and builds — with artifacts, charts, and implementation notes.
-        </p>
-        <div class="projects-links">
-          <a href="/projects/openeden-rwa-intelligence-suite" class="project-featured-link">
-            Featured: OpenEden RWA Intelligence Suite →
-          </a>
-          <a href="/projects" class="view-all-link">View all projects →</a>
-        </div>
-      </section>
-    </div>
+    <section class="block">
+      <h2 class="label">Contact</h2>
+      <p>
+        I reply to email: <a href="mailto:rahil@bhavanzim.com">rahil@bhavanzim.com</a>. Also on
+        <a href="https://github.com/rahilbhavan">GitHub</a> and
+        <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a>.
+      </p>
+    </section>
   </main>
 </BaseLayout>
 
 <style>
-  .home-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 4rem 2rem;
+  .intro h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+    max-width: 30ch;
   }
 
-  .home-content {
-    max-width: 800px;
+  .intro p {
+    margin: 0 0 1rem;
   }
 
-  .home-title {
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.02em;
+  .block {
+    margin-top: 3rem;
   }
 
-  .home-subtitle {
-    font-size: 1.125rem;
-    color: #666;
-    margin-bottom: 3rem;
+  .block > p {
+    margin: 0;
   }
 
-  /* Intro Section */
-  .intro-section {
-    margin-bottom: 3rem;
-  }
-
-  .intro-statement {
-    font-size: 1.25rem;
-    color: #333;
-    margin: 1rem 0 1.5rem 0;
-    line-height: 1.6;
-    font-weight: 400;
-  }
-
-  .intro-description {
-    font-size: 1rem;
-    color: #666;
-    line-height: 1.7;
-    max-width: 700px;
-  }
-
-  /* Personal Details Section */
-  .personal-details {
-    margin: 3rem 0;
-    padding: 2rem 0;
-    border-top: 1px solid #e5e5e5;
-    border-bottom: 1px solid #e5e5e5;
-  }
-
-  .detail-item {
+  .block-head {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.95rem;
-    line-height: 1.6;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
   }
 
-  .detail-item:last-child {
+  .block h2 {
+    margin-bottom: 0.75rem;
+  }
+
+  .block-head h2 {
     margin-bottom: 0;
   }
 
-  .detail-label {
-    color: #999;
-    min-width: 80px;
-    font-weight: 500;
+  .more {
+    text-decoration: none;
   }
 
-  .detail-value {
-    color: #333;
-    flex: 1;
+  .more:hover {
+    color: var(--fg);
   }
 
-  .social-link {
-    color: #1a1a1a;
-    text-decoration: underline;
-    text-decoration-color: #ccc;
-    text-underline-offset: 3px;
-    transition: text-decoration-color 0.2s;
+  .rows {
+    list-style: none;
   }
 
-  .social-link:hover {
-    text-decoration-color: #1a1a1a;
-  }
-
-  .separator {
-    color: #ccc;
-    margin: 0 0.5rem;
-  }
-
-  /* Blog Section */
-  .blog-section {
-    margin-top: 4rem;
-  }
-
-  .projects-section {
-    margin-top: 4rem;
-    padding-top: 3rem;
-    border-top: 1px solid #e5e5e5;
-  }
-
-  .projects-description {
-    color: #666;
-    line-height: 1.7;
-    max-width: 700px;
-    margin: 0 0 1.5rem 0;
-  }
-
-  .projects-links {
+  .row {
     display: flex;
+    justify-content: space-between;
     gap: 1.5rem;
-    flex-wrap: wrap;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--line);
   }
 
-  .project-featured-link {
-    display: inline-block;
-    color: #1a1a1a;
-    text-decoration: underline;
-    text-decoration-color: #ccc;
-    text-underline-offset: 3px;
-    transition: text-decoration-color 0.2s;
-  }
-
-  .project-featured-link:hover {
-    text-decoration-color: #1a1a1a;
-  }
-
-  .no-posts {
-    color: #999;
-    font-style: italic;
-    margin: 2rem 0;
-  }
-
-  .section-title {
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin-bottom: 2rem;
-    letter-spacing: -0.01em;
-  }
-
-  .posts-list {
+  .row-main {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 0.125rem;
   }
 
-  .post-item {
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #e5e5e5;
-  }
-
-  .post-item:last-child {
-    border-bottom: none;
-  }
-
-  .post-item-link {
-    display: block;
-    transition: opacity 0.2s;
-  }
-
-  .post-item-link:hover {
-    opacity: 0.7;
-  }
-
-  .post-item-title {
-    font-size: 1.5rem;
+  .row-title {
     font-weight: 500;
-    margin-bottom: 0.5rem;
-    line-height: 1.3;
+    text-decoration: none;
   }
 
-  .post-item-description {
-    font-size: 1rem;
-    color: #666;
-    line-height: 1.6;
-    margin: 0.5rem 0;
+  .row-title:hover {
+    text-decoration: underline;
   }
 
-  .post-item-date {
-    font-size: 0.875rem;
-    color: #999;
-    display: block;
-    margin-top: 0.75rem;
+  .row-sub {
+    color: var(--fg-2);
+    font-size: 0.9375rem;
   }
 
-  .view-all-link {
-    display: inline-block;
-    margin-top: 2rem;
-    color: #1a1a1a;
-    font-size: 0.95rem;
-    transition: opacity 0.2s;
+  .row-links {
+    display: flex;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--fg-3);
   }
 
-  .view-all-link:hover {
-    opacity: 0.6;
+  .row-links:empty {
+    display: none;
   }
 
-  @media (max-width: 768px) {
-    .home-container {
-      padding: 2rem 1.5rem;
-    }
+  .row-links a {
+    text-decoration: none;
+  }
 
-    .home-title {
-      font-size: 2rem;
-    }
+  .row-links a:hover {
+    color: var(--fg);
+  }
 
-    .home-subtitle {
-      font-size: 1rem;
-    }
-
-    .intro-statement {
-      font-size: 1.125rem;
-    }
-
-    .intro-description {
-      font-size: 0.95rem;
-    }
-
-    .detail-item {
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .detail-label {
-      min-width: auto;
-    }
-
-    .post-item-title {
-      font-size: 1.25rem;
-    }
+  .row-meta {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--fg-3);
+    white-space: nowrap;
+    padding-top: 0.25rem;
   }
 </style>
-

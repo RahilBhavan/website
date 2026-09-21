@@ -21,9 +21,16 @@ const projects = defineCollection({
   type: 'content',
   schema: z.object({
     title: z.string(),
+    // Short line for list views (home, /projects). Aim for under 80 characters.
+    tagline: z.string(),
+    // Longer summary for <meta name="description"> and the case page header.
     description: z.string(),
     problem: z.string(),
     solution: z.string(),
+    // Mono label shown next to the title, e.g. "consulting", "hardware", "proposal".
+    kind: z.string().optional(),
+    // Shown in the Building list on the homepage.
+    featured: z.boolean().default(false),
     demoUrl: z.string().url().optional(),
     // Allow empty string; treat as undefined so optional URL validation passes
     githubUrl: z
@@ -34,21 +41,4 @@ const projects = defineCollection({
   }),
 });
 
-const books = defineCollection({
-  type: 'content',
-  schema: z.object({
-    title: z.string(),
-    author: z.string(),
-    coverUrl: z.string().url().optional(),
-    isbn: z.string().optional(),
-    source: z.enum(['goodreads', 'audible', 'spotify', 'physical', 'manual']).default('manual'),
-    status: z.enum(['currently-reading', 'read', 'want-to-read']).default('read'),
-    startedDate: z.coerce.date().optional(),
-    completedDate: z.coerce.date().optional(),
-    rating: z.number().min(0).max(5).optional(),
-    review: z.string().optional(),
-    tags: z.array(z.string()).default([]),
-  }),
-});
-
-export const collections = { blog, projects, books };
+export const collections = { blog, projects };

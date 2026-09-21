@@ -1,174 +1,158 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = true;
+
+const timeline = [
+  {
+    when: 'Sep 2026',
+    what: 'Spine: replayed Coinbase’s $1.6B Morpho loan book (67,000+ positions) through seven crash paths.',
+    href: '/projects/spine-coinbase-loan-book-risk-model',
+  },
+  {
+    when: 'Sep 2026',
+    what: 'Co-founded Presto. Built the matching engine, DDEX ingester, and claim workflow.',
+    href: 'https://prestorecovery.com',
+  },
+  {
+    when: 'Sep 2026',
+    what: 'Shipped the Fall 2026 rush platform for the Michigan Engineering Consulting Group.',
+    href: '/projects/mecg-recruitment-platform',
+  },
+  {
+    when: 'Aug 2026',
+    what: 'Summer.fi: stop-loss stress test replaying the Aug 5, 2024 ETH crash on Aave V3 and Morpho.',
+    href: '/projects/summer-fi-liquidation-risk-simulator',
+  },
+  {
+    when: 'Apr 2026',
+    what: 'Five-year financial trends pipeline for 200+ suppliers, for GM’s purchasing team.',
+    href: '/projects/gm-supplier-benchmark-dashboard',
+  },
+  {
+    when: 'Feb 2026',
+    what: 'Consulting for OpenEden: competitive landscape, on-chain velocity, USDO supply cohorts.',
+    href: '/projects/openeden-rwa-intelligence-suite',
+  },
+  {
+    when: 'Dec 2024',
+    what: 'Rust tool that replays DeFi exploits and flags the Euler invariant break 4 blocks early.',
+    href: '/projects/smart-contract-invariant-monitor-and-guardian',
+  },
+  {
+    when: 'May to Dec 2024',
+    what: '8-bit computer from 200+ TTL chips; taught 30 students with it in Zimbabwe.',
+    href: '/projects/8-bit-computer-from-ttl-logic',
+  },
+  {
+    when: '2024',
+    what: 'Pothole-mapping drone for Bulawayo. Second place at ZITF; presented to the President of Zimbabwe.',
+    href: '/projects/pothole-detection-drone-for-zimbabwe-roads',
+  },
+];
 ---
 
-<BaseLayout title="About" description="Learn more about me, my interests, and what I'm working on.">
-  <main class="about-container">
-    <div class="about-content">
-      <h1 class="about-title">About</h1>
-      
-      <section class="about-section">
-        <h2 class="section-heading">Who I Am</h2>
-        <p class="about-text">
-          Born in Los Angeles and raised in Zimbabwe, my worldview is defined by duality. This unique upbringing sparked a love for both American football and soccer, spicy Mexican food, and Ndebele slang.
-          This cross-cultural perspective drives my engineering philosophy. I am passionate about bridging the gap between high-tech resources and local community needs. Whether I am prototyping autonomous drones or building breadboard computers, my goal is to create accessible, impactful technology.
-          Currently, I am focused on financial engineering and developing several blockchain-based projects. These include the Smart Contract Invariant Monitor and Guardian, a real-time system that detects violations of invariants in DeFi protocols.
-        </p>
-        <p class="about-text">
-         I enjoy going down rabbit holes in emerging technologies, especially when they challenge my assumptions. 
-         From blockchain architecture to structural engineering, I am drawn to the unknown. These deep dives force 
-         a shift in perspective which ultimately helps me build more resilient, impactful solutions.
-        </p>
-      </section>
+<BaseLayout title="About" description="Rahil Bhavan: engineering student at Michigan, co-founder of Presto, DeFi risk modelling, hardware builds. Born in Los Angeles, raised in Zimbabwe." ogType="profile">
+  <main class="wrap page">
+    <h1>About</h1>
 
-      <section class="about-section">
-        <h2 class="section-heading">What I'm Learning</h2>
-        <p class="about-text">
-          I like learning through both study and experience. Currently exploring:
-        </p>
-        <ul class="interest-list">
-          <li>DeFi Related Systems frameworks</li>
-          <li>Financial Management and Engineering</li>
-          <li>Startup Philosophy and Creation</li>
-          <li>Football Tactics and implementation</li>
-        </ul>
-      </section>
+    <section class="prose intro">
+      <p>
+        I was born in Los Angeles and grew up in Bulawayo, Zimbabwe. I'm now an engineering student at the
+        University of Michigan and a co-founder of <a href="https://prestorecovery.com">Presto</a>, a
+        three-person company that finds music royalties the MLC and SoundExchange hold for the wrong party,
+        or for nobody, and claims them. I built the matching engine, the DDEX ingester, and the claim
+        workflow.
+      </p>
+      <p>
+        The thread through my work is systems where being wrong costs money: liquidation engines, royalty
+        ledgers, protocol invariants. I like fetching every position from public data, calibrating on the
+        events that actually happened, and writing down the recommendation. My risk work so far covers
+        Coinbase's on-chain loan book, Summer.fi's stop-loss automation, and OpenEden's tokenized T-bill
+        products.
+      </p>
+      <p>
+        I also build hardware when the lesson needs to be physical. The drone came out of driving on
+        Bulawayo's roads. The TTL computer came out of teaching computer architecture without a lab.
+      </p>
+      <p>
+        Off the clock: American football and soccer, football tactics, cooking, and books on design and
+        philosophy. I reply to every email: <a href="mailto:rahil@bhavanzim.com">rahil@bhavanzim.com</a>.
+      </p>
+    </section>
 
-      <section class="about-section">
-        <h2 class="section-heading">Interests & Hobbies</h2>
-        <p class="about-text">
-          When I'm not building, you might find me:
-        </p>
-        <ul class="interest-list">
-          <li>Reading books on cooking, design, and philosophy</li>
-          <li>Exploring new financial systems</li>
-        </ul>
-      </section>
+    <section class="block">
+      <h2 class="label">Timeline</h2>
+      <ol class="timeline">
+        {timeline.map((t) => (
+          <li>
+            <span class="when">{t.when}</span>
+            <a href={t.href}>{t.what}</a>
+          </li>
+        ))}
+      </ol>
+    </section>
 
-      <section class="about-section">
-        <h2 class="section-heading">Connect</h2>
-        <p class="about-text">
-          I'm always open to interesting conversations and collaborations. You can find me on:
-        </p>
-        <div class="social-links">
-          <a href="https://www.linkedin.com/in/rahil-bhavan/" target="_blank" rel="noopener noreferrer" class="social-link">
-            LinkedIn
-          </a>
-          <a href="https://github.com/rahilbhavan" target="_blank" rel="noopener noreferrer" class="social-link">
-            GitHub
-          </a>
-          <a href="mailto:rahil@bhavanzim.com" class="social-link">
-            Email
-          </a>
-        </div>
-      </section>
-    </div>
+    <section class="block">
+      <h2 class="label">Elsewhere</h2>
+      <p>
+        <a href="https://github.com/rahilbhavan">GitHub</a> ·
+        <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a> ·
+        <a href="/rss.xml">RSS</a>
+      </p>
+    </section>
   </main>
 </BaseLayout>
 
 <style>
-  .about-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 4rem 2rem;
-  }
-
-  .about-content {
-    max-width: 700px;
-  }
-
-  .about-title {
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 3rem;
-    letter-spacing: -0.02em;
-  }
-
-  .about-section {
-    margin-bottom: 3rem;
-  }
-
-  .section-heading {
+  h1 {
     font-size: 1.5rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
-    letter-spacing: -0.01em;
+    margin-bottom: 1.5rem;
   }
 
-  .about-text {
-    font-size: 1rem;
-    color: #333;
-    line-height: 1.7;
-    margin-bottom: 1rem;
+  .block {
+    margin-top: 3rem;
   }
 
-  .interest-list {
+  .block h2 {
+    margin-bottom: 0.75rem;
+  }
+
+  .block p {
+    margin: 0;
+  }
+
+  .timeline {
     list-style: none;
-    padding: 0;
-    margin: 1rem 0;
   }
 
-  .interest-list li {
-    font-size: 1rem;
-    color: #333;
-    line-height: 1.7;
-    padding-left: 1.5rem;
-    position: relative;
-    margin-bottom: 0.5rem;
+  .timeline li {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: 1rem;
+    padding: 0.625rem 0;
+    border-top: 1px solid var(--line);
   }
 
-  .interest-list li::before {
-    content: '·';
-    position: absolute;
-    left: 0;
-    color: #999;
-    font-weight: bold;
+  .timeline a {
+    text-decoration: none;
   }
 
-  .social-links {
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .social-link {
-    color: #1a1a1a;
+  .timeline a:hover {
     text-decoration: underline;
-    text-decoration-color: #ccc;
-    text-underline-offset: 3px;
-    font-size: 1rem;
-    transition: text-decoration-color 0.2s;
   }
 
-  .social-link:hover {
-    text-decoration-color: #1a1a1a;
+  .when {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--fg-3);
+    padding-top: 0.3rem;
   }
 
-  @media (max-width: 768px) {
-    .about-container {
-      padding: 2rem 1.5rem;
-    }
-
-    .about-title {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-    }
-
-    .about-section {
-      margin-bottom: 2.5rem;
-    }
-
-    .section-heading {
-      font-size: 1.25rem;
-    }
-
-    .about-text {
-      font-size: 0.95rem;
-    }
-
-    .interest-list li {
-      font-size: 0.95rem;
+  @media (max-width: 480px) {
+    .timeline li {
+      grid-template-columns: 1fr;
+      gap: 0.125rem;
     }
   }
 </style>

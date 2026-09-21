@@ -1,14 +1,14 @@
 ---
 title: "Presto: Royalty Recovery Engine"
+tagline: "Matching engine and claim workflow that recovers unclaimed music royalties"
 description: "A stdlib-only Python engine that matches a music catalog against MLC and SoundExchange registry data, produces explainable recovery leads, and drives a crash-recoverable claim workflow that can never pay or invoice the same catalog row twice."
 problem: "Songwriters and labels leave royalties unclaimed because the registries that pay them (the MLC for compositions, SoundExchange for recordings) hold shares that are missing, under-claimed, or attached to the wrong party. Finding those gaps means reconciling a partner's catalog against bulk registry feeds with inconsistent identifiers, and any tool that guesses at shares or double-counts a claim creates a financial error rather than fixing one."
 solution: "Built the matching engine, the DDEX BWARM ingester, and the recovery workflow for a three-person founding team: exact ISRC/ISWC matching with a fuzzy fallback and near-tie guard, a streaming parser validated against the official DDEX sample, a workspace with atomic writes, an append-only journal, and an exclusive lock, run-independent entry keys that make double payment or double invoicing impossible by construction, and a SHA-256 packet commitment for timestamping on Base."
 demoUrl: "https://prestorecovery.com"
+kind: "co-founder"
+featured: true
 completedDate: 2026-09-09
 ---
-
-# Presto: Royalty Recovery Engine
-
 ## Overview
 
 **What it is:** A local, human-reviewed royalty recovery workflow. It validates a partner's catalog and a registry snapshot (MLC or SoundExchange), matches every catalog row against the registry, creates explainable review leads where a share looks missing or under-claimed, prepares manual claim packets, records claim outcomes and payment evidence, and invoices a configured contingency fee after verified payment. It also reconciles a label's recording catalog against a distributor statement and prepares a draft inquiry packet.

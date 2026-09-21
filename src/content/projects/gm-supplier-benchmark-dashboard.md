@@ -1,15 +1,15 @@
 ---
 title: "GM Supplier Benchmark Dashboard"
+tagline: "Five-year financial trends for 200+ GM suppliers from SEC and Yahoo Finance data"
 description: "A supplier financial benchmarking dashboard for General Motors' purchasing team: revenue, SG&A, and EBIT for more than 200 automotive suppliers, with a five-year trends page fed by a SEC and Yahoo Finance pipeline."
 problem: "GM's purchasing organisation negotiates with suppliers whose public financials are scattered across SEC filings and finance portals. Comparing a supplier's SG&A and EBIT margins against its peers, or seeing how they moved over five years, meant pulling numbers by hand for every negotiation."
 solution: "Built a CSV-backed Flask dashboard with a supplier explorer, company compare, map, parts index, and a historical trends page. I built the trends page and its five-year data pipeline: yfinance history extraction for every verified ticker, a trends payload builder, three new API endpoints, sparklines on the supplier list, and Plotly charts for supplier trends, portfolio composition, margins, waterfall, and heatmap."
 demoUrl: "https://gm-mecg.vercel.app"
 githubUrl: "https://github.com/RahilBhavan/gm_mecg"
+kind: "consulting"
+featured: false
 completedDate: 2026-04-24
 ---
-
-# GM Supplier Benchmark Dashboard
-
 ## Overview
 
 **What it is:** A multi-page analytics dashboard for supplier financial review, built for General Motors through the Michigan Engineering Consulting Group (MECG). It covers a home dashboard, supplier explorer, company compare, historical trends, supplier map, parts index, add-company workflow, and a data refresh page that pulls current financials from Yahoo Finance. A companion repository, `gm_mecg`, exports automotive supply chain quarterly financials from SEC and Yahoo Finance data to Excel.

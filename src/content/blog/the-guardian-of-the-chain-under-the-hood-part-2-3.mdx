@@ -8,9 +8,6 @@ series:
   part: 2
 draft: false
 ---
-
-# The Guardian of the Chain: Under the Hood (Part 2/3)
-
 ## TL;DR
 
 - **Stack:** Rust workspace with crates for invariant spec, Ethereum state, evaluation engine, case-study replay, and run storage.
@@ -35,7 +32,7 @@ draft: false
 
 **Hook:** Replaying historical exploits and evaluating invariants block-by-block means dealing with flaky RPCs, reorgs, and large state. The design has to be reliable and reproducible.
 
-**Context:** In [Part 1](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) we introduced the **exploit-analyzer** CLI and why invariant-based replay matters. Here we open the hood: the Rust crates, how config flows into evaluation, and how the system handles provider failures and chain reorganizations.
+**Context:** In [Part 1](/writing/the-guardian-of-the-chain-sleep-soundly-part-1-3/) we introduced the **exploit-analyzer** CLI and why invariant-based replay matters. Here we open the hood: the Rust crates, how config flows into evaluation, and how the system handles provider failures and chain reorganizations.
 
 **Preview:** This post walks through the architecture (invariant spec, eth-state, invariant-eval, case-studies, run-store), the choice of JSON for config, and runnable commands so you can try the workflow yourself.
 
@@ -245,14 +242,14 @@ cat output/euler-analysis/Euler-Finance-*/run-metadata.json
 
 **Call to action:**
 
-- Read [Part 1: Sleep Soundly](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) for the problem and the tool’s role.
-- Read [Part 3: In Practice & Future](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) for the Euler walkthrough and roadmap.
+- Read [Part 1: Sleep Soundly](/writing/the-guardian-of-the-chain-sleep-soundly-part-1-3/) for the problem and the tool’s role.
+- Read [Part 3: In Practice & Future](/writing/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) for the Euler walkthrough and roadmap.
 - Clone the repo and run the [Quick Start](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) commands.
 
 ## Related Posts
 
-- [The Guardian of the Chain: Sleep Soundly (Part 1)](/blog/the-guardian-of-the-chain-sleep-soundly-part-1-3/) — Introduction and invariant-based replay
-- [The Guardian of the Chain: In Practice & Future (Part 3)](/blog/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) — Euler Finance case study and roadmap
+- [The Guardian of the Chain: Sleep Soundly (Part 1)](/writing/the-guardian-of-the-chain-sleep-soundly-part-1-3/) — Introduction and invariant-based replay
+- [The Guardian of the Chain: In Practice & Future (Part 3)](/writing/the-guardian-of-the-chain-in-practice-and-future-part-3-3/) — Euler Finance case study and roadmap
 
 ## Additional Resources
 

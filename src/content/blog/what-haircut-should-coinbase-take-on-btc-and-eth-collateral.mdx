@@ -5,9 +5,6 @@ publishDate: 2026-09-19
 tags: ["defi", "risk", "morpho", "coinbase", "python"]
 draft: false
 ---
-
-# What haircut should Coinbase take on BTC and ETH collateral?
-
 This is the writeup from [Spine](/projects/spine-coinbase-loan-book-risk-model/), a live risk dashboard and liquidation-queue backtest over Coinbase's on-chain loan book on Morpho (Base). The [dashboard](https://rahilbhavan.github.io/spine) refreshes hourly from public data; the project page covers how the pipeline is built. What follows is the argument itself: what the book looks like, how liquidators and borrowers behaved in the three stress events it has lived through, what a March 2020 style cliff would do to it, and what that implies for the liquidation LTV on each collateral.
 
 *Spine, 2026-09-19. Every number here is produced by a script in the [Spine repo](https://github.com/RahilBhavan/spine) from public data: the Morpho API, Base RPC, Coinbase Exchange, and Chainlink logs. Tables are printed by `spine/writeup_tables.py` and `spine/caps.py` from `data/backtest.json`, `data/calibration.json`, `data/summary.json`, `data/depth.json` and `data/caps.json`. The dashboard refreshes hourly.*

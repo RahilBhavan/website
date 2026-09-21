@@ -1,15 +1,15 @@
 ---
 title: "Spine: Coinbase Loan Book Risk Model"
+tagline: "Live risk dashboard and liquidation backtest over Coinbase's $1.6B Morpho loan book"
 description: "A live risk dashboard and liquidation-queue backtest over Coinbase's on-chain loan book on Morpho (Base): $1.6B of debt, 67,000+ positions, replayed through seven crash paths to argue what haircut BTC and ETH collateral should take."
 problem: "Coinbase lends USDC against cbBTC and ETH on Morpho at an 86% liquidation LTV. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. Nobody had replayed today's book through a March 2020 style cliff with liquidators and borrowers behaving the way the lived events show they behave."
 solution: "Built a stdlib-only Python pipeline that fetches every position, liquidation, oracle update, and order book snapshot from public sources, calibrates liquidator latency and borrower response on the three lived events, and replays the book through seven historical crash paths under alternative LLTVs and liquidator capacity scenarios. The result is an hourly-refreshed dashboard on GitHub Pages and a written recommendation per asset."
 demoUrl: "https://rahilbhavan.github.io/spine"
 githubUrl: "https://github.com/RahilBhavan/spine"
+kind: "risk model"
+featured: true
 completedDate: 2026-09-19
 ---
-
-# Spine: Coinbase Loan Book Risk Model
-
 ## Overview
 
 **What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase lends USDC against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
@@ -287,7 +287,7 @@ The first drafts overstated realized loss because they seized in full at a const
 
 - **Dashboard**: [rahilbhavan.github.io/spine](https://rahilbhavan.github.io/spine)
 - **Repository**: [github.com/RahilBhavan/spine](https://github.com/RahilBhavan/spine)
-- **Writeup as a blog post**: [What haircut should Coinbase take on BTC and ETH collateral?](/blog/what-haircut-should-coinbase-take-on-btc-and-eth-collateral/)
+- **Writeup as a blog post**: [What haircut should Coinbase take on BTC and ETH collateral?](/writing/what-haircut-should-coinbase-take-on-btc-and-eth-collateral/)
 
 ---
 

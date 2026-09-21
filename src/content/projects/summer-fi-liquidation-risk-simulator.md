@@ -1,15 +1,15 @@
 ---
 title: "Summer.fi Liquidation Risk Simulator"
+tagline: "Stop-loss stress test replaying the Aug 5, 2024 ETH crash on Aave V3 and Morpho"
 description: "A reproducible stress-test case study that replays the August 5, 2024 ETH crash through a static stop-loss model for Aave V3 and Morpho positions, with a parameter sweep and an interactive Next.js simulator."
 problem: "When ETH fell 27% intraday on August 5, 2024 and gas spiked to 681 Gwei, automated stop-loss controls had to fire in conditions where execution cost and slippage ate into whatever they saved. A risk team choosing a stop-loss buffer needs a way to compare buffer choices across protocols with explicit, reviewable assumptions rather than intuition."
 solution: "Built a compact Python model that reads 24 hourly price and gas observations, evaluates liquidation and stop-loss triggers hour by hour for Aave V3 and Morpho parameters, estimates exit value net of modeled slippage and gas, and sweeps 5 initial LTVs by 5 buffers per protocol. A Next.js simulator runs the same model in TypeScript with a parity check against the Python fixtures."
 demoUrl: "https://summer.rahilbhavan.com"
 githubUrl: "https://github.com/RahilBhavan/summer-fi-risk-analysis"
+kind: "risk model"
+featured: false
 completedDate: 2026-08-12
 ---
-
-# Summer.fi Liquidation Risk Simulator
-
 ## Overview
 
 **What it is:** An independent portfolio case study of how automated risk controls behave during a sharp Ethereum move. It takes the 24 hourly observations from August 5, 2024, applies explicit assumptions for collateral, debt, liquidation thresholds, buffers, execution cost, and slippage, and compares outcomes across Aave V3 and Morpho scenarios and stop-loss buffer choices. A web simulator lets a reader change the protocol, initial LTV, and buffer and see the result.

@@ -8,90 +8,63 @@ interface Props {
 
 const { seriesName, currentPart } = Astro.props;
 
-const allPosts = await getCollection('blog', ({ data }) => {
-  return data.series?.name === seriesName && data.draft !== true;
-});
-
-const seriesPosts = allPosts.sort((a, b) => a.data.series!.part - b.data.series!.part);
+const posts = (await getCollection('blog', ({ data }) => data.series?.name === seriesName && !data.draft))
+  .sort((a, b) => a.data.series!.part - b.data.series!.part);
 ---
 
-{seriesPosts.length > 1 && (
-  <div class="series-nav">
-    <div class="series-header">
-      <span class="series-label">Series: </span>
-      <span class="series-name">{seriesName}</span>
-    </div>
-    <ul class="series-list">
-      {seriesPosts.map((post) => (
-        <li class={`series-item ${post.data.series?.part === currentPart ? 'current' : ''}`}>
-          {post.data.series?.part === currentPart ? (
-            <span class="series-current-part">Part {post.data.series?.part}: {post.data.title}</span>
+{posts.length > 1 && (
+  <nav class="series" aria-label="Series">
+    <span class="label">Series · {seriesName}</span>
+    <ol>
+      {posts.map((post) => (
+        <li>
+          {post.data.series!.part === currentPart ? (
+            <span class="current">{post.data.title}</span>
           ) : (
-            <a href={`/blog/${post.id.replace(/\.(md|mdx)$/, '')}`} class="series-link">
-              Part {post.data.series?.part}: {post.data.title}
+            <a href={`/writing/${post.id.replace(/\.(md|mdx)$/, '')}`}>
+              {post.data.title}
             </a>
           )}
         </li>
       ))}
-    </ul>
-  </div>
+    </ol>
+  </nav>
 )}
 
 <style>
-  .series-nav {
-    margin: 3rem 0;
-    padding: 1.5rem;
-    background-color: #f9fafb;
-    border-left: 4px solid #1a1a1a;
-    border-radius: 0 8px 8px 0;
+  .series {
+    margin-bottom: 2.5rem;
+    font-size: 0.9375rem;
   }
 
-  .series-header {
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+  .series .label {
+    display: block;
+    margin-bottom: 0.5rem;
   }
 
-  .series-label {
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .series-name {
-    color: #1a1a1a;
-  }
-
-  .series-list {
+  .series ol {
     list-style: none;
-    padding: 0;
-    margin: 0;
   }
 
-  .series-item {
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
+  .series li {
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--line);
   }
 
-  .series-current-part {
-    color: #1a1a1a;
-    font-weight: 600;
+  .series li:last-child {
+    border-bottom: 1px solid var(--line);
   }
 
-  .series-link {
-    color: #666;
+  .series a {
+    color: var(--fg-2);
     text-decoration: none;
-    transition: color 0.2s;
   }
 
-  .series-link:hover {
-    color: #1a1a1a;
-    text-decoration: underline;
+  .series a:hover {
+    color: var(--fg);
   }
 
-  .series-item.current::before {
-    content: "→";
-    margin-right: 0.5rem;
-    color: #1a1a1a;
+  .current {
+    color: var(--fg);
   }
 </style>

@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import SeriesLinks from '../../components/SeriesLinks.astro';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+
+  return posts.map((post) => {
+    const slug = post.id.replace(/\.(md|mdx)$/, '');
+    return {
+      params: { slug },
+      props: { post },
+    };
+  });
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+const { data } = post;
+
+const wordCount = post.body ? post.body.split(/\s+/g).length : 0;
+const readingTime = `${Math.max(1, Math.round(wordCount / 200))} min read`;
+const date = data.publishDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+---
+
+<BaseLayout title={data.title} description={data.description} ogType="article">
+  <main class="wrap page">
+    <a href="/writing" class="label back">← Writing</a>
+    <h1>{data.title}</h1>
+    <div class="label meta">
+      <time datetime={data.publishDate.toISOString()}>{date}</time>
+      <span>{readingTime}</span>
+    </div>
+
+    {data.series && <SeriesLinks seriesName={data.series.name} currentPart={data.series.part} />}
+
+    <div class="prose"><Content /></div>
+  </main>
+</BaseLayout>
+
+<style>
+  .back {
+    display: inline-block;
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+  }
+
+  .back:hover {
+    color: var(--fg);
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+</style>

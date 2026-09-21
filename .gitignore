@@ -19,9 +19,6 @@ pnpm-debug.log*
 .env.local
 .env.production
 
-# Goodreads authentication
-scripts/.goodreads-cookies.json
-
 # macOS-specific
 .DS_Store
 

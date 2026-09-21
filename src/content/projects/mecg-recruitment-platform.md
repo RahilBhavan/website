@@ -1,15 +1,15 @@
 ---
 title: "MECG Recruitment Platform"
+tagline: "Rush platform for the Michigan Engineering Consulting Group with locked, two-approval decisions"
 description: "A cycle-based rush platform for the Michigan Engineering Consulting Group: applications, QR event check-in, structured member evaluations, deliberation, and locked board decisions, built on Next.js and Supabase."
 problem: "MECG ran recruitment on forms, spreadsheets, and group chats. Evaluations were inconsistent, attendance was tracked by hand, applicants had no reliable status view, and nothing stopped a score from being edited after the fact or a decision from being released before it was final."
 solution: "Built the recruitment workflow as a Next.js app on Supabase: applicants apply while a cycle is open and get a private status link, members submit immutable anchored-score evaluations for their assigned rounds, board roles manage assignments and see attendance, and final decisions need two conflict-free approvals before locking. Shipped the Fall 2026 rush release as the main contributor on a three-person repo."
 demoUrl: "https://mecg-website-three.vercel.app"
 githubUrl: "https://github.com/amanigupta27/mecg-website"
+kind: "web app"
+featured: false
 completedDate: 2026-09-01
 ---
-
-# MECG Recruitment Platform
-
 ## Overview
 
 **What it is:** A cycle-based rush system for the Michigan Engineering Consulting Group (MECG). It covers the whole recruitment loop: applications, event attendance with QR check-in, structured member evaluations for Speed Dating and Group Case rounds, Hash deliberation, and locked board decisions that are released to applicants only when the board chooses.

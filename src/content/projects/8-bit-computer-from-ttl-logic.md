@@ -1,13 +1,13 @@
 ---
 title: "8-bit Computer from TTL Logic"
+tagline: "Breadboard CPU from 200+ TTL chips, used to teach 30 students"
 description: "A breadboard computer built from more than 200 TTL chips with a custom instruction set, a modular architecture, and lab materials used to teach 30 students."
 problem: "Textbooks explain how a CPU fetches and executes an instruction, but the explanation stays abstract until you can watch the bits move. There was no hands-on computer architecture lab for students to do that."
 solution: "Built an 8-bit computer on breadboards from more than 200 TTL logic chips, with a custom instruction set and a modular design where the clock, registers, ALU, RAM, program counter, and output display can each be swapped independently. Wrote documentation and lab materials and used the machine to teach 30 students in hands-on workshops."
+kind: "hardware"
+featured: true
 completedDate: 2024-12-15
 ---
-
-# 8-bit Computer from TTL Logic
-
 ## Overview
 
 **What it is:** An 8-bit computer built from more than 200 TTL logic chips on breadboards, with a custom instruction set and a 7-segment output display. The clock, registers, ALU, RAM, program counter, and output display are separate modules, so any one of them can be swapped without rebuilding the rest.

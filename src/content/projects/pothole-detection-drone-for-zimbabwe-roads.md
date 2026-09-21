@@ -1,19 +1,19 @@
 ---
 title: "Pothole Detection Drone for Zimbabwe's Roads"
+tagline: "YOLOv8 drone that maps potholes in Bulawayo, presented to the President of Zimbabwe"
 description: "An autonomous drone system using YOLOv8 computer vision and ArduPilot telemetry to detect and map potholes in real-time, helping municipal infrastructure maintenance in Bulawayo."
-problem: "Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. Hidden potholes disrupt supply chains and endanger lives. The local City Council couldn't fix what they couldn't find—manual road inspections were slow, expensive, and incomplete."
+problem: "Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. Hidden potholes disrupt supply chains and endanger lives. The local City Council couldn't fix what they couldn't find. Manual road inspections were slow, expensive, and incomplete."
 solution: "Built a custom drone with CNC aluminum airframe, Raspberry Pi 5 edge computing, and YOLOv8 AI to autonomously detect potholes in real-time. The system syncs GPS coordinates with computer vision detections, creating an instant map of road defects for municipal maintenance teams."
 demoUrl: "https://www.youtube.com/watch?v=LpTeKHJ6wRc"
+kind: "hardware"
+featured: true
 completedDate: 2024-06-15
 ---
-
-# Pothole Detection Drone for Zimbabwe's Roads
-
 ## Overview
 
 **What it is:** An autonomous drone system that uses computer vision and GPS telemetry to detect and map potholes in real-time. The system combines a custom-built drone airframe, Raspberry Pi 5 edge computing, YOLOv8 AI model, and ArduPilot flight controller to create a flying infrastructure inspection tool.
 
-**Why it matters:** Road maintenance in Zimbabwe faces critical challenges—manual inspections are slow, expensive, and often miss defects until they become dangerous. This system automates the discovery process, enabling municipal teams to prioritize repairs based on real-time data rather than reactive complaints.
+**Why it matters:** Road maintenance in Zimbabwe faces a basic problem: manual inspections are slow, expensive, and often miss defects until they become dangerous. This system automates the discovery process, enabling municipal teams to prioritize repairs based on real-time data rather than reactive complaints.
 
 **Who it's for:** Municipal infrastructure teams, city councils, and transportation departments who need efficient, cost-effective road inspection capabilities. The system is particularly valuable in resource-constrained environments where traditional inspection methods are impractical.
 
@@ -23,7 +23,7 @@ completedDate: 2024-06-15
 
 ### The Challenge
 
-Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. A hidden pothole doesn't just ruin a tire; it disrupts supply chains and endangers lives. The local City Council faced a massive challenge—they couldn't fix what they couldn't find.
+Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. A hidden pothole doesn't just ruin a tire; it disrupts supply chains and endangers lives. The local City Council faced a basic problem: they couldn't fix what they couldn't find.
 
 **Specific issues:**
 - Manual road inspections were slow and expensive
@@ -332,7 +332,7 @@ while True:
 
 **The Solution:**
 - Used locally available components where possible (CMU F450 base frame)
-- Leveraged 3D printing for rapid iteration
+- Used 3D printing for rapid iteration
 - Found local CNC enthusiast for aluminum machining
 - Designed for repairability with standard components
 
@@ -383,7 +383,7 @@ while True:
 > "This system could revolutionize how we maintain our roads. Having real-time data on road conditions allows us to prioritize repairs based on actual need rather than complaints."  
 > — Bulawayo City Council Representative
 
-> "The integration of AI with flight telemetry is impressive. This could have applications beyond potholes—minefield detection, agriculture, infrastructure inspection."  
+> "The integration of AI with flight telemetry is impressive. This could have applications beyond potholes: minefield detection, agriculture, infrastructure inspection."  
 > — Econet Wireless Leadership
 
 ### Impact & Value Delivered
@@ -477,9 +477,9 @@ The project demonstrated proof-of-concept and received significant recognition. 
   - [Herald Online](https://www.heraldonline.co.zw/comment-young-minds-must-create-solutions-that-will-drive-zimbabwe-forward/)
   - [Bulawayo24](https://bulawayo24.com/index-id-news-sc-national-byo-245074.html)
 - **Blog Series**: 
-  - [Part 1: Mechanical Engineering](/blog/why-i-built-a-drone-for-zimbabwes-roads-part-1/)
-  - [Part 2: AI Integration](/blog/the-eye-in-the-sky-integrating-ai-with-flight-telemetry-part-2-3/)
-  - [Part 3: ZITF & Recognition](/blog/from-prototype-to-president-showcasing-innovation-at-zitf-part-3-3/)
+  - [Part 1: Mechanical Engineering](/writing/why-i-built-a-drone-for-zimbabwes-roads-part-1/)
+  - [Part 2: AI Integration](/writing/the-eye-in-the-sky-integrating-ai-with-flight-telemetry-part-2-3/)
+  - [Part 3: ZITF & Recognition](/writing/from-prototype-to-president-showcasing-innovation-at-zitf-part-3-3/)
 
 ---
 

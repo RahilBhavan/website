@@ -1,6 +1,6 @@
 # Rahil Bhavan
 
-Personal site of Rahil Bhavan: engineering student at the University of Michigan, co-founder of Presto (music royalty recovery), and builder of risk models for on-chain lending and hardware for teaching.
+Personal site of Rahil Bhavan: computer engineering and economics student at the University of Michigan, co-founder of Presto (music royalty recovery), and builder of risk models for on-chain lending and hardware for teaching.
 
 - Projects: https://rahilbhavan.com/projects
 - Writing: https://rahilbhavan.com/writing

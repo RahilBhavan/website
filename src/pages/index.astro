@@ -13,6 +13,10 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .slice(0, 5);
 
 const slug = (id: string) => id.replace(/\.(md|mdx)$/, '');
+// "Currently" is dated by the newest thing on the site so it cannot go stale by mistake.
+const latest = new Date(
+  Math.max(projects[0].data.completedDate.valueOf(), posts[0].data.publishDate.valueOf())
+);
 const year = (d: Date) => d.getFullYear();
 const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 ---
@@ -22,7 +26,7 @@ const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year:
     <section class="intro">
       <h1>I build risk models for on-chain lending, hardware that teaches, and Presto.</h1>
       <p>
-        I'm an engineering student at the University of Michigan and a co-founder of
+        I'm a computer engineering and economics student at the University of Michigan and a co-founder of
         <a href="https://prestorecovery.com">Presto</a>, which finds music royalties that the MLC and
         SoundExchange hold for the wrong party, or for nobody, and claims them.
       </p>
@@ -43,7 +47,7 @@ const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year:
     <section class="block">
       <div class="block-head">
         <h2 class="label">Currently</h2>
-        <span class="label">Sep 2026</span>
+        <span class="label">{month(latest)}</span>
       </div>
       <p>
         Building Presto's recovery engine and keeping

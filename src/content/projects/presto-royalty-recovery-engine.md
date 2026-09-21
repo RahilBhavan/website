@@ -3,7 +3,7 @@ title: "Presto: Royalty Recovery Engine"
 description: "A stdlib-only Python engine that matches a music catalog against MLC and SoundExchange registry data, produces explainable recovery leads, and drives a crash-recoverable claim workflow that can never pay or invoice the same catalog row twice."
 problem: "Songwriters and labels leave royalties unclaimed because the registries that pay them (the MLC for compositions, SoundExchange for recordings) hold shares that are missing, under-claimed, or attached to the wrong party. Finding those gaps means reconciling a partner's catalog against bulk registry feeds with inconsistent identifiers, and any tool that guesses at shares or double-counts a claim creates a financial error rather than fixing one."
 solution: "Built the matching engine, the DDEX BWARM ingester, and the recovery workflow for a three-person founding team: exact ISRC/ISWC matching with a fuzzy fallback and near-tie guard, a streaming parser validated against the official DDEX sample, a workspace with atomic writes, an append-only journal, and an exclusive lock, run-independent entry keys that make double payment or double invoicing impossible by construction, and a SHA-256 packet commitment for timestamping on Base."
-demoUrl: "https://presto-ten-gilt.vercel.app"
+demoUrl: "https://prestorecovery.com"
 completedDate: 2026-09-09
 ---
 
@@ -251,7 +251,7 @@ State is written to a temp file in the same directory and swapped in with `os.re
 
 ## Links & Resources
 
-- **Demo site**: [presto-ten-gilt.vercel.app](https://presto-ten-gilt.vercel.app)
+- **Demo site**: [prestorecovery.com](https://prestorecovery.com)
 - The repository is private
 
 ---

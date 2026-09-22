@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Watts to Tokens</title>
+  <meta name="description" content="A rack-to-grid, KV cache, and dollars-per-token calculator built on the worked examples in the From Watts to Tokens course." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      --bg: #ffffff;
+      --bg-2: #f6f6f6;
+      --fg: #111111;
+      --fg-2: #555555;
+      --fg-3: #767676;
+      --line: #e6e6e6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f0f0f;
+        --bg-2: #1a1a1a;
+        --fg: #ececec;
+        --fg-2: #a3a3a3;
+        --fg-3: #808080;
+        --line: #262626;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { font-family: var(--font-sans); font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body { margin: 0; line-height: 1.6; color: var(--fg); background: var(--bg); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 16px 5rem; }
+    h1 { margin: 0 0 0.75rem; font-size: 1.75rem; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+    h2 { margin: 0 0 1rem; font-size: 1.125rem; font-weight: 600; line-height: 1.25; }
+    p { margin: 0 0 1rem; }
+    a { color: inherit; text-decoration: underline; text-decoration-color: var(--fg-3); text-underline-offset: 0.2em; }
+    a:hover { text-decoration-color: var(--fg); }
+    .intro { color: var(--fg-2); margin-bottom: 2.5rem; }
+    section { border-top: 1px solid var(--line); padding: 2rem 0; }
+    form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--fg-2); }
+    label small { font-size: 0.75rem; color: var(--fg-3); }
+    input, select {
+      font: inherit; font-size: 0.9375rem; color: var(--fg); background: var(--bg-2);
+      border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.5rem; width: 100%;
+    }
+    input:focus, select:focus { outline: 2px solid var(--fg-3); outline-offset: 1px; }
+    dl { margin: 0 0 1rem; display: grid; grid-template-columns: 1fr auto; gap: 0.35rem 1rem; }
+    dt { color: var(--fg-2); }
+    dd { margin: 0; font-family: var(--font-mono); font-size: 0.875rem; text-align: right; }
+    dd span { color: var(--fg-3); }
+    .source { font-family: var(--font-mono); font-size: 0.75rem; color: var(--fg-3); margin: 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Watts to Tokens</h1>
+  <p class="intro">
+    Three small calculators that follow a rack from the grid to the price of a token: rack power and line current,
+    KV cache concurrency, and dollars per million tokens. The formulas and default numbers come from the
+    <a href="https://kiankyars.github.io/gigawatt/">From Watts to Tokens</a> course. Every number names its denominator.
+    Back to <a href="/">rahilbhavan.com</a>.
+  </p>
+
+  <section>
+    <h2>Rack to grid</h2>
+    <form id="rack">
+      <label>GPU count <input type="number" name="gpuCount" value="72" min="1" step="1"></label>
+      <label>Watts per GPU <input type="number" name="wattsPerGpu" value="1400" min="1" step="10"></label>
+      <label>Overhead fraction <small>CPU, NIC, fans, as a fraction of GPU watts</small><input type="number" name="overheadFraction" value="0.3" min="0" step="0.05"></label>
+      <label>Power factor <input type="number" name="powerFactor" value="0.95" min="0.1" max="1" step="0.01"></label>
+      <label>AC voltage, line to line <small>V, three-phase</small><input type="number" name="acVoltage" value="480" min="1" step="1"></label>
+      <label>DC voltage <small>V</small><input type="number" name="dcVoltage" value="800" min="1" step="1"></label>
+      <label>PUE <small>facility energy / IT energy, same period</small><input type="number" name="pue" value="1.2" min="1" step="0.01"></label>
+      <label>Water intake <small>L per IT kWh</small><input type="number" name="litersPerKwh" value="1.25" min="0" step="0.05"></label>
+    </form>
+    <dl>
+      <dt>Rack IT power</dt><dd><output form="rack" name="rackKw"></output> <span>kW per rack</span></dd>
+      <dt>Line current, AC three-phase</dt><dd><output form="rack" name="acAmps"></output> <span>A per line</span></dd>
+      <dt>Conductor current, DC</dt><dd><output form="rack" name="dcAmps"></output> <span>A per conductor</span></dd>
+      <dt>Facility power</dt><dd><output form="rack" name="facilityMw"></output> <span>MW at the meter</span></dd>
+      <dt>Facility energy</dt><dd><output form="rack" name="mwhPerDay"></output> <span>MWh per day</span></dd>
+      <dt>Water intake</dt><dd><output form="rack" name="waterLpd"></output> <span>L per day</span></dd>
+    </dl>
+    <p class="source">Source: <a href="https://kiankyars.github.io/gigawatt/">From Watts to Tokens, draft updated 2026-09-10</a>. 100 kW at 480 V AC draws about 120 A per line; at 800 V DC, 125 A per conductor. 100 MWh IT per day at 1.25 L/kWh is 125,000 L per day.</p>
+  </section>
+
+  <section>
+    <h2>KV cache and concurrency</h2>
+    <form id="kv">
+      <label>Model <small>layers / KV heads / head dim</small>
+        <select name="model">
+          <option value="32,8,128">Llama 3 8B (32 / 8 / 128)</option>
+          <option value="80,8,128" selected>Llama 3.1 70B (80 / 8 / 128)</option>
+          <option value="126,8,128">Llama 3.1 405B (126 / 8 / 128)</option>
+        </select>
+      </label>
+      <label>KV dtype
+        <select name="dtypeBytes">
+          <option value="2" selected>BF16 (2 bytes)</option>
+          <option value="1">FP8 (1 byte)</option>
+        </select>
+      </label>
+      <label>HBM pool for KV cache <small>GiB</small><input type="number" name="poolGib" value="64" min="1" step="1"></label>
+      <label>Context length <small>tokens per request</small><input type="number" name="ctxLen" value="8192" min="1" step="1024"></label>
+    </form>
+    <dl>
+      <dt>KV cache size</dt><dd><output form="kv" name="kibPerToken"></output> <span>KiB per token</span></dd>
+      <dt>Resident requests</dt><dd><output form="kv" name="requests"></output> <span>full-context requests in the pool</span></dd>
+    </dl>
+    <p class="source">Source: <a href="https://kiankyars.github.io/gigawatt/">From Watts to Tokens, draft updated 2026-09-10</a>. Llama 3.1 70B in BF16 is 320 KiB per token; a 64 GiB pool holds 25 requests at 8K context and 6 at 32K. Excludes prefix sharing, block rounding and weights.</p>
+  </section>
+
+  <section>
+    <h2>$/token</h2>
+    <form id="cost">
+      <label>GPU rental <small>$ per GPU-hour. H100 1-yr rental, Apr 2026 range $2.10-2.70; Oct 2025 was $1.45-1.95</small><input type="number" name="gpuHourUsd" value="2.40" min="0" step="0.05"></label>
+      <label>Throughput <small>tokens per second per GPU</small><input type="number" name="tokensPerSecond" value="1000" min="1" step="50"></label>
+    </form>
+    <dl>
+      <dt>Token cost</dt><dd><output form="cost" name="usdPerM"></output> <span>$ per million tokens</span></dd>
+    </dl>
+    <p class="source">Source: <a href="https://kiankyars.github.io/gigawatt/">From Watts to Tokens, draft updated 2026-09-10</a>. Rental ranges are 25th to 75th percentile one-year terms per GPU-hour, dated as labelled. Compute cost only; excludes occupancy, networking and margin.</p>
+  </section>
+</main>
+
+<script type="module">
+  import * as c from '/tools/watts-to-tokens/calc.js';
+
+  const num = (form, name) => Number(form.elements[name].value);
+  const show = (form, name, value, digits) =>
+    (form.elements[name].value = Number.isFinite(value) ? value.toLocaleString('en-US', { maximumFractionDigits: digits }) : '-');
+
+  const rack = document.getElementById('rack');
+  function updateRack() {
+    const rackKw = c.rackPowerKw({ gpuCount: num(rack, 'gpuCount'), wattsPerGpu: num(rack, 'wattsPerGpu'), overheadFraction: num(rack, 'overheadFraction') });
+    const facMw = c.facilityMw({ itKw: rackKw, pue: num(rack, 'pue') });
+    show(rack, 'rackKw', rackKw, 1);
+    show(rack, 'acAmps', c.lineCurrentA({ powerKw: rackKw, voltage: num(rack, 'acVoltage'), powerFactor: num(rack, 'powerFactor'), phases: 3 }), 0);
+    show(rack, 'dcAmps', c.lineCurrentA({ powerKw: rackKw, voltage: num(rack, 'dcVoltage'), phases: 1 }), 0);
+    show(rack, 'facilityMw', facMw, 3);
+    show(rack, 'mwhPerDay', c.mwhPerDay({ facilityMw: facMw }), 2);
+    show(rack, 'waterLpd', c.waterLitersPerDay({ itMwhPerDay: (rackKw * 24) / 1000, litersPerKwh: num(rack, 'litersPerKwh') }), 0);
+  }
+
+  const kv = document.getElementById('kv');
+  function updateKv() {
+    const [layers, kvHeads, headDim] = kv.elements.model.value.split(',').map(Number);
+    const bytes = c.kvBytesPerToken({ layers, kvHeads, headDim, dtypeBytes: num(kv, 'dtypeBytes') });
+    show(kv, 'kibPerToken', bytes / 1024, 1);
+    show(kv, 'requests', c.residentRequests({ poolBytes: num(kv, 'poolGib') * 2 ** 30, ctxLen: num(kv, 'ctxLen'), kvBytesPerToken: bytes }), 0);
+  }
+
+  const cost = document.getElementById('cost');
+  function updateCost() {
+    show(cost, 'usdPerM', c.costPerMillionTokens({ gpuHourUsd: num(cost, 'gpuHourUsd'), tokensPerSecond: num(cost, 'tokensPerSecond') }), 3);
+  }
+
+  for (const [form, fn] of [[rack, updateRack], [kv, updateKv], [cost, updateCost]]) {
+    form.addEventListener('input', fn);
+    fn();
+  }
+</script>
+</body>
+</html>

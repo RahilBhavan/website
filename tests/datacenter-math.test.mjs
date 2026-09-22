@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   pue, lineCurrentA, kvBytesPerToken, residentRequests, waterLitersPerDay,
   coolantTempRiseK, mwhPerDay, costPerMillionTokens,
-} from '../public/tools/watts-to-tokens/calc.js';
+} from '../public/tools/datacenter-math/calc.js';
 
 const near = (a, b, tol) => assert.ok(Math.abs(a - b) < tol, `${a} not within ${tol} of ${b}`);
 

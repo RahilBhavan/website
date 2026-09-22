@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
-  <title>Watts to Tokens</title>
+  <title>Datacenter Math</title>
   <meta name="description" content="A rack-to-grid, KV cache, and dollars-per-token calculator built on the worked examples in the From Watts to Tokens course." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
@@ -56,7 +56,7 @@
 </head>
 <body>
 <main>
-  <h1>Watts to Tokens</h1>
+  <h1>Datacenter Math</h1>
   <p class="intro">
     Three small calculators that follow a rack from the grid to the price of a token: rack power and line current,
     KV cache concurrency, and dollars per million tokens. The formulas and default numbers come from the
@@ -127,7 +127,7 @@
 </main>
 
 <script type="module">
-  import * as c from '/tools/watts-to-tokens/calc.js';
+  import * as c from '/tools/datacenter-math/calc.js';
 
   const num = (form, name) => Number(form.elements[name].value);
   const show = (form, name, value, digits) =>

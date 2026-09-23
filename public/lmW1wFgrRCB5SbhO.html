@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Notes</title>
+<style>
+:root {
+  --bg: #f7f7f8; --fg: #1b1b1f; --muted: #6b6b76; --card: #ffffff; --line: #e3e3e8;
+  --accent: #2f5bd3; --warn: #b3261e; --warn-bg: #fdecea;
+  --p-drafted: #8a8a94; --p-sent: #2f5bd3; --p-followed-up: #7a4fd0; --p-replied: #0e8a6a;
+  --p-scheduled: #b26b00; --p-met: #1f7a1f; --p-no-reply: #9a3b3b;
+  --p-not-started: #8a8a94; --p-building: #b26b00; --p-shipped: #1f7a1f;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131316; --fg: #e8e8ec; --muted: #9a9aa6; --card: #1d1d22; --line: #2e2e36;
+    --accent: #8aa8ff; --warn: #ff8a80; --warn-bg: #3a1d1b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body {
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+main { max-width: 960px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.3rem; margin: 8px 0 16px; }
+h2 { font-size: 1.1rem; margin: 28px 0 10px; }
+h3 { font-size: .95rem; margin: 14px 0 6px; color: var(--muted); }
+button, input { font: inherit; }
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+}
+button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 4px 10px; font-size: .85rem; }
+#lock-screen { min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+#lock-screen form { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+#lock-screen input {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg);
+}
+#err { color: var(--warn); min-height: 1.5em; font-size: .9rem; margin: 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+ul.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.muted { color: var(--muted); }
+.overdue { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
+.pill {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem; color: #fff;
+  background: var(--muted); white-space: nowrap;
+}
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.stats .card { text-align: center; }
+.stats b { display: block; font-size: 1.4rem; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .8rem; color: var(--muted); font-weight: 600; }
+tr.row { cursor: pointer; }
+tr.row:hover { background: var(--bg); }
+tr.detail td { background: var(--bg); }
+.detail-inner { max-width: calc(100vw - 56px); }
+pre.sec {
+  white-space: pre-wrap; word-wrap: break-word; margin: 0; padding: 10px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--card); font: .85rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.projects a { color: var(--accent); word-break: break-all; }
+footer { display: flex; justify-content: space-between; align-items: center; margin: 32px 0 8px; font-size: .8rem; color: var(--muted); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="lock-screen">
+  <form id="unlock" autocomplete="off">
+    <input id="pass" type="password" placeholder="Passphrase" aria-label="Passphrase" required autofocus>
+    <button type="submit">Unlock</button>
+    <p id="err" role="alert"></p>
+  </form>
+</div>
+<main id="app" hidden></main>
+<script type="application/json" id="blob">{"salt":"rawpPdJH9eK+89s1v+ukjw==","iv":"ROuoCiMJEX5nm/Dz","ct":"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","iter":600000}</script>
+<script>
+"use strict";
+(function () {
+  const STATUSES = ["drafted", "sent", "followed-up", "replied", "scheduled", "met", "no-reply"];
+  const lockScreen = document.getElementById("lock-screen");
+  const form = document.getElementById("unlock");
+  const passEl = document.getElementById("pass");
+  const errEl = document.getElementById("err");
+  const app = document.getElementById("app");
+  let data = null;
+
+  function b64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+  async function decrypt(pass) {
+    const blob = JSON.parse(document.getElementById("blob").textContent);
+    const subtle = crypto.subtle;
+    const base = await subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+    const key = await subtle.deriveKey({ name: "PBKDF2", salt: b64(blob.salt), iterations: blob.iter, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const pt = await subtle.decrypt({ name: "AES-GCM", iv: b64(blob.iv) }, key, b64(blob.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  // Tiny DOM builder; strings always become text nodes, never HTML.
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const k in attrs || {}) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "style") n.style.cssText = attrs[k];
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    for (const c of kids.flat(Infinity)) if (c != null && c !== false) n.append(c instanceof Node ? c : String(c));
+    return n;
+  }
+
+  function pill(s) {
+    return el("span", { class: "pill", style: s ? `background: var(--p-${s.replace(/[^a-z-]/g, "")}, var(--muted))` : "" }, s || "none");
+  }
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function safeHref(u) {
+    if (!u) return null;
+    const url = /^https?:\/\//i.test(u) ? u : "https://" + u;
+    try { return new URL(url).protocol.startsWith("http") ? url : null; } catch (_) { return null; }
+  }
+
+  function renderToday(cs, today) {
+    const due = cs.filter(c => c.status === "sent" && c.followup_due && c.followup_due <= today)
+      .sort((a, b) => a.followup_due.localeCompare(b.followup_due));
+    const chats = cs.filter(c => c.status === "scheduled" && c.chat_date && c.chat_date >= today)
+      .sort((a, b) => a.chat_date.localeCompare(b.chat_date));
+    const waiting = cs.filter(c => c.status === "drafted" && c.project_status !== "shipped");
+    const group = (title, items, line) => [
+      el("h3", null, title),
+      items.length ? el("ul", { class: "list" }, items.map(line)) : el("p", { class: "muted" }, "Nothing here."),
+    ];
+    return [
+      el("h2", null, "Today"),
+      group("Follow-ups due", due, c => el("li", { class: "card" + (c.followup_due < today ? " overdue" : "") },
+        el("b", null, c.name), ` · ${c.company || ""} · due ${c.followup_due}`, c.followup_due < today ? " (overdue)" : "")),
+      group("Upcoming chats", chats, c => el("li", { class: "card" }, el("b", null, c.name), ` · ${c.company || ""} · ${c.chat_date}`)),
+      group("Drafts waiting on a project", waiting, c => el("li", { class: "card" },
+        el("b", null, c.name), ` · ${c.project || "no project"} `, pill(c.project_status))),
+    ];
+  }
+
+  function renderPipeline(cs) {
+    const n = s => cs.filter(c => c.status === s).length;
+    const denom = cs.filter(c => c.status !== "drafted").length;
+    const rate = denom ? Math.round(100 * (n("replied") + n("scheduled") + n("met")) / denom) + "%" : "n/a";
+    return [
+      el("h2", null, "Pipeline"),
+      el("div", { class: "stats" },
+        STATUSES.map(s => el("div", { class: "card" }, el("b", null, n(s)), pill(s))),
+        el("div", { class: "card" }, el("b", null, rate), el("span", { class: "muted" }, "reply rate"))),
+    ];
+  }
+
+  function renderSection(sec) {
+    const pre = el("pre", { class: "sec" });
+    pre.textContent = sec.text.replace(/\*\*/g, "");
+    const btn = el("button", { class: "ghost", type: "button", onclick: async ev => {
+      ev.stopPropagation();
+      try { await navigator.clipboard.writeText(pre.textContent); btn.textContent = "Copied"; }
+      catch (_) { btn.textContent = "Copy failed"; }
+      setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+    } }, "Copy");
+    return el("div", null, el("div", { class: "sec-head" }, el("h3", null, sec.title), btn), pre);
+  }
+
+  function renderConnections(cs) {
+    const cols = ["Name", "Company", "Role", "Status", "Sent", "Follow-up due", "Project"];
+    const body = el("tbody");
+    for (const c of cs) {
+      const detail = el("tr", { class: "detail", hidden: "" },
+        el("td", { colspan: cols.length }, el("div", { class: "detail-inner" },
+          (c.sections || []).length ? c.sections.map(renderSection) : el("p", { class: "muted" }, "No notes."))));
+      const row = el("tr", { class: "row", onclick: () => { detail.hidden = !detail.hidden; } },
+        el("td", null, el("b", null, c.name || c.file)), el("td", null, c.company), el("td", null, c.role),
+        el("td", null, pill(c.status)), el("td", null, c.sent), el("td", null, c.followup_due), el("td", null, c.project));
+      body.append(row, detail);
+    }
+    return [
+      el("h2", null, "Connections"),
+      el("div", { class: "table-wrap" }, el("table", null,
+        el("thead", null, el("tr", null, cols.map(h => el("th", null, h)))), body)),
+    ];
+  }
+
+  function renderProjects(cs) {
+    const ps = cs.filter(c => c.project);
+    const owed = ps.filter(c => c.project_status !== "shipped").reduce((t, c) => t + (parseFloat(c.project_hours) || 0), 0);
+    return [
+      el("h2", null, "Projects"),
+      el("p", null, "Hours still owed: ", el("b", null, owed)),
+      ps.length ? el("div", { class: "projects" }, ps.map(c => {
+        const href = safeHref(c.project_link);
+        return el("div", { class: "card" },
+          el("b", null, c.project), el("div", { class: "muted" }, c.name),
+          el("div", null, pill(c.project_status), c.project_hours ? ` ${c.project_hours} h` : ""),
+          href ? el("div", null, el("a", { href, target: "_blank", rel: "noopener noreferrer" }, c.project_link)) : null);
+      })) : el("p", { class: "muted" }, "No projects."),
+    ];
+  }
+
+  function render() {
+    const cs = data.connections || [];
+    const today = todayStr();
+    app.replaceChildren(
+      el("h1", null, "Dashboard"),
+      ...[renderToday(cs, today), renderPipeline(cs), renderConnections(cs), renderProjects(cs)].flat(Infinity),
+      el("footer", null, el("span", null, "Generated " + new Date(data.generated).toLocaleString()),
+        el("button", { type: "button", onclick: lock }, "Lock")));
+    lockScreen.hidden = true;
+    app.hidden = false;
+  }
+
+  function lock() {
+    data = null;
+    app.replaceChildren();
+    app.hidden = true;
+    lockScreen.hidden = false;
+    passEl.value = "";
+    errEl.textContent = "";
+    passEl.focus();
+  }
+
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    errEl.textContent = "";
+    const btn = form.querySelector("button");
+    btn.disabled = true;
+    try {
+      data = await decrypt(passEl.value);
+      passEl.value = "";
+      render();
+    } catch (_) {
+      errEl.textContent = "Wrong passphrase.";
+      passEl.select();
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

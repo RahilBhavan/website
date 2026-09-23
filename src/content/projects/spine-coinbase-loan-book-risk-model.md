@@ -2,7 +2,7 @@
 title: "Spine: Coinbase Loan Book Risk Model"
 tagline: "Live risk dashboard and liquidation backtest over Coinbase's $1.6B Morpho loan book"
 description: "A live risk dashboard and liquidation-queue backtest over Coinbase's on-chain loan book on Morpho (Base): $1.6B of debt, 67,000+ positions, replayed through seven crash paths to argue what haircut BTC and ETH collateral should take."
-problem: "Coinbase lends USDC against cbBTC and ETH on Morpho at an 86% liquidation LTV. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. Nobody had replayed today's book through a March 2020 style cliff with liquidators and borrowers behaving the way the lived events show they behave."
+problem: "Coinbase's app routes USDC loans against cbBTC and ETH to Morpho markets on Base at an 86% liquidation LTV, funded by Morpho vault suppliers. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. Nobody had replayed today's book through a March 2020 style cliff with liquidators and borrowers behaving the way the lived events show they behave."
 solution: "Built a stdlib-only Python pipeline that fetches every position, liquidation, oracle update, and order book snapshot from public sources, calibrates liquidator latency and borrower response on the three lived events, and replays the book through seven historical crash paths under alternative LLTVs and liquidator capacity scenarios. The result is an hourly-refreshed dashboard on GitHub Pages and a written recommendation per asset."
 demoUrl: "https://rahilbhavan.github.io/spine"
 githubUrl: "https://github.com/RahilBhavan/spine"
@@ -12,19 +12,21 @@ completedDate: 2026-09-19
 ---
 ## Overview
 
-**What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase lends USDC against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
+**What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase's app routes USDC loans against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
 
-**Why it matters:** The book is $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt on Morpho is socialized to USDC suppliers, which includes depositors in the Coinbase USDC lending product. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.
+**Why it matters:** The book is $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt falls on the Morpho vault suppliers who fund these markets, not on Coinbase's balance sheet. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.
 
 **Who it's for:** Risk teams at lenders and protocols, USDC suppliers to these markets, and anyone who wants a reproducible answer to "what haircut should this collateral take" rather than a rule of thumb.
 
 **Impact:** A public dashboard that refreshes hourly, a written recommendation per asset (cbBTC 86% to 80% LLTV with a committed backstop liquidator first, WETH 77%, alt book caps tied to Coinbase's own depth), and a changelog showing how the answer moved as bugs were fixed. Every number in the writeup is printed by a script from generated data.
 
+**Scope:** Independent analysis from public on-chain data. Not affiliated with or endorsed by Coinbase or Morpho.
+
 ## The Problem
 
 ### The Challenge
 
-Coinbase lends USDC against cbBTC and ETH on Morpho (Base) at an 86% liquidation LTV with a 4.38% liquidation bonus. The cbBTC market alone is $1.41B of debt against $2.86B of collateral, 39,000 positions. It has been through three real stress events (Oct 2025, Feb 2026, Jun 2026), cleared $256M of liquidations in the four stress weeks alone, and taken zero bad debt.
+Coinbase's app routes USDC loans against cbBTC and ETH to Morpho (Base) at an 86% liquidation LTV with a 4.38% liquidation bonus. The cbBTC market alone is $1.41B of debt against $2.86B of collateral, 39,000 positions. It has been through three real stress events (Oct 2025, Feb 2026, Jun 2026), cleared $256M of liquidations in the four stress weeks alone, and taken zero bad debt.
 
 That record is not the test. The lived events gave borrowers hours to days of warning before liquidation; March 2020 gave 25 minutes. A -10% instantaneous move puts $30M of debt over the 86% line; -20%, $112M; -30%, $336M.
 
@@ -241,7 +243,7 @@ Percentages are of the $1.58B USDC supplied to the market.
 
 ### Engineering
 
-- 79 commits, 2,412 lines of Python across the `spine/` package, 12 tests
+- 110 commits, 2,648 lines of Python across the `spine/` package, 18 tests
 - Every fetcher stdlib-only and resumable; `backtest.py` needs numpy
 - Hourly refresh and Pages deploy via GitHub Actions
 

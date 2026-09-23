@@ -73,7 +73,7 @@ Ties split the credit. Control failures tie at 25% each because the seeded failu
 ## What to Open First
 
 1. **Operator report**: [rahilbhavan.github.io/x402-exception-desk](https://rahilbhavan.github.io/x402-exception-desk/). Each case's evidence timeline, payment, delivery, and refund state, and the policy comparison.
-2. **Decision memo (PDF)**: [the policy decision and the strongest argument against FIFO](https://github.com/RahilBhavan/x402-exception-desk/blob/main/artifacts/operations-memo.pdf).
+2. **Decision memo (PDF)**: [the policy decision and the strongest argument against FIFO](https://rahilbhavan.github.io/x402-exception-desk/operations-memo.pdf).
 3. **Repository**: [github.com/RahilBhavan/x402-exception-desk](https://github.com/RahilBhavan/x402-exception-desk). The reducer, oracle, state model, and operator runbook.
 
 ## Scope & Limits

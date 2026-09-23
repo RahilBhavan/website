@@ -143,6 +143,8 @@ const path = Astro.url.pathname;
 
   main {
     flex: 1;
+    /* .wrap's auto margins stop flex stretch, so pin the width or wide tables widen the page */
+    width: 100%;
   }
 
   a {
@@ -364,6 +366,14 @@ const path = Astro.url.pathname;
     border-collapse: collapse;
     font-size: 0.9375rem;
     margin: 1.25rem 0;
+  }
+
+  /* Wide tables scroll inside themselves on phones instead of widening the page */
+  @media (max-width: 40rem) {
+    .prose table {
+      display: block;
+      overflow-x: auto;
+    }
   }
 
   .prose th, .prose td {

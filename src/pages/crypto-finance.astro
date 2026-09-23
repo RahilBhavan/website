@@ -1,0 +1,125 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = true;
+
+const description =
+  'Four independent projects on how crypto lending, payments and revenue work, built from public data. Each has a live demo, a write-up and the code.';
+
+const cards = [
+  {
+    title: 'Spine: Coinbase loan book risk model',
+    result: 'Replays a $1.6B Morpho loan book through March 2020: $9M realized loss, but $158M (10% of supply) unserved at the trough.',
+    demo: 'https://rahilbhavan.github.io/spine/',
+    page: '/projects/spine-coinbase-loan-book-risk-model',
+    code: 'https://github.com/RahilBhavan/spine',
+  },
+  {
+    title: 'MARA credit case',
+    result: 'Cuts a $5.0M secured revolver request to a conditional $3.0M limit, set by stressed collateral at 1.25x coverage.',
+    demo: 'https://rahilbhavan.github.io/mara-credit-case/',
+    page: '/projects/mara-credit-case',
+    code: 'https://github.com/RahilBhavan/mara-credit-case',
+  },
+  {
+    title: 'COIN revenue bridge',
+    result: 'Volume drove $852.9M to $859.9M of Coinbase\'s $863.8M Q3 to Q4 2024 consumer revenue rise.',
+    demo: 'https://rahilbhavan.github.io/coin-revenue-bridge/',
+    page: '/projects/coin-revenue-bridge',
+    code: 'https://github.com/RahilBhavan/coin-revenue-bridge',
+  },
+  {
+    title: 'x402 exception desk',
+    result: 'Deadline-first queueing cut value-weighted overdue time 64% on synthetic x402 payments, but failed its gate, so FIFO stays.',
+    demo: 'https://rahilbhavan.github.io/x402-exception-desk/',
+    page: '/projects/x402-exception-desk',
+    code: 'https://github.com/RahilBhavan/x402-exception-desk',
+  },
+];
+---
+
+<BaseLayout title="Crypto finance case studies" description={description}>
+  <main class="wrap page">
+    <h1>Crypto finance case studies</h1>
+    <p class="muted intro">
+      Four independent projects on how crypto lending, payments and revenue work, built from public
+      data. Each has a live demo, a write-up and the code.
+    </p>
+
+    <ul class="cards">
+      {cards.map((c) => (
+        <li class="card">
+          <a href={c.page} class="card-title">{c.title}</a>
+          <p class="card-result">{c.result}</p>
+          <span class="card-links">
+            <a href={c.demo} rel="noopener">Live demo</a>
+            <a href={c.page}>Write-up page</a>
+            <a href={c.code} rel="noopener">Code</a>
+          </span>
+        </li>
+      ))}
+    </ul>
+
+    <p class="label note">Not affiliated with or endorsed by Coinbase, MARA or Morpho.</p>
+  </main>
+</BaseLayout>
+
+<style>
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .intro {
+    margin: 0 0 2rem;
+  }
+
+  .cards {
+    list-style: none;
+  }
+
+  .card {
+    padding: 1rem 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .card-title {
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .card-title:hover {
+    text-decoration: underline;
+  }
+
+  .card-result {
+    margin: 0.25rem 0 0.5rem;
+    color: var(--fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .card-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--fg-3);
+  }
+
+  .card-links a {
+    text-decoration: none;
+  }
+
+  .card-links a:hover {
+    color: var(--fg);
+  }
+
+  .note {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+</style>

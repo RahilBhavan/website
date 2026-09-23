@@ -18,6 +18,7 @@ const year = (d: Date) => d.getFullYear();
   <main class="wrap page">
     <h1>Projects</h1>
     <p class="muted">Builds, risk models, and consulting work, each with the code or demo where it exists.</p>
+    <p class="hub"><a href="/crypto-finance">Crypto finance case studies</a>: four projects on crypto lending, payments and revenue.</p>
 
     <ul class="rows">
       {projects.map((p) => (
@@ -46,7 +47,12 @@ const year = (d: Date) => d.getFullYear();
   }
 
   h1 + p {
+    margin: 0 0 1rem;
+  }
+
+  .hub {
     margin: 0 0 2rem;
+    font-size: 0.9375rem;
   }
 
   .rows {

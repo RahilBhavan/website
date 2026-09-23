@@ -5,103 +5,317 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
 <title>Notes</title>
 <style>
+/* Vercel/Geist-inspired tokens. Fonts come from the system only: no third-party requests on a private page. */
 :root {
-  --bg: #f7f7f8; --fg: #1b1b1f; --muted: #6b6b76; --card: #ffffff; --line: #e3e3e8;
-  --accent: #2f5bd3; --warn: #b3261e; --warn-bg: #fdecea;
-  --p-drafted: #8a8a94; --p-sent: #2f5bd3; --p-followed-up: #7a4fd0; --p-replied: #0e8a6a;
-  --p-scheduled: #b26b00; --p-met: #1f7a1f; --p-no-reply: #9a3b3b;
-  --p-not-started: #8a8a94; --p-building: #b26b00; --p-shipped: #1f7a1f;
+  --ink: #171717; --body: #4d4d4d; --mute: #737373; --hairline: #ebebeb; --hairline-strong: #a1a1a1;
+  --canvas: #ffffff; --canvas-soft: #fafafa; --canvas-soft-2: #f5f5f5;
+  --on-primary: #ffffff; --link: #0070f3;
+  --error: #c50000; --error-soft: #fdeced;
+  --ring: 0 0 0 1px #00000014;
+  --shadow: 0 0 0 1px #00000014, 0 1px 1px #00000005, 0 2px 2px #0000000a;
+  --shadow-lg: 0 0 0 1px #00000014, 0 1px 1px #00000005, 0 8px 16px -4px #0000000a, 0 24px 32px -8px #0000000f;
+  /* stage badges: soft fill + deep text, never color alone (the label is always printed) */
+  --s-drafted: #f2f2f2; --s-drafted-fg: #4d4d4d;
+  --s-sent: #e6f0ff; --s-sent-fg: #0761d1;
+  --s-followed-up: #efe8fb; --s-followed-up-fg: #4c2889;
+  --s-replied: #dcfaf2; --s-replied-fg: #1a7a64;
+  --s-scheduled: #fff4dc; --s-scheduled-fg: #8a4608;
+  --s-met: #171717; --s-met-fg: #ffffff;
+  --s-no-reply: #fdeced; --s-no-reply-fg: #a30000;
+  --s-not-started: #f2f2f2; --s-not-started-fg: #4d4d4d;
+  --s-building: #fff4dc; --s-building-fg: #8a4608;
+  --s-shipped: #dcfaf2; --s-shipped-fg: #1a7a64;
+  --sans: "Geist", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131316; --fg: #e8e8ec; --muted: #9a9aa6; --card: #1d1d22; --line: #2e2e36;
-    --accent: #8aa8ff; --warn: #ff8a80; --warn-bg: #3a1d1b;
+    --ink: #ededed; --body: #a1a1a1; --mute: #8f8f8f; --hairline: #262626; --hairline-strong: #525252;
+    --canvas: #0a0a0a; --canvas-soft: #111111; --canvas-soft-2: #1a1a1a;
+    --on-primary: #0a0a0a; --link: #52a8ff;
+    --error: #ff6166; --error-soft: #2a1314;
+    --ring: 0 0 0 1px #ffffff17;
+    --shadow: 0 0 0 1px #ffffff17;
+    --shadow-lg: 0 0 0 1px #ffffff17, 0 24px 32px -8px #00000080;
+    --s-drafted: #1f1f1f; --s-drafted-fg: #a1a1a1;
+    --s-sent: #0d1f3a; --s-sent-fg: #7ab8ff;
+    --s-followed-up: #231637; --s-followed-up-fg: #c4a8f0;
+    --s-replied: #0b2a23; --s-replied-fg: #50e3c2;
+    --s-scheduled: #2e1f07; --s-scheduled-fg: #f5b74f;
+    --s-met: #ededed; --s-met-fg: #0a0a0a;
+    --s-no-reply: #2a1314; --s-no-reply-fg: #ff8a8e;
+    --s-not-started: #1f1f1f; --s-not-started-fg: #a1a1a1;
+    --s-building: #2e1f07; --s-building-fg: #f5b74f;
+    --s-shipped: #0b2a23; --s-shipped-fg: #50e3c2;
   }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--fg); }
-body {
-  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: hidden;
-}
-main { max-width: 960px; margin: 0 auto; padding: 16px; }
-h1 { font-size: 1.3rem; margin: 8px 0 16px; }
-h2 { font-size: 1.1rem; margin: 28px 0 10px; }
-h3 { font-size: .95rem; margin: 14px 0 6px; color: var(--muted); }
-button, input { font: inherit; }
-button {
-  background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer;
-}
-button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 4px 10px; font-size: .85rem; }
-#lock-screen { min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
-#lock-screen form { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
-#lock-screen input {
-  padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg);
-}
-#err { color: var(--warn); min-height: 1.5em; font-size: .9rem; margin: 0; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
-ul.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.muted { color: var(--muted); }
-.overdue { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
-.pill {
-  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem; color: #fff;
-  background: var(--muted); white-space: nowrap;
-}
-.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
-.stats .card { text-align: center; }
-.stats b { display: block; font-size: 1.4rem; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
-table { border-collapse: collapse; width: 100%; min-width: 640px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-size: .8rem; color: var(--muted); font-weight: 600; }
-tr.row { cursor: pointer; }
-tr.row:hover { background: var(--bg); }
-tr.detail td { background: var(--bg); }
-.detail-inner { max-width: calc(100vw - 56px); }
-pre.sec {
-  white-space: pre-wrap; word-wrap: break-word; margin: 0; padding: 10px; border: 1px solid var(--line);
-  border-radius: 6px; background: var(--card); font: .85rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-.projects a { color: var(--accent); word-break: break-all; }
-footer { display: flex; justify-content: space-between; align-items: center; margin: 32px 0 8px; font-size: .8rem; color: var(--muted); }
+html, body { margin: 0; background: var(--canvas-soft); color: var(--ink); }
+body { font: 400 14px/20px var(--sans); letter-spacing: -0.28px; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--ink); color: var(--canvas); }
+button, input { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 [hidden] { display: none !important; }
+.mono { font: 400 12px/16px var(--mono); letter-spacing: 0; }
+.muted { color: var(--mute); }
+
+/* buttons: in-app scale, 6px radius everywhere */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px;
+  border: 0; border-radius: 6px; font-weight: 500; cursor: pointer; white-space: nowrap;
+  background: var(--canvas); color: var(--ink); box-shadow: var(--ring); transition: background .15s, transform .1s;
+}
+.btn:hover { background: var(--canvas-soft-2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--ink); color: var(--on-primary); box-shadow: none; }
+.btn.primary:hover { opacity: .88; }
+.btn.sm { height: 28px; padding: 0 8px; font-size: 13px; }
+.btn:disabled { opacity: .6; cursor: progress; }
+
+/* lock screen: the only place the brand gradient appears */
+#lock-screen {
+  min-height: 100dvh; display: grid; place-items: center; padding: 16px; position: relative; overflow: hidden;
+}
+#lock-screen::before {
+  content: ""; position: absolute; inset: -20% -10% auto; height: 70%; pointer-events: none; opacity: .22; filter: blur(60px);
+  background:
+    radial-gradient(40% 60% at 20% 50%, #007cf0, transparent 70%),
+    radial-gradient(35% 55% at 50% 40%, #ff0080, transparent 70%),
+    radial-gradient(40% 60% at 80% 55%, #f9cb28, transparent 70%);
+}
+.lock-card {
+  position: relative; width: 100%; max-width: 360px; padding: 32px; border-radius: 12px;
+  background: var(--canvas); box-shadow: var(--shadow-lg); display: grid; gap: 16px;
+}
+.lock-card h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.96px; }
+.lock-card p { margin: 0; }
+.field { display: grid; gap: 8px; }
+.field label { font-weight: 500; }
+.input {
+  height: 40px; padding: 0 12px; border-radius: 6px; border: 0; background: var(--canvas);
+  box-shadow: 0 0 0 1px var(--hairline-strong); width: 100%;
+}
+.input:focus { outline: none; box-shadow: 0 0 0 1px var(--ink), 0 0 0 4px color-mix(in srgb, var(--ink) 12%, transparent); }
+.input::placeholder { color: var(--mute); }
+.lock-card .btn { height: 40px; width: 100%; }
+#err { color: var(--error); min-height: 20px; }
+
+/* app shell */
+header.bar {
+  position: sticky; top: 0; z-index: 10; height: 56px; border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--canvas) 85%, transparent); backdrop-filter: saturate(180%) blur(8px);
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+header.bar .wrap { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-weight: 600; letter-spacing: -0.6px; font-size: 16px; display: flex; align-items: baseline; gap: 12px; }
+main.wrap { padding-top: 40px; padding-bottom: 64px; }
+section { margin-bottom: 48px; }
+h2 { margin: 0 0 16px; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.6px; }
+.lead { margin: -8px 0 16px; color: var(--body); }
+.hero h2 { font-size: 32px; line-height: 40px; letter-spacing: -1.28px; margin-bottom: 8px; }
+.hero .lead { margin: 0 0 24px; font-size: 16px; line-height: 24px; }
+
+.panel { background: var(--canvas); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+
+/* action queue */
+.queue { list-style: none; margin: 0; padding: 0; }
+.queue li { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 16px; }
+.queue li + li { border-top: 1px solid var(--hairline); }
+.queue .main { flex: 1 1 260px; display: grid; gap: 2px; min-width: 0; }
+.queue .who { font-weight: 500; }
+.queue .what { color: var(--body); }
+.queue .when { text-align: right; white-space: nowrap; }
+.queue li.waiting .what, .queue li.waiting .when { color: var(--mute); }
+.queue li.late .when { color: var(--error); }
+.empty { padding: 32px 16px; text-align: center; color: var(--body); background: var(--canvas-soft); }
+
+/* pipeline strip */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); }
+.stat { padding: 16px; display: grid; gap: 8px; align-content: start; border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.stat:nth-child(4n) { border-right: 0; }
+.stat:nth-last-child(-n+4) { border-bottom: 0; }
+.stat b { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.96px; font-variant-numeric: tabular-nums; }
+.stat.key { background: var(--canvas-soft); }
+
+.badge {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 9999px;
+  font: 500 12px/16px var(--sans); letter-spacing: 0; white-space: nowrap; justify-self: start;
+  background: var(--s-drafted); color: var(--s-drafted-fg);
+}
+
+/* connections */
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+.toolbar .input { height: 32px; max-width: 260px; flex: 1 1 200px; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.tab {
+  height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--body);
+  cursor: pointer; white-space: nowrap;
+}
+.tab:hover { color: var(--ink); background: var(--canvas-soft-2); }
+.tab[aria-pressed="true"] { color: var(--ink); background: var(--canvas); box-shadow: var(--ring); font-weight: 500; }
+.tab .n { color: var(--mute); margin-left: 4px; font: 400 12px/16px var(--mono); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; }
+th {
+  text-align: left; padding: 8px 12px; background: var(--canvas-soft); border-bottom: 1px solid var(--hairline);
+  font: 400 12px/16px var(--mono); color: var(--mute); text-transform: uppercase; letter-spacing: 0; white-space: nowrap;
+}
+td { padding: 12px; border-bottom: 1px solid var(--hairline); vertical-align: middle; white-space: nowrap; }
+tr.detail td { white-space: normal; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.row:hover td { background: var(--canvas-soft); }
+.expander {
+  all: unset; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; border-radius: 4px;
+}
+.expander:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.chev { width: 16px; color: var(--mute); transition: transform .15s; display: inline-block; text-align: center; }
+.expander[aria-expanded="true"] .chev { transform: rotate(90deg); }
+tr.detail td { background: var(--canvas-soft); padding: 16px 16px 24px 40px; }
+.secs { display: grid; gap: 16px; max-width: min(760px, calc(100vw - 88px)); }
+.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sec-head h3 { margin: 0; font-size: 14px; font-weight: 500; }
+pre.sec {
+  margin: 0; padding: 12px 16px; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 8px;
+  background: var(--canvas); box-shadow: var(--ring); font: 400 13px/20px var(--mono); color: var(--body);
+}
+.late-text { color: var(--error); }
+
+/* status dropdown: native select (keyboard + mobile pickers for free), tinted like the badges */
+.pick { position: relative; display: inline-flex; }
+.pick select {
+  appearance: none; -webkit-appearance: none; height: 28px; padding: 0 28px 0 10px; border: 0; border-radius: 6px;
+  font: 500 13px/16px var(--sans); letter-spacing: 0; cursor: pointer;
+  background: var(--s-drafted); color: var(--s-drafted-fg); box-shadow: inset 0 0 0 1px #0000000d;
+}
+.pick::after {
+  content: ""; position: absolute; right: 11px; top: 10px; width: 5px; height: 5px; pointer-events: none;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); opacity: .7;
+}
+.pick select option { background: var(--canvas); color: var(--ink); }
+.pick.pending select { box-shadow: 0 0 0 1.5px var(--link); }
+.sub { display: block; margin-top: 4px; }
+.date { height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--canvas); box-shadow: var(--ring); font-size: 13px; }
+
+.notice {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; margin-bottom: 32px; border-radius: 8px; background: var(--canvas); box-shadow: 0 0 0 1px var(--link);
+}
+.notice p { margin: 0; }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; padding: 8px 16px; border-radius: 8px;
+  background: var(--ink); color: var(--canvas); box-shadow: var(--shadow-lg); font-weight: 500;
+}
+
+/* projects */
+.projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.project { padding: 24px; display: grid; gap: 12px; align-content: start; }
+.project .title { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.32px; }
+.project .meta { display: flex; gap: 12px; align-items: center; }
+.project a { color: var(--link); text-decoration: none; overflow-wrap: anywhere; }
+.project a:hover { text-decoration: underline; }
+
+footer { border-top: 1px solid var(--hairline); padding: 24px 0 40px; color: var(--mute); }
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 16px; }
+  main.wrap { padding-top: 24px; }
+  .hero h2 { font-size: 24px; line-height: 32px; letter-spacing: -0.96px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(4n) { border-right: 1px solid var(--hairline); }
+  .stat:nth-child(2n) { border-right: 0; }
+  .stat:nth-last-child(-n+4) { border-bottom: 1px solid var(--hairline); }
+  .stat:nth-last-child(-n+2) { border-bottom: 0; }
+  .toolbar .input { max-width: none; }
+  tr.detail td { padding-left: 16px; }
+  .secs { max-width: calc(100vw - 64px); }
+  .brand .mono { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <div id="lock-screen">
-  <form id="unlock" autocomplete="off">
-    <input id="pass" type="password" placeholder="Passphrase" aria-label="Passphrase" required autofocus>
-    <button type="submit">Unlock</button>
+  <form id="unlock" class="lock-card" autocomplete="off">
+    <h1>Networking.</h1>
+    <p class="muted">This page is encrypted. It decrypts in your browser.</p>
+    <div class="field">
+      <label for="pass">Passphrase</label>
+      <input id="pass" class="input" type="password" required autofocus>
+    </div>
+    <button class="btn primary" type="submit">Unlock</button>
     <p id="err" role="alert"></p>
   </form>
 </div>
-<main id="app" hidden></main>
-<script type="application/json" id="blob">{"salt":"rawpPdJH9eK+89s1v+ukjw==","iv":"ROuoCiMJEX5nm/Dz","ct":"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","iter":600000}</script>
+<div id="app" hidden></div>
+<script type="application/json" id="blob">{"salt":"GRA1qUXlo/sA2941rQbwpQ==","iv":"gA+R4YvAFVFNBxYP","ct":"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","iter":600000}</script>
 <script>
 "use strict";
 (function () {
   const STATUSES = ["drafted", "sent", "followed-up", "replied", "scheduled", "met", "no-reply"];
+  const LABELS = {
+    drafted: "Drafted", sent: "Sent, waiting", "followed-up": "Followed up, waiting", replied: "Replied",
+    scheduled: "Chat scheduled", met: "Met", "no-reply": "No reply",
+    "not-started": "Not started", building: "Building", shipped: "Shipped",
+  };
+  const STORE = "networking-dashboard-local";
   const lockScreen = document.getElementById("lock-screen");
   const form = document.getElementById("unlock");
   const passEl = document.getElementById("pass");
   const errEl = document.getElementById("err");
   const app = document.getElementById("app");
-  let data = null;
+  let data = null;                      // decrypted build: { generated, connections }
+  let local = {};                       // edits made here, by file: { status, sent?, followup_due?, chat_date? }
+  let localKey = null, localSalt = null;
+  const view = { q: "", status: "all", open: new Set() };
 
+  const enc = s => new TextEncoder().encode(s);
+  const dec = b => new TextDecoder().decode(b);
   function b64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+  function toB64(u8) { let s = ""; for (const x of u8) s += String.fromCharCode(x); return btoa(s); }
+  function readStore() { try { return JSON.parse(localStorage.getItem(STORE)); } catch (_) { return null; } }
 
-  async function decrypt(pass) {
+  async function unlock(pass) {
     const blob = JSON.parse(document.getElementById("blob").textContent);
+    const saved = readStore();
     const subtle = crypto.subtle;
-    const base = await subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
-    const key = await subtle.deriveKey({ name: "PBKDF2", salt: b64(blob.salt), iterations: blob.iter, hash: "SHA-256" },
-      base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const base = await subtle.importKey("raw", enc(pass), "PBKDF2", false, ["deriveKey"]);
+    const derive = salt => subtle.deriveKey({ name: "PBKDF2", salt, iterations: blob.iter, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    // Local edits keep their own salt: the build's salt changes on every deploy and the edits must outlive it.
+    const salt = saved && saved.salt ? b64(saved.salt) : crypto.getRandomValues(new Uint8Array(16));
+    const [key, lkey] = await Promise.all([derive(b64(blob.salt)), derive(salt)]);
     const pt = await subtle.decrypt({ name: "AES-GCM", iv: b64(blob.iv) }, key, b64(blob.ct));
-    return JSON.parse(new TextDecoder().decode(pt));
+    data = JSON.parse(dec(pt));
+    localKey = lkey; localSalt = salt; local = {};
+    if (saved && saved.ct) {
+      try { local = JSON.parse(dec(await subtle.decrypt({ name: "AES-GCM", iv: b64(saved.iv) }, lkey, b64(saved.ct)))); }
+      catch (_) { local = {}; } // written under another passphrase; the next edit replaces it
+    }
+    // Drop edits the markdown files have caught up with.
+    let pruned = false;
+    for (const f of Object.keys(local)) {
+      const c = (data.connections || []).find(x => x.file === f);
+      if (!c || Object.keys(local[f]).every(k => k === "status" ? c.status === local[f].status : !!c[k])) { delete local[f]; pruned = true; }
+    }
+    if (pruned) await saveLocal();
+  }
+
+  async function saveLocal() {
+    try {
+      if (!Object.keys(local).length) { localStorage.removeItem(STORE); return true; }
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, localKey, enc(JSON.stringify(local))));
+      localStorage.setItem(STORE, JSON.stringify({ salt: toB64(localSalt), iv: toB64(iv), ct: toB64(ct) }));
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function connections() {
+    return (data.connections || []).map(c => local[c.file] ? Object.assign({}, c, local[c.file], { local: true }) : c);
   }
 
   // Tiny DOM builder; strings always become text nodes, never HTML.
@@ -117,13 +331,40 @@ footer { display: flex; justify-content: space-between; align-items: center; mar
     return n;
   }
 
-  function pill(s) {
-    return el("span", { class: "pill", style: s ? `background: var(--p-${s.replace(/[^a-z-]/g, "")}, var(--muted))` : "" }, s || "none");
+  function tint(s) {
+    const k = (s || "").replace(/[^a-z-]/g, "");
+    return k ? `background: var(--s-${k}, var(--s-drafted)); color: var(--s-${k}-fg, var(--s-drafted-fg))` : "";
   }
+  function label(s) { return LABELS[s] || (s ? s.replace(/-/g, " ") : "No status"); }
+  function badge(s) { return el("span", { class: "badge", style: tint(s) }, label(s)); }
 
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  // Same rule as build.js: follow up 5 business days after sending.
+  function addBusinessDays(ymd, n) {
+    const d = new Date(ymd + "T00:00:00Z");
+    while (n > 0) { d.setUTCDate(d.getUTCDate() + 1); const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) n--; }
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Whole days from `from` to `to` (both YYYY-MM-DD); NaN if either is bad.
+  function days(from, to) { return Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / 864e5); }
+
+  function shortDate(ymd) {
+    const t = Date.parse(ymd + "T00:00:00Z");
+    return isNaN(t) ? ymd || "" : new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  }
+
+  function relDate(ymd, today) {
+    const d = days(today, ymd);
+    if (isNaN(d)) return ymd || "";
+    if (d === 0) return "today";
+    if (d === 1) return "tomorrow";
+    if (d === -1) return "yesterday";
+    return d > 0 ? `in ${d} days` : `${-d} days ago`;
   }
 
   function safeHref(u) {
@@ -132,99 +373,220 @@ footer { display: flex; justify-content: space-between; align-items: center; mar
     try { return new URL(url).protocol.startsWith("http") ? url : null; } catch (_) { return null; }
   }
 
-  function renderToday(cs, today) {
-    const due = cs.filter(c => c.status === "sent" && c.followup_due && c.followup_due <= today)
-      .sort((a, b) => a.followup_due.localeCompare(b.followup_due));
-    const chats = cs.filter(c => c.status === "scheduled" && c.chat_date && c.chat_date >= today)
-      .sort((a, b) => a.chat_date.localeCompare(b.chat_date));
-    const waiting = cs.filter(c => c.status === "drafted" && c.project_status !== "shipped");
-    const group = (title, items, line) => [
-      el("h3", null, title),
-      items.length ? el("ul", { class: "list" }, items.map(line)) : el("p", { class: "muted" }, "Nothing here."),
-    ];
-    return [
-      el("h2", null, "Today"),
-      group("Follow-ups due", due, c => el("li", { class: "card" + (c.followup_due < today ? " overdue" : "") },
-        el("b", null, c.name), ` · ${c.company || ""} · due ${c.followup_due}`, c.followup_due < today ? " (overdue)" : "")),
-      group("Upcoming chats", chats, c => el("li", { class: "card" }, el("b", null, c.name), ` · ${c.company || ""} · ${c.chat_date}`)),
-      group("Drafts waiting on a project", waiting, c => el("li", { class: "card" },
-        el("b", null, c.name), ` · ${c.project || "no project"} `, pill(c.project_status))),
-    ];
+  function plural(n, w) { return `${n} ${w}${n === 1 ? "" : "s"}`; }
+
+  let toastTimer = null;
+  function toast(msg) {
+    let t = document.querySelector(".toast");
+    if (!t) { t = el("div", { class: "toast", role: "status" }); document.body.append(t); }
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2400);
+  }
+
+  async function edit(file, change, where) {
+    const base = data.connections.find(c => c.file === file);
+    const o = Object.assign({}, local[file] || {}, change);
+    if (!o.status) o.status = base.status;
+    if ((o.status === "sent" || o.status === "followed-up") && !base.sent && !o.sent) {
+      o.sent = todayStr();
+      o.followup_due = addBusinessDays(o.sent, 5);
+    }
+    // Picking the status the files already have undoes the local edit (including any date it added).
+    if (change.status === base.status || Object.keys(o).every(k => base[k] === o[k])) delete local[file];
+    else local[file] = o;
+    const saved = await saveLocal();
+    render();
+    const again = app.querySelector(`[data-pick="${CSS.escape(where + ":" + file)}"]`);
+    if (again) again.focus({ preventScroll: true });
+    toast(saved ? `${base.name || file}: ${label(o.status)}` : "Changed for now. This browser won't keep it (private mode?).");
+  }
+
+  function statusPicker(c, where) {
+    const known = STATUSES.includes(c.status);
+    const sel = el("select", { "aria-label": `Status for ${c.name || c.file}`, "data-pick": where + ":" + c.file, style: tint(c.status),
+      onchange: e => edit(c.file, { status: e.target.value }, where) },
+      known ? null : el("option", { value: c.status || "" }, label(c.status)),
+      STATUSES.map(s => el("option", { value: s }, LABELS[s])));
+    sel.value = c.status || "";
+    return el("span", { class: "pick" + (c.local ? " pending" : ""), title: c.local ? "Changed in this browser, not in the files yet" : "" }, sel);
+  }
+
+  function renderNotice(cs) {
+    const changed = cs.filter(c => c.local);
+    if (!changed.length) return null;
+    const lines = changed.map(c => `${c.file}: ` + Object.entries(local[c.file]).map(([k, v]) => `${k}: ${v}`).join(", "));
+    const text = "Update these connection headers:\n" + lines.join("\n");
+    const btn = el("button", { class: "btn sm", type: "button", onclick: async () => {
+      try { await navigator.clipboard.writeText(text); toast("Copied. Paste it to Claude to update the files."); }
+      catch (_) { toast("Copy failed."); }
+    } }, "Copy changes");
+    return el("div", { class: "notice" },
+      el("p", null, `${plural(changed.length, "change")} saved only in this browser. `,
+        el("span", { class: "muted" }, `Copy ${changed.length === 1 ? "it" : "them"} into the files so the next build keeps ${changed.length === 1 ? "it" : "them"}.`)), btn);
+  }
+
+  function renderQueue(cs, today) {
+    const items = [];
+    for (const c of cs) {
+      const add = (rank, date, what, when, extra) => items.push(Object.assign({ c, rank, date: date || "9999", what, when }, extra));
+      if (c.status === "replied") add(0, c.sent, "They replied. Book a time.", "");
+      else if (c.status === "sent" && c.followup_due && c.followup_due <= today)
+        add(0, c.followup_due, "Send the follow-up", c.followup_due < today ? `${-days(today, c.followup_due)} days overdue` : "due today",
+          { late: c.followup_due < today });
+      else if (c.status === "scheduled" && !c.chat_date) add(1, "", "Chat scheduled. Add the date below.", "");
+      else if (c.status === "scheduled" && c.chat_date >= today)
+        add(1, c.chat_date, "Coffee chat", `${shortDate(c.chat_date)}, ${relDate(c.chat_date, today)}`);
+      else if (c.status === "drafted" && c.project_status !== "shipped")
+        add(2, "", c.project ? `Finish project: ${c.project}` : "Pick a project", c.project_status ? badge(c.project_status) : "");
+      else if (c.status === "drafted") add(2, "", "Project shipped. Ready to send.", "");
+      else if (c.status === "sent")
+        add(3, c.followup_due, `Waiting on a reply, sent ${relDate(c.sent, today)}`, c.followup_due ? `follow up ${relDate(c.followup_due, today)}` : "", { waiting: true });
+      else if (c.status === "followed-up")
+        add(3, c.sent, `Followed up, waiting on a reply`, c.sent ? `first sent ${shortDate(c.sent)}` : "", { waiting: true });
+    }
+    items.sort((a, b) => a.rank - b.rank || a.date.localeCompare(b.date));
+    const count = f => items.filter(f).length;
+    const parts = [];
+    const late = count(i => i.late), replies = count(i => i.c.status === "replied"), waiting = count(i => i.waiting);
+    if (late) parts.push(`${plural(late, "follow-up")} overdue`);
+    if (replies) parts.push(`${plural(replies, "reply")} to answer`.replace("replys", "replies"));
+    if (waiting) parts.push(`${waiting} waiting on a reply`);
+    const lead = parts.length ? parts.join(", ") + "." : items.length ? `${plural(items.length, "thing")} to do.` : "You're caught up.";
+    return el("section", { class: "hero" },
+      el("h2", null, "Next up."),
+      el("p", { class: "lead" }, lead),
+      el("div", { class: "panel" }, items.length
+        ? el("ul", { class: "queue" }, items.map(i => el("li", { class: i.late ? "late" : i.waiting ? "waiting" : "" },
+            el("div", { class: "main" },
+              el("span", { class: "who" }, i.c.name || i.c.file, i.c.company ? el("span", { class: "muted" }, ` at ${i.c.company}`) : null),
+              el("span", { class: "what" }, i.what)),
+            i.when ? el("span", { class: "when" }, i.when) : null,
+            statusPicker(i.c, "q"))))
+        : el("div", { class: "empty" }, "No follow-ups due, no chats booked, no drafts waiting. Add a connection to start.")));
   }
 
   function renderPipeline(cs) {
     const n = s => cs.filter(c => c.status === s).length;
     const denom = cs.filter(c => c.status !== "drafted").length;
     const rate = denom ? Math.round(100 * (n("replied") + n("scheduled") + n("met")) / denom) + "%" : "n/a";
-    return [
+    return el("section", null,
       el("h2", null, "Pipeline"),
-      el("div", { class: "stats" },
-        STATUSES.map(s => el("div", { class: "card" }, el("b", null, n(s)), pill(s))),
-        el("div", { class: "card" }, el("b", null, rate), el("span", { class: "muted" }, "reply rate"))),
-    ];
+      el("div", { class: "panel stats" },
+        STATUSES.map(s => el("div", { class: "stat" }, el("b", null, n(s)), badge(s))),
+        el("div", { class: "stat key" }, el("b", null, rate), el("span", { class: "mono muted" }, "reply rate"))));
   }
 
   function renderSection(sec) {
-    const pre = el("pre", { class: "sec" });
-    pre.textContent = sec.text.replace(/\*\*/g, "");
-    const btn = el("button", { class: "ghost", type: "button", onclick: async ev => {
-      ev.stopPropagation();
-      try { await navigator.clipboard.writeText(pre.textContent); btn.textContent = "Copied"; }
+    const text = sec.text.replace(/\*\*/g, "");
+    const btn = el("button", { class: "btn sm", type: "button", onclick: async () => {
+      try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
       catch (_) { btn.textContent = "Copy failed"; }
       setTimeout(() => { btn.textContent = "Copy"; }, 1500);
     } }, "Copy");
-    return el("div", null, el("div", { class: "sec-head" }, el("h3", null, sec.title), btn), pre);
+    return el("div", null, el("div", { class: "sec-head" }, el("h3", null, sec.title), btn), el("pre", { class: "sec" }, text));
   }
 
-  function renderConnections(cs) {
-    const cols = ["Name", "Company", "Role", "Status", "Sent", "Follow-up due", "Project"];
-    const body = el("tbody");
-    for (const c of cs) {
-      const detail = el("tr", { class: "detail", hidden: "" },
-        el("td", { colspan: cols.length }, el("div", { class: "detail-inner" },
-          (c.sections || []).length ? c.sections.map(renderSection) : el("p", { class: "muted" }, "No notes."))));
-      const row = el("tr", { class: "row", onclick: () => { detail.hidden = !detail.hidden; } },
-        el("td", null, el("b", null, c.name || c.file)), el("td", null, c.company), el("td", null, c.role),
-        el("td", null, pill(c.status)), el("td", null, c.sent), el("td", null, c.followup_due), el("td", null, c.project));
-      body.append(row, detail);
+  function nextCell(c, today) {
+    if (c.status === "scheduled")
+      return el("td", null, el("input", { class: "date", type: "date", value: c.chat_date || "", "aria-label": `Chat date with ${c.name || c.file}`,
+        "data-pick": "d:" + c.file, onchange: e => edit(c.file, { chat_date: e.target.value }, "d") }));
+    if ((c.status === "sent" || c.status === "followed-up") && c.followup_due) {
+      const late = c.status === "sent" && c.followup_due < today;
+      return el("td", { class: "num" + (late ? " late-text" : "") }, shortDate(c.followup_due),
+        el("span", { class: "sub mono " + (late ? "" : "muted") }, c.status === "sent" ? (late ? "follow-up overdue" : "follow up " + relDate(c.followup_due, today)) : "followed up"));
     }
-    return [
+    return el("td", { class: "muted" }, "");
+  }
+
+  function connRows(cs, today) {
+    const q = view.q.trim().toLowerCase();
+    const shown = cs.filter(c => (view.status === "all" || c.status === view.status) &&
+      (!q || [c.name, c.company, c.role, c.project].join(" ").toLowerCase().includes(q)));
+    if (!shown.length) return [el("tr", null, el("td", { colspan: 6 }, el("div", { class: "empty" }, "No connections match.")))];
+    return shown.flatMap((c, i) => {
+      const id = "detail-" + i;
+      const open = view.open.has(c.file);
+      const detail = el("tr", { class: "detail", id },
+        el("td", { colspan: 6 }, el("div", { class: "secs" },
+          (c.sections || []).length ? c.sections.map(renderSection) : el("p", { class: "muted" }, "No notes."))));
+      detail.hidden = !open;
+      const toggle = el("button", { class: "expander", type: "button", "aria-expanded": String(open), "aria-controls": id, onclick: () => {
+        detail.hidden = !detail.hidden;
+        if (detail.hidden) view.open.delete(c.file); else view.open.add(c.file);
+        toggle.setAttribute("aria-expanded", String(!detail.hidden));
+      } }, el("span", { class: "chev", "aria-hidden": "true" }, "›"), c.name || c.file);
+      return [el("tr", { class: "row" },
+        el("td", null, toggle), el("td", null, statusPicker(c, "t")),
+        el("td", null, c.company, c.role ? el("span", { class: "sub muted" }, c.role) : null),
+        el("td", { class: "num" }, shortDate(c.sent), c.sent ? el("span", { class: "sub mono muted" }, relDate(c.sent, today)) : null),
+        nextCell(c, today),
+        el("td", { class: "muted" }, c.project)), detail];
+    });
+  }
+
+  function renderConnections(cs, today) {
+    const body = el("tbody", null, connRows(cs, today));
+    const refresh = () => body.replaceChildren(...connRows(cs, today));
+    const present = STATUSES.filter(s => cs.some(c => c.status === s));
+    if (view.status !== "all" && !present.includes(view.status)) view.status = "all";
+    const tabs = ["all", ...present].map(s => {
+      const b = el("button", { class: "tab", type: "button", "aria-pressed": String(view.status === s), onclick: () => {
+        view.status = s;
+        for (const t of tabs) t.setAttribute("aria-pressed", String(t === b));
+        refresh();
+      } }, s === "all" ? "All" : label(s),
+        el("span", { class: "n" }, s === "all" ? cs.length : cs.filter(c => c.status === s).length));
+      return b;
+    });
+    const search = el("input", { class: "input", type: "search", placeholder: "Search name, company, project",
+      "aria-label": "Search connections", value: view.q, oninput: e => { view.q = e.target.value; refresh(); } });
+    const cols = ["Name", "Status", "Company", "Sent", "Next", "Project"];
+    return el("section", null,
       el("h2", null, "Connections"),
-      el("div", { class: "table-wrap" }, el("table", null,
-        el("thead", null, el("tr", null, cols.map(h => el("th", null, h)))), body)),
-    ];
+      el("div", { class: "toolbar" }, search, el("div", { class: "tabs", role: "group", "aria-label": "Filter by status" }, tabs)),
+      el("div", { class: "panel table-wrap" }, el("table", null,
+        el("thead", null, el("tr", null, cols.map(h => el("th", { scope: "col" }, h)))), body)));
   }
 
   function renderProjects(cs) {
     const ps = cs.filter(c => c.project);
     const owed = ps.filter(c => c.project_status !== "shipped").reduce((t, c) => t + (parseFloat(c.project_hours) || 0), 0);
-    return [
+    return el("section", null,
       el("h2", null, "Projects"),
-      el("p", null, "Hours still owed: ", el("b", null, owed)),
+      el("p", { class: "lead" }, !ps.length ? "" : owed ? `${owed} hours of building left.` : "Every project has shipped."),
       ps.length ? el("div", { class: "projects" }, ps.map(c => {
         const href = safeHref(c.project_link);
-        return el("div", { class: "card" },
-          el("b", null, c.project), el("div", { class: "muted" }, c.name),
-          el("div", null, pill(c.project_status), c.project_hours ? ` ${c.project_hours} h` : ""),
-          href ? el("div", null, el("a", { href, target: "_blank", rel: "noopener noreferrer" }, c.project_link)) : null);
-      })) : el("p", { class: "muted" }, "No projects."),
-    ];
+        return el("div", { class: "panel project" },
+          el("div", { class: "title" }, c.project),
+          el("div", { class: "muted" }, "For ", c.name, c.company ? `, ${c.company}` : ""),
+          el("div", { class: "meta" }, badge(c.project_status), c.project_hours ? el("span", { class: "mono muted" }, `${c.project_hours} h`) : null),
+          href ? el("a", { href, target: "_blank", rel: "noopener noreferrer" }, c.project_link) : null);
+      })) : el("div", { class: "panel empty" }, "No projects yet. Add a project line to a connection's header."));
   }
 
   function render() {
-    const cs = data.connections || [];
+    const cs = connections();
     const today = todayStr();
+    const gen = new Date(data.generated);
     app.replaceChildren(
-      el("h1", null, "Dashboard"),
-      ...[renderToday(cs, today), renderPipeline(cs), renderConnections(cs), renderProjects(cs)].flat(Infinity),
-      el("footer", null, el("span", null, "Generated " + new Date(data.generated).toLocaleString()),
-        el("button", { type: "button", onclick: lock }, "Lock")));
+      el("header", { class: "bar" }, el("div", { class: "wrap" },
+        el("div", { class: "brand" }, "Networking", el("span", { class: "mono muted" }, plural(cs.length, "connection"))),
+        el("button", { class: "btn", type: "button", onclick: lock }, "Lock"))),
+      el("main", { class: "wrap" },
+        renderNotice(cs), renderQueue(cs, today), renderPipeline(cs), renderConnections(cs, today), renderProjects(cs)),
+      el("footer", null, el("div", { class: "wrap mono" },
+        "Built " + gen.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))));
     lockScreen.hidden = true;
     app.hidden = false;
   }
 
   function lock() {
-    data = null;
+    data = null; local = {}; localKey = null; localSalt = null;
+    view.q = ""; view.status = "all"; view.open.clear();
+    const t = document.querySelector(".toast");
+    if (t) t.remove();
     app.replaceChildren();
     app.hidden = true;
     lockScreen.hidden = false;
@@ -238,15 +600,18 @@ footer { display: flex; justify-content: space-between; align-items: center; mar
     errEl.textContent = "";
     const btn = form.querySelector("button");
     btn.disabled = true;
+    btn.textContent = "Decrypting...";
     try {
-      data = await decrypt(passEl.value);
+      await unlock(passEl.value);
       passEl.value = "";
       render();
     } catch (_) {
+      data = null;
       errEl.textContent = "Wrong passphrase.";
       passEl.select();
     } finally {
       btn.disabled = false;
+      btn.textContent = "Unlock";
     }
   });
 })();

@@ -1,5 +1,5 @@
 ---
-title: "Spine: Coinbase Loan Book Risk Model"
+title: "Spine: On-Chain Loan Book Stress Test"
 tagline: "Live risk dashboard and liquidation backtest over Coinbase's $1.6B Morpho loan book"
 description: "A live risk dashboard and liquidation-queue backtest over Coinbase's on-chain loan book on Morpho (Base): $1.6B of debt, 67,000+ positions, replayed through seven crash paths to argue what haircut BTC and ETH collateral should take."
 problem: "Coinbase's app routes USDC loans against cbBTC and ETH to Morpho markets on Base at an 86% liquidation LTV, funded by Morpho vault suppliers. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. Nobody had replayed today's book through a March 2020 style cliff with liquidators and borrowers behaving the way the lived events show they behave."
@@ -15,7 +15,7 @@ ogImage: "https://rahilbhavan.github.io/spine/social-card.png"
 
 **What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase's app routes USDC loans against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
 
-**Why it matters:** The book is $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt falls on the Morpho vault suppliers who fund these markets, not on Coinbase's balance sheet. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.
+**Why it matters:** As of September 2026, the book is about $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt falls on the Morpho vault suppliers who fund these markets, not on Coinbase's balance sheet. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.
 
 **Who it's for:** Risk teams at lenders and protocols, USDC suppliers to these markets, and anyone who wants a reproducible answer to "what haircut should this collateral take" rather than a rule of thumb.
 
@@ -207,7 +207,7 @@ Positions are sorted by initial liquidation price so a calm bar costs one `searc
 
 ### The book
 
-- $1.6B debt, $3.5B collateral, 67,000+ positions across 9 markets; 97.5% of borrow from Coinbase Smart Wallets
+- As of September 2026: about $1.6B debt, $3.5B collateral, 67,000+ positions across 9 markets (live figures on the dashboard); 97.5% of borrow from Coinbase Smart Wallets
 - cbBTC/USDC 86%: $1.413B borrowed, $2.860B collateral, utilization 90%, book LTV 49%, largest position $5.2M
 - Realized bad debt across all nine markets since inception: $0.07
 

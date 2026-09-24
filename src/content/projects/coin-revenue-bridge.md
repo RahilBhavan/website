@@ -8,6 +8,7 @@ demoUrl: "https://rahilbhavan.github.io/coin-revenue-bridge/"
 githubUrl: "https://github.com/RahilBhavan/coin-revenue-bridge"
 kind: "revenue analysis"
 completedDate: 2026-09-23
+ogImage: "https://rahilbhavan.github.io/coin-revenue-bridge/social-card.png"
 ---
 ![COIN revenue bridge case study](https://raw.githubusercontent.com/RahilBhavan/coin-revenue-bridge/main/docs/screenshot.png)
 

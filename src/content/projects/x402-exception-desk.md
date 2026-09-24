@@ -8,6 +8,7 @@ demoUrl: "https://rahilbhavan.github.io/x402-exception-desk/"
 githubUrl: "https://github.com/RahilBhavan/x402-exception-desk"
 kind: "payments ops"
 completedDate: 2026-09-23
+ogImage: "https://rahilbhavan.github.io/x402-exception-desk/social-card.png"
 ---
 ![x402 exception desk operator report](https://raw.githubusercontent.com/RahilBhavan/x402-exception-desk/main/docs/screenshot.png)
 

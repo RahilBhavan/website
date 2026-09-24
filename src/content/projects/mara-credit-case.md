@@ -8,6 +8,7 @@ demoUrl: "https://rahilbhavan.github.io/mara-credit-case/"
 githubUrl: "https://github.com/RahilBhavan/mara-credit-case"
 kind: "credit case"
 completedDate: 2026-09-23
+ogImage: "https://rahilbhavan.github.io/mara-credit-case/social-card.png"
 ---
 ![MARA credit case decision view](https://raw.githubusercontent.com/RahilBhavan/mara-credit-case/main/docs/screenshot.png)
 

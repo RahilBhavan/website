@@ -47,6 +47,13 @@ const path = Astro.url.pathname;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={socialImageURL} />
+    {ogImage && (
+      <>
+        {/* ponytail: every custom card is 1280x640; add props if one differs */}
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+      </>
+    )}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />

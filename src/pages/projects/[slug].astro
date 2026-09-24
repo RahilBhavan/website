@@ -22,7 +22,7 @@ const { data } = project;
 const month = data.completedDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 ---
 
-<BaseLayout title={data.title} description={data.description} ogType="article">
+<BaseLayout title={data.title} description={data.description} ogImage={data.ogImage} ogType="article">
   <main class="wrap page">
     <a href="/projects" class="label back">← Projects</a>
     <h1>{data.title}</h1>

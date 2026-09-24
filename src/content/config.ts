@@ -38,6 +38,8 @@ const projects = defineCollection({
       .optional()
       .transform((s) => (s === '' ? undefined : s)),
     completedDate: z.coerce.date(),
+    // Absolute URL of a 1280x640 social card; falls back to /og.png.
+    ogImage: z.string().url().optional(),
   }),
 });
 

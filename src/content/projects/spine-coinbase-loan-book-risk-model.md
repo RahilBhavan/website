@@ -9,6 +9,7 @@ githubUrl: "https://github.com/RahilBhavan/spine"
 kind: "risk model"
 featured: true
 completedDate: 2026-09-19
+ogImage: "https://rahilbhavan.github.io/spine/social-card.png"
 ---
 ## Overview
 

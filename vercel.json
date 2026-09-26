@@ -3,11 +3,16 @@
   "outputDirectory": "dist",
   "framework": "astro",
   "trailingSlash": false,
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "mara.rahilbhavan.com" }],
-      "destination": "/mara-credit-case/:path*"
+      "source": "/mara-credit-case",
+      "destination": "https://mara.rahilbhavan.com/",
+      "permanent": true
+    },
+    {
+      "source": "/mara-credit-case/:path*",
+      "destination": "https://mara.rahilbhavan.com/:path*",
+      "permanent": true
     }
   ]
 }

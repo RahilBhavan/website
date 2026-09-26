@@ -2,5 +2,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "astro",
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mara.rahilbhavan.com" }],
+      "destination": "/mara-credit-case/:path*"
+    }
+  ]
 }

@@ -4,11 +4,11 @@ tagline: "Credit committee case that cuts a $5.0M revolver request to a conditio
 description: "A credit committee package that sizes a hypothetical $5.0M, 12-month secured revolver to MARA Holdings from public filings: a tested decision engine, a two-page memo, and a conditional $3.0M limit set by stressed collateral proceeds."
 problem: "A lender is asked for a $5.0M, 12-month secured revolver by a bitcoin miner with $421.3M of cash, 35,577 bitcoin, and about $2.4B of debt. How much should it lend, against what, and on which conditions? The borrower's size says little about the answer, because the facility is only as good as the collateral behind it and the route from that collateral to repayment cash."
 solution: "Built a standard-library Python decision engine with Decimal arithmetic that runs a collateral waterfall and four caps (obligor, collateral, single-name, concentration) across eleven scenarios, from issuer facts pulled out of MARA's filing XBRL and a fictional collateral schedule. The engine feeds a two-page credit memo, an opposing memo, a committee packet, a 16-sheet formula workbook, and a live decision view, all checked by 65 unit tests and a 49-check validator."
-demoUrl: "https://rahilbhavan.com/mara-credit-case"
+demoUrl: "https://mara.rahilbhavan.com/"
 githubUrl: "https://github.com/RahilBhavan/mara-credit-case"
 kind: "credit case"
 completedDate: 2026-09-23
-ogImage: "https://rahilbhavan.com/mara-credit-case/social-card.png"
+ogImage: "https://mara.rahilbhavan.com/social-card.png"
 ---
 ![MARA credit case decision view](https://raw.githubusercontent.com/RahilBhavan/mara-credit-case/main/docs/screenshot.png)
 
@@ -74,8 +74,8 @@ At the $3.0M limit, pro forma exposure is $3.05M and coverage is 1.27x. A fully 
 
 ## What to Open First
 
-1. **Decision view**: [rahilbhavan.com/mara-credit-case](https://rahilbhavan.com/mara-credit-case). Start with the decision summary, then move collateral in the what-if lab.
-2. **Credit memo (PDF)**: [the two-page recommendation](https://rahilbhavan.com/mara-credit-case/credit-memo.pdf).
+1. **Decision view**: [mara.rahilbhavan.com](https://mara.rahilbhavan.com/). Start with the decision summary, then move collateral in the what-if lab.
+2. **Credit memo (PDF)**: [the two-page recommendation](https://mara.rahilbhavan.com/credit-memo.pdf).
 3. **Repository**: [github.com/RahilBhavan/mara-credit-case](https://github.com/RahilBhavan/mara-credit-case). The engine, tests, validator, and the opposing memo.
 
 ## Scope & Limits

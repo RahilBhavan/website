@@ -5,6 +5,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/orbit",
+      "destination": "https://box.tail93593c.ts.net:10443/",
+      "permanent": false
+    },
+    {
       "source": "/mara-credit-case",
       "destination": "https://mara.rahilbhavan.com/",
       "permanent": true

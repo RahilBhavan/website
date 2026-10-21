@@ -4,8 +4,15 @@ tagline: "Breadboard CPU from 200+ TTL chips, used to teach 30 students"
 description: "A breadboard computer built from more than 200 TTL chips with a custom instruction set, a modular architecture, and lab materials used to teach 30 students."
 problem: "Textbooks explain how a CPU fetches and executes an instruction, but the explanation stays abstract until you can watch the bits move. There was no hands-on computer architecture lab for students to do that."
 solution: "Built an 8-bit computer on breadboards from more than 200 TTL logic chips, with a custom instruction set and a modular design where the clock, registers, ALU, RAM, program counter, and output display can each be swapped independently. Wrote documentation and lab materials and used the machine to teach 30 students in hands-on workshops."
+result: "Built an 8-bit computer from more than 200 TTL chips with six swappable modules, and used it with lab materials to teach 30 students in hands-on workshops."
+status: "shipped"
+verification: "Each module was built and tested on its own breadboard before joining the bus. The machine and lab materials were then run in hands-on workshops for 30 students."
+figure:
+  src: "/images/projects/8-bit-computer/05-full-board-overhead-sep-2024.jpg"
+  alt: "Overhead photo of the full breadboard computer built from TTL chips, September 2024."
+  caption: "The full board from above, September 2024."
 kind: "hardware"
-featured: true
+featured: false
 completedDate: 2024-12-15
 ---
 ## Overview

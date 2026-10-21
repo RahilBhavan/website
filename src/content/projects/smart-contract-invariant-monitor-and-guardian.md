@@ -4,6 +4,10 @@ tagline: "Rust tool that replays DeFi exploits and flags the Euler invariant bre
 description: "A Rust tool that replays historical DeFi exploits block by block and checks protocol invariants at each step. On the Euler Finance exploit it flags the violation 4 blocks, about 7 minutes, before the drain."
 problem: "DeFi protocols face constant security threats. Even with audits and formal verification, hacks happen. Traditional monitoring is reactive, by the time you see an alert, funds are often already in Tornado Cash. We need runtime verification that can detect violations in seconds, not minutes."
 solution: "Built a Rust-based system that monitors protocol invariants every block, detects violations in real-time, and can automatically pause protocols via Flashbots when critical issues are found. The Guardian simulates every action before execution, ensuring safety while providing sub-15-second response times."
+result: "On the $197M Euler exploit replay, it flags the invariant violation at block 16817996, 4 blocks (about 7 min) before the drain. That is lead time, not a prevented loss."
+status: "prototype"
+verification: "Checked by replaying the Euler Finance exploit, with zero false positives reported in that case study. The page also reports reorg handling tested in scenarios."
+next: "It has only run in replay and testnet settings. Multi-chain support and ML anomaly detection are listed as future work."
 kind: "security"
 featured: false
 completedDate: 2024-12-01

@@ -4,6 +4,14 @@ tagline: "Competitive, on-chain velocity, and USDO supply analysis for a tokeniz
 description: "Competitive analysis, on-chain velocity research, and USDO supply cohort modeling for OpenEden's RWA protocol suite (PRISM + USDO)."
 problem: "OpenEden needed clear, reproducible analysis on competitive positioning, on-chain usage (velocity) on XRPL vs Ethereum, and drivers behind USDO supply drawdowns, in a form that could be validated and handed off."
 solution: "Delivered three modules: (1) competitive landscape and objection handling, (2) on-chain velocity, chain prioritization, and 90-day actions, (3) supply cohort modeling with scenario planning and cohort-flow artifacts, with cached raw data, analysis scripts, and unit tests."
+result: "Models USDO supply as cohorts: $298.8M at peak, $89.5M retained after the drawdown and $63.1M at steady state, from DeFiLlama data as of Feb 27, 2026."
+status: "shipped"
+verification: "Raw data is cached and transformations have unit tests. Claims are sourced or flagged with [ASSUMPTION] and [DATA: as of] tags."
+next: "The cohort flow comes from aggregate supply data, not per-wallet data, so the retention split is an estimate."
+figure:
+  src: "/images/projects/openeden/module2_chart1.png"
+  alt: "Chart of monthly transfer activity comparing XRPL and Ethereum TBILL token velocity"
+  caption: "Module 2 shows monthly transfer activity on XRPL against Ethereum as a velocity signal."
 kind: "consulting"
 featured: true
 completedDate: 2026-02-27

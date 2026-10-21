@@ -4,6 +4,14 @@ tagline: "YOLOv8 drone that maps potholes in Bulawayo, presented to the Presiden
 description: "An autonomous drone system using YOLOv8 computer vision and ArduPilot telemetry to detect and map potholes in real-time, helping municipal infrastructure maintenance in Bulawayo."
 problem: "Driving in Bulawayo, Zimbabwe often felt like navigating a minefield. Hidden potholes disrupt supply chains and endanger lives. The local City Council couldn't fix what they couldn't find. Manual road inspections were slow, expensive, and incomplete."
 solution: "Built a custom drone with CNC aluminum airframe, Raspberry Pi 5 edge computing, and YOLOv8 AI to autonomously detect potholes in real-time. The system syncs GPS coordinates with computer vision detections, creating an instant map of road defects for municipal maintenance teams."
+result: "Detects potholes from a drone with YOLOv8 Nano on a Raspberry Pi 5 and tags each with GPS. Reported over 85% accuracy on the test dataset and won 2nd place at ZITF."
+status: "prototype"
+verification: "Field-tested on Bulawayo roads and checked against manual inspections, with over 85% detection accuracy reported on the test dataset."
+next: "Future work is fine-tuning the model on Zimbabwe-specific road conditions, a smaller frame, and production-ready refinements for municipal maintenance workflows."
+figure:
+  src: "/images/projects/pothole-drone/2024/06/drone-parts-layout-wide.jpg"
+  alt: "Layout of the drone's parts, including flight controller, GPS, power distribution board and ESCs"
+  caption: "The bill of materials laid out, from the Cube Orange flight controller to the ESCs."
 demoUrl: "https://www.youtube.com/watch?v=LpTeKHJ6wRc"
 kind: "hardware"
 featured: true

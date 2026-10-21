@@ -8,6 +8,10 @@ result: "Proposes a break-even calculator, vault drift dashboard and multi-chain
 status: "proposal"
 verification: "No checks recorded on this page."
 next: "Milestone 1 is an MVP of the Next.js break-even calculator on one chain, for example Base."
+figure:
+  src: "/images/projects/beefy-yield-fidelity/demo-home.webp"
+  alt: "Yield Fidelity demo landing page with links to the calculator, dashboard and methodology, and buttons to run an estimate or view the monitor."
+  caption: "The demo's landing page. The project is a proposal, and the demo shows the user-facing calculator."
 kind: "proposal"
 featured: false
 demoUrl: "https://yield.rahilbhavan.com"

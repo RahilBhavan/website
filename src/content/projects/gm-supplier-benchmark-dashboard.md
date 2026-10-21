@@ -8,6 +8,10 @@ result: "Gives GM's purchasing team five years of revenue, SG&A and EBIT trends 
 status: "shipped"
 verification: "No checks recorded on this page."
 next: "Add a validation report that flags suppliers whose revenue changed by an implausible amount between refreshes."
+figure:
+  src: "/images/projects/gm-supplier-benchmark-dashboard/supplier-explorer.webp"
+  alt: "PPCO Supplier Intelligence Dashboard showing average SG&A and EBIT tiles, an SG&A versus EBIT scatter plot, a vehicle-zone part map and a revenue bar chart of top suppliers."
+  caption: "The deployed supplier explorer, with 210 suppliers in the default view."
 demoUrl: "https://gm-mecg.vercel.app"
 githubUrl: "https://github.com/RahilBhavan/gm_mecg"
 kind: "consulting"

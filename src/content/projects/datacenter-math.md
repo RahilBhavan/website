@@ -7,6 +7,10 @@ solution: "Wrote the course's formulas as pure functions with the course's worke
 result: "One static page turns a GPU rack into line current, facility MWh, water per day, KV cache concurrency and dollars per million tokens."
 status: "prototype"
 verification: "A Node test file checks the formulas against the course's worked numbers, such as 100 kW at 480 V being about 120 A and a 64 GiB pool holding 25 requests at 8K context."
+figure:
+  src: "/images/projects/datacenter-math/rack-to-grid.webp"
+  alt: "Rack to grid calculator with 72 GPUs at 1,400 W giving 131 kW per rack, 166 A per line at 480 V AC, 164 A per conductor at 800 V DC and 3,931 L of water per day."
+  caption: "The rack-to-grid form with its default inputs. Every output names its denominator, and the source line cites the course's worked numbers."
 kind: "tool"
 featured: true
 demoUrl: "https://rahilbhavan.com/tools/datacenter-math/"

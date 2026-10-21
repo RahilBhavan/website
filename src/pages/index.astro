@@ -1,103 +1,93 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectEntry from '../components/ProjectEntry.astro';
 import { getCollection } from 'astro:content';
+import { groupWriting, monthYear, slug, statusLabel } from '../lib/content';
 
 export const prerender = true;
 
-const projects = (await getCollection('projects'))
-  .filter((p) => p.data.featured)
-  .sort((a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf());
-
-const posts = (await getCollection('blog', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
-  .slice(0, 5);
-
-const slug = (id: string) => id.replace(/\.(md|mdx)$/, '');
-// "Currently" is dated by the newest thing on the site so it cannot go stale by mistake.
-const latest = new Date(
-  Math.max(projects[0].data.completedDate.valueOf(), posts[0].data.publishDate.valueOf())
+const allProjects = (await getCollection('projects')).sort(
+  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
 );
-const year = (d: Date) => d.getFullYear();
-const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+const featured = allProjects.filter((p) => p.data.featured);
+const latest = allProjects[0];
+
+const writing = groupWriting(await getCollection('blog', ({ data }) => !data.draft)).slice(0, 4);
 ---
 
 <BaseLayout title="Rahil Bhavan">
-  <main class="wrap page home">
-    <section class="intro">
-      <h1>I build risk models for on-chain lending, hardware that teaches, and Presto.</h1>
-      <p>
-        I'm a computer engineering and economics student at the University of Michigan and a co-founder of
-        <a href="https://prestorecovery.com">Presto</a>, which finds music royalties that the MLC and
-        SoundExchange hold for the wrong party, or for nobody, and claims them.
-      </p>
-      <p>
-        Most of my other work is risk modelling for DeFi lending. I replayed Coinbase's $1.6B Morpho loan
-        book through seven crash paths (<a href="/projects/spine-coinbase-loan-book-risk-model">Spine</a>),
-        stress-tested stop-loss buffers on Aave and Morpho for
-        <a href="/projects/summer-fi-liquidation-risk-simulator">Summer.fi</a>, and did competitive and
-        on-chain analysis for <a href="/projects/openeden-rwa-intelligence-suite">OpenEden</a>. Before that
-        I built a <a href="/projects/pothole-detection-drone-for-zimbabwe-roads">pothole-mapping drone</a>
-        in Bulawayo that placed second at ZITF and was presented to the President of Zimbabwe, and an
-        <a href="/projects/8-bit-computer-from-ttl-logic">8-bit computer</a> from 200+ TTL chips that I
-        used to teach 30 students.
-      </p>
-      <p class="muted">Born in Los Angeles, raised in Zimbabwe.</p>
+  <main id="main" class="home">
+    <section class="wrap-wide hero">
+      <h1 class="personal-name">Rahil Bhavan</h1>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="hero-lead">A student trynna learn.</p>
+          <p>
+            I study computer engineering and economics at the University of Michigan and co-founded
+            <a href="https://prestorecovery.com">Presto</a>, which finds music royalties held for the wrong
+            party, or for nobody, and claims them.
+          </p>
+          <p>
+            I learn by building the thing and writing down how I checked it. So far that means stress tests of
+            crypto lending books, credit and payments cases built from public filings, a datacenter calculator,
+            a pothole-mapping drone and an 8-bit computer I used to teach 30 students.
+          </p>
+          <p class="muted">Born in Los Angeles, raised in Zimbabwe.</p>
+          <p class="hero-actions">
+            <a href="#work" class="primary">See the projects</a>
+            <a href="mailto:rahil@bhavanzim.com">Email me</a>
+          </p>
+        </div>
+
+        <aside class="latest" aria-labelledby="latest-label">
+          <p id="latest-label" class="label">Latest project · {monthYear(latest.data.completedDate)}</p>
+          <h2 class="latest-title">
+            <a href={`/projects/${slug(latest.id)}`}>{latest.data.title}</a>
+          </h2>
+          <p class="latest-result">{latest.data.result}</p>
+          <p class="latest-meta">
+            <span class="status">{statusLabel[latest.data.status]}</span>
+            <span>{latest.data.verification}</span>
+          </p>
+        </aside>
+      </div>
     </section>
 
-    <section class="block">
+    <section id="work" class="wrap-wide block" aria-labelledby="work-title">
       <div class="block-head">
-        <h2 class="label">Currently</h2>
-        <span class="label">{month(latest)}</span>
+        <h2 id="work-title">Selected work</h2>
+        <p class="block-links">
+          <a href="/projects">All {allProjects.length} projects</a>
+          <a href="/crypto-finance">Crypto finance case studies</a>
+        </p>
       </div>
-      <p>
-        Building Presto's recovery engine and keeping
-        <a href="https://rahilbhavan.github.io/spine">Spine's dashboard</a> refreshing hourly. I take on a
-        small number of DeFi risk engagements; <a href="mailto:rahil@bhavanzim.com">email me</a>.
-      </p>
+      <div class="work-grid">
+        {featured.map((project) => <ProjectEntry project={project} />)}
+      </div>
     </section>
 
-    <section class="block">
+    <section class="wrap-wide block" aria-labelledby="writing-title">
       <div class="block-head">
-        <h2 class="label">Building</h2>
-        <a href="/projects" class="label more">All projects</a>
+        <h2 id="writing-title">Writing</h2>
+        <p class="block-links"><a href="/writing">All writing</a></p>
       </div>
-      <ul class="rows">
-        {projects.map((p) => (
-          <li class="row">
-            <div class="row-main">
-              <a href={`/projects/${slug(p.id)}`} class="row-title">{p.data.title}</a>
-              <span class="row-sub">{p.data.tagline}</span>
-              <span class="row-links">
-                {p.data.demoUrl && <a href={p.data.demoUrl}>demo</a>}
-                {p.data.githubUrl && <a href={p.data.githubUrl}>code</a>}
-              </span>
-            </div>
-            <span class="row-meta">{year(p.data.completedDate)}</span>
+      <ul class="writing">
+        {writing.map((entry) => (
+          <li>
+            <a href={entry.href} class="writing-title">{entry.title}</a>
+            <span class="writing-meta">
+              {entry.parts.length > 0 && <>{entry.parts.length} parts · </>}{monthYear(entry.date)}
+            </span>
           </li>
         ))}
       </ul>
     </section>
 
-    <section class="block">
-      <div class="block-head">
-        <h2 class="label">Writing</h2>
-        <a href="/writing" class="label more">All writing</a>
-      </div>
-      <ul class="rows">
-        {posts.map((post) => (
-          <li class="row">
-            <a href={`/writing/${slug(post.id)}`} class="row-title">{post.data.title}</a>
-            <span class="row-meta">{month(post.data.publishDate)}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-
-    <section class="block">
-      <h2 class="label">Contact</h2>
+    <section class="wrap-wide block contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">Contact</h2>
       <p>
-        I reply to email: <a href="mailto:rahil@bhavanzim.com">rahil@bhavanzim.com</a>. Also on
-        <a href="https://github.com/rahilbhavan">GitHub</a> and
+        I reply to email at <a href="mailto:rahil@bhavanzim.com">rahil@bhavanzim.com</a> and take on a small
+        number of DeFi risk engagements. I'm also on <a href="https://github.com/rahilbhavan">GitHub</a> and
         <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a>.
       </p>
     </section>
@@ -105,104 +95,166 @@ const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year:
 </BaseLayout>
 
 <style>
-  .intro h1 {
-    font-size: 1.5rem;
-    margin-bottom: 1.25rem;
-    max-width: 30ch;
+  .home {
+    padding-bottom: 5rem;
   }
 
-  .intro p {
+  .personal-name {
+    font-size: clamp(4rem, 13vw, 11rem);
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    margin: 1.5rem 0 2.5rem;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 3rem 4.5rem;
+    align-items: start;
+  }
+
+  .hero-copy p {
+    margin: 0 0 1rem;
+    max-width: 38rem;
+  }
+
+  .hero-lead {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.06;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-top: 1.75rem !important;
+  }
+
+  .hero-actions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-weight: 600;
+  }
+
+  .latest {
+    padding: 1.5rem;
+    background: var(--surface);
+    border-radius: 12px;
+  }
+
+  .latest .label {
+    margin: 0 0 0.75rem;
+  }
+
+  .latest-title {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .latest-title a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .latest-title a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+  }
+
+  .latest-result {
     margin: 0 0 1rem;
   }
 
-  .block {
-    margin-top: 3rem;
+  .latest-meta {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--secondary);
   }
 
-  .block > p {
-    margin: 0;
+  .latest-meta .status {
+    justify-self: start;
+  }
+
+  .block {
+    margin-top: 5rem;
   }
 
   .block-head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 0.75rem;
+    gap: 0.5rem 2rem;
+    margin-bottom: 1rem;
   }
 
-  .block h2 {
-    margin-bottom: 0.75rem;
+  .block-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+    margin: 0;
   }
 
-  .block-head h2 {
-    margin-bottom: 0;
+  .block-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 
-  .more {
-    text-decoration: none;
+  .work-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 3rem;
   }
 
-  .more:hover {
-    color: var(--fg);
-  }
-
-  .rows {
+  .writing {
     list-style: none;
   }
 
-  .row {
+  .writing li {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 1.5rem;
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--line);
+    align-items: baseline;
+    gap: 0.25rem 1.5rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border);
   }
 
-  .row-main {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-
-  .row-title {
-    font-weight: 500;
+  .writing-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--ink);
     text-decoration: none;
   }
 
-  .row-title:hover {
+  .writing-title:hover {
     text-decoration: underline;
+    text-decoration-color: var(--accent);
   }
 
-  .row-sub {
-    color: var(--fg-2);
-    font-size: 0.9375rem;
-  }
-
-  .row-links {
-    display: flex;
-    gap: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--fg-3);
-  }
-
-  .row-links:empty {
-    display: none;
-  }
-
-  .row-links a {
-    text-decoration: none;
-  }
-
-  .row-links a:hover {
-    color: var(--fg);
-  }
-
-  .row-meta {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--fg-3);
+  .writing-meta {
+    font-size: 0.875rem;
+    color: var(--secondary);
     white-space: nowrap;
-    padding-top: 0.25rem;
+  }
+
+  .contact p {
+    margin: 1rem 0 0;
+    max-width: 44rem;
+  }
+
+  @media (max-width: 900px) {
+    .hero-grid,
+    .work-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>

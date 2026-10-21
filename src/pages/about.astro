@@ -1,60 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { monthYear, slug } from '../lib/content';
 
 export const prerender = true;
 
-const timeline = [
-  {
-    when: 'Sep 2026',
-    what: 'Spine: replayed Coinbase’s $1.6B Morpho loan book (67,000+ positions) through seven crash paths.',
-    href: '/projects/spine-coinbase-loan-book-risk-model',
-  },
-  {
-    when: 'Sep 2026',
-    what: 'Co-founded Presto. Built the matching engine, DDEX ingester, and claim workflow.',
-    href: 'https://prestorecovery.com',
-  },
-  {
-    when: 'Sep 2026',
-    what: 'Shipped the Fall 2026 rush platform for the Michigan Engineering Consulting Group.',
-    href: '/projects/mecg-recruitment-platform',
-  },
-  {
-    when: 'Aug 2026',
-    what: 'Summer.fi: stop-loss stress test replaying the Aug 5, 2024 ETH crash on Aave V3 and Morpho.',
-    href: '/projects/summer-fi-liquidation-risk-simulator',
-  },
-  {
-    when: 'Apr 2026',
-    what: 'Five-year financial trends pipeline for 200+ suppliers, for GM’s purchasing team.',
-    href: '/projects/gm-supplier-benchmark-dashboard',
-  },
-  {
-    when: 'Feb 2026',
-    what: 'Consulting for OpenEden: competitive landscape, on-chain velocity, USDO supply cohorts.',
-    href: '/projects/openeden-rwa-intelligence-suite',
-  },
-  {
-    when: 'Dec 2024',
-    what: 'Rust tool that replays DeFi exploits and flags the Euler invariant break 4 blocks early.',
-    href: '/projects/smart-contract-invariant-monitor-and-guardian',
-  },
-  {
-    when: 'May to Dec 2024',
-    what: '8-bit computer from 200+ TTL chips; taught 30 students with it in Zimbabwe.',
-    href: '/projects/8-bit-computer-from-ttl-logic',
-  },
-  {
-    when: '2024',
-    what: 'Pothole-mapping drone for Bulawayo. Second place at ZITF; presented to the President of Zimbabwe.',
-    href: '/projects/pothole-detection-drone-for-zimbabwe-roads',
-  },
-];
+const timeline = (await getCollection('projects')).sort(
+  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
+);
 ---
 
 <BaseLayout title="About" description="Rahil Bhavan: computer engineering and economics student at Michigan, co-founder of Presto, DeFi risk modelling, hardware builds. Born in Los Angeles, raised in Zimbabwe." ogType="profile">
-  <main class="wrap page">
+  <main id="main" class="wrap page">
     <h1>About</h1>
+    <p class="lead">A student trynna learn.</p>
 
     <section class="prose intro">
       <p>
@@ -82,19 +41,22 @@ const timeline = [
     </section>
 
     <section class="block">
-      <h2 class="label">Timeline</h2>
+      <h2>Projects by date</h2>
       <ol class="timeline">
-        {timeline.map((t) => (
+        {timeline.map((p) => (
           <li>
-            <span class="when">{t.when}</span>
-            <a href={t.href}>{t.what}</a>
+            <span class="when">{monthYear(p.data.completedDate)}</span>
+            <span>
+              <a href={`/projects/${slug(p.id)}`}>{p.data.title}</a>
+              <span class="what">{p.data.tagline}</span>
+            </span>
           </li>
         ))}
       </ol>
     </section>
 
     <section class="block">
-      <h2 class="label">Elsewhere</h2>
+      <h2>Elsewhere</h2>
       <p>
         <a href="https://github.com/rahilbhavan">GitHub</a> ·
         <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a> ·
@@ -106,7 +68,6 @@ const timeline = [
 
 <style>
   h1 {
-    font-size: 1.5rem;
     margin-bottom: 1.5rem;
   }
 
@@ -115,7 +76,16 @@ const timeline = [
   }
 
   .block h2 {
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .lead {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.06;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 2rem;
   }
 
   .block p {
@@ -131,10 +101,11 @@ const timeline = [
     grid-template-columns: 7.5rem 1fr;
     gap: 1rem;
     padding: 0.625rem 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border);
   }
 
   .timeline a {
+    color: var(--ink);
     text-decoration: none;
   }
 
@@ -142,10 +113,15 @@ const timeline = [
     text-decoration: underline;
   }
 
+  .what {
+    display: block;
+    color: var(--secondary);
+  }
+
   .when {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--fg-3);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--secondary);
     padding-top: 0.3rem;
   }
 

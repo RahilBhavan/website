@@ -8,7 +8,7 @@ interface Props {
 
 const {
   title,
-  description = 'Rahil Bhavan builds risk models for on-chain lending, hardware that teaches, and Presto, a royalty recovery company.',
+  description = 'Rahil Bhavan, a computer engineering and economics student at Michigan, builds things to learn how they work: crypto lending risk models, a royalty recovery engine, AI infrastructure math and hardware. Each project shows its result and how it was checked.',
   ogImage,
   ogType = 'website',
 } = Astro.props;
@@ -17,7 +17,7 @@ const siteName = 'Rahil Bhavan';
 const fullTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const baseURL = Astro.site || Astro.url.origin;
 const canonicalURL = new URL(Astro.url.pathname, baseURL);
-const socialImageURL = new URL(ogImage ?? '/og.png', baseURL);
+const socialImageURL = new URL(ogImage ?? '/og/home.png', baseURL);
 
 const nav = [
   { href: '/projects', label: 'Projects' },
@@ -33,7 +33,8 @@ const path = Astro.url.pathname;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#111214" />
 
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
@@ -47,28 +48,21 @@ const path = Astro.url.pathname;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={socialImageURL} />
-    {ogImage && (
-      <>
-        {/* ponytail: every custom card is 1280x640; add props if one differs */}
-        <meta property="og:image:width" content="1280" />
-        <meta property="og:image:height" content="640" />
-      </>
-    )}
+    {/* Every card, generated or project-hosted, is 1280x640 */}
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageURL} />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload" href="/fonts/Anton-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <a class="skip" href="#main">Skip to content</a>
     <header class="site-header">
-      <div class="wrap header-row">
+      <div class="wrap-wide header-row">
         <a href="/" class="site-name">Rahil Bhavan</a>
         <nav class="site-nav" aria-label="Primary">
           {nav.map((item) => (
@@ -86,7 +80,7 @@ const path = Astro.url.pathname;
     <slot />
 
     <footer class="site-footer">
-      <div class="wrap footer-row">
+      <div class="wrap-wide footer-row">
         <span>© {new Date().getFullYear()} Rahil Bhavan</span>
         <span class="footer-links">
           <a href="mailto:rahil@bhavanzim.com">Email</a>
@@ -100,30 +94,46 @@ const path = Astro.url.pathname;
 </html>
 
 <style is:global>
-  :root {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-
-    --bg: #ffffff;
-    --bg-2: #f6f6f6;
-    --fg: #111111;
-    --fg-2: #555555;
-    --fg-3: #767676;
-    --line: #e6e6e6;
-
-    --wrap: 42.5rem;
-    --gutter: 1.25rem;
+  @font-face {
+    font-family: 'Anton';
+    src: url('/fonts/Anton-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f0f0f;
-      --bg-2: #1a1a1a;
-      --fg: #ececec;
-      --fg-2: #a3a3a3;
-      --fg-3: #808080;
-      --line: #262626;
-    }
+  @font-face {
+    font-family: 'IBM Plex Sans';
+    src: url('/fonts/IBMPlexSans-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'IBM Plex Sans';
+    src: url('/fonts/IBMPlexSans-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+  }
+
+  /* Values from rahil-design 3.3.0 tokens.json */
+  :root {
+    --font-display: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+    --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --canvas: #111214;
+    --surface: #202124;
+    --ink: #f5f5ef;
+    --secondary: #b7b8b1;
+    --accent: #ffe500;
+    --border: #424348;
+    --figure-surface: #f5f5ef;
+    --figure-ink: #111214;
+    --figure-secondary: #52545a;
+
+    --measure: 44rem;
+    --wide: 75rem;
+    --gutter: 1.5rem;
   }
 
   * {
@@ -133,6 +143,8 @@ const path = Astro.url.pathname;
   html {
     font-family: var(--font-sans);
     font-size: 16px;
+    color-scheme: dark;
+    scrollbar-color: var(--secondary) var(--canvas);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -140,12 +152,23 @@ const path = Astro.url.pathname;
 
   body {
     margin: 0;
+    font-size: 1.0625rem;
     line-height: 1.6;
-    color: var(--fg);
-    background: var(--bg);
+    color: var(--ink);
+    background: var(--canvas);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--canvas);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
   }
 
   main {
@@ -155,23 +178,41 @@ const path = Astro.url.pathname;
   }
 
   a {
-    color: inherit;
+    color: var(--accent);
     text-decoration: underline;
-    text-decoration-color: var(--line);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.2em;
-    transition: text-decoration-color 0.15s;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.25em;
+    overflow-wrap: anywhere;
   }
 
   a:hover {
-    text-decoration-color: var(--fg);
+    color: var(--ink);
   }
 
   h1, h2, h3, h4 {
     margin: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+
+  h1, h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.06;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(2.75rem, 7vw, 5rem);
+  }
+
+  h2 {
+    font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+  }
+
+  h3, h4 {
     font-weight: 600;
     line-height: 1.25;
-    letter-spacing: -0.01em;
   }
 
   ul, ol {
@@ -189,87 +230,198 @@ const path = Astro.url.pathname;
     height: auto;
   }
 
+  .skip {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 10;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    transform: translateY(-200%);
+  }
+
+  .skip:focus {
+    transform: none;
+  }
+
   /* Layout primitives used by every page */
   .wrap {
-    max-width: var(--wrap);
+    max-width: var(--measure);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+  }
+
+  .wrap-wide {
+    max-width: var(--wide);
     margin: 0 auto;
     padding: 0 var(--gutter);
   }
 
   .page {
-    padding-top: 3rem;
+    padding-top: 2.5rem;
     padding-bottom: 5rem;
   }
 
   .label {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--fg-3);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary);
   }
 
   .muted {
-    color: var(--fg-2);
+    color: var(--secondary);
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: 1rem;
+    color: var(--secondary);
+    text-decoration: none;
+  }
+
+  .back:hover {
+    color: var(--ink);
+  }
+
+  /* The one filled action per screen */
+  .primary {
+    padding: 0 1.25rem;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--canvas);
+    text-decoration: none;
+  }
+
+  .primary:hover {
+    background: var(--ink);
+    color: var(--canvas);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Status reads as text first; the yellow rule is only a marker */
+  .status {
+    display: inline-block;
+    border-left: 3px solid var(--accent);
+    padding-left: 0.625rem;
+    font-size: 0.875rem;
+    color: var(--secondary);
+    white-space: nowrap;
+  }
+
+  .figure {
+    margin: 0;
+    padding: 1rem;
+    background: var(--figure-surface);
+    color: var(--figure-ink);
+    border-radius: 12px;
+  }
+
+  .figure img {
+    display: block;
+    width: 100%;
+    border-radius: 6px;
+  }
+
+  .figure figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--figure-secondary);
+  }
+
+  .figure a,
+  .figure a:hover {
+    color: var(--figure-ink);
+  }
+
+  .figure :focus-visible {
+    outline-color: var(--figure-ink);
+  }
+
+  .figure ::selection {
+    color: var(--figure-ink);
   }
 
   /* Header and footer */
   .site-header {
-    padding: 1.5rem 0;
+    padding: 1.25rem 0;
   }
 
   .header-row, .footer-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.5rem 1.5rem;
     flex-wrap: wrap;
   }
 
   .site-name {
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 1.625rem;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--ink);
     text-decoration: none;
   }
 
   .site-nav {
     display: flex;
-    gap: 1.25rem;
-    font-size: 0.9375rem;
+    gap: 1.5rem;
   }
 
   .site-nav a {
-    color: var(--fg-2);
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--ink);
     text-decoration: none;
   }
 
   .site-nav a:hover,
   .site-nav a[aria-current='page'] {
-    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 0.4em;
   }
 
   .site-footer {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border);
     padding: 1.5rem 0 2.5rem;
-    font-size: 0.8125rem;
-    color: var(--fg-3);
+    font-size: 0.875rem;
+    color: var(--secondary);
   }
 
   .footer-links {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
   }
 
   .footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--secondary);
     text-decoration: none;
   }
 
   .footer-links a:hover {
-    color: var(--fg);
+    color: var(--ink);
   }
 
   /* Rendered markdown (project and writing bodies) */
   .prose {
-    font-size: 1.0625rem;
     line-height: 1.7;
   }
 
@@ -280,21 +432,22 @@ const path = Astro.url.pathname;
   }
 
   .prose h2 {
-    font-size: 1.25rem;
-    margin: 2.5rem 0 0.75rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
+    font-size: clamp(1.625rem, 3vw, 2.125rem);
+    margin: 3rem 0 1rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--border);
+    scroll-margin-top: 1rem;
   }
 
   .prose h3 {
-    font-size: 1.0625rem;
-    margin: 1.75rem 0 0.5rem;
+    font-size: 1.1875rem;
+    margin: 2rem 0 0.5rem;
   }
 
   .prose h4 {
-    font-size: 1rem;
+    font-size: 1.0625rem;
     margin: 1.25rem 0 0.25rem;
-    color: var(--fg-2);
+    color: var(--secondary);
   }
 
   .prose p {
@@ -318,6 +471,10 @@ const path = Astro.url.pathname;
     margin: 0.25rem 0;
   }
 
+  .prose li::marker {
+    color: var(--secondary);
+  }
+
   .prose li > ul, .prose li > ol {
     margin-bottom: 0;
   }
@@ -329,20 +486,19 @@ const path = Astro.url.pathname;
   .prose blockquote {
     margin: 1.5rem 0;
     padding-left: 1rem;
-    border-left: 2px solid var(--line);
-    color: var(--fg-2);
+    border-left: 3px solid var(--accent);
+    color: var(--secondary);
   }
 
   .prose code {
-    background: var(--bg-2);
+    background: var(--surface);
     padding: 0.1em 0.35em;
     border-radius: 4px;
   }
 
   .prose pre {
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    border-radius: 6px;
+    background: var(--surface);
+    border-radius: 8px;
     padding: 1rem;
     overflow-x: auto;
     margin: 1.25rem 0;
@@ -357,14 +513,14 @@ const path = Astro.url.pathname;
 
   .prose img {
     display: block;
-    border-radius: 6px;
+    border-radius: 8px;
     margin: 1.5rem 0 0.5rem;
   }
 
   .prose img + em {
     display: block;
     font-size: 0.875rem;
-    color: var(--fg-3);
+    color: var(--secondary);
     margin-bottom: 1.5rem;
   }
 
@@ -372,6 +528,7 @@ const path = Astro.url.pathname;
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
     margin: 1.25rem 0;
   }
 
@@ -386,29 +543,37 @@ const path = Astro.url.pathname;
   .prose th, .prose td {
     text-align: left;
     padding: 0.5rem 0.75rem 0.5rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--border);
     vertical-align: top;
   }
 
   .prose th {
     font-weight: 600;
-    color: var(--fg-2);
+    color: var(--secondary);
     font-size: 0.8125rem;
   }
 
   .prose hr {
     border: 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border);
     margin: 2rem 0;
   }
 
-  .prose a {
-    text-decoration-color: var(--fg-3);
+  @media (max-width: 640px) {
+    body {
+      font-size: 1rem;
+    }
+
+    :root {
+      --gutter: 1.25rem;
+    }
   }
 
-  @media (max-width: 640px) {
-    .prose {
-      font-size: 1rem;
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
     }
   }
 </style>

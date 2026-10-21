@@ -48,23 +48,23 @@ const posts = (await getCollection('blog', ({ data }) => data.series?.name === s
 
   .series li {
     padding: 0.5rem 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border);
   }
 
   .series li:last-child {
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--border);
   }
 
   .series a {
-    color: var(--fg-2);
+    color: var(--secondary);
     text-decoration: none;
   }
 
   .series a:hover {
-    color: var(--fg);
+    color: var(--ink);
   }
 
   .current {
-    color: var(--fg);
+    color: var(--ink);
   }
 </style>

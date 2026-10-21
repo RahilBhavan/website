@@ -1,98 +1,242 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
+import { demoLabel, groupWriting, monthYear, slug, statusLabel } from '../../lib/content';
 
 export const prerender = true;
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
 
-  return projects.map((project) => {
-    const slug = project.id.replace(/\.(md|mdx)$/, '');
-    return {
-      params: { slug },
-      props: { project },
-    };
-  });
+  return projects.map((project) => ({
+    params: { slug: slug(project.id) },
+    props: { project },
+  }));
 }
 
 const { project } = Astro.props;
-const { Content } = await project.render();
+const { Content, headings } = await project.render();
 const { data } = project;
-const month = data.completedDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+const sections = headings.filter((h) => h.depth === 2);
+const writing = groupWriting(
+  await getCollection('blog', (post) => !post.data.draft && post.data.project?.id === project.id)
+);
+
+const facts = [
+  { term: 'Problem', detail: data.problem },
+  { term: 'Approach', detail: data.solution },
+  { term: 'How it was checked', detail: data.verification },
+  ...(data.next ? [{ term: 'Still open', detail: data.next }] : []),
+];
 ---
 
-<BaseLayout title={data.title} description={data.description} ogImage={data.ogImage} ogType="article">
-  <main class="wrap page">
-    <a href="/projects" class="label back">← Projects</a>
-    <h1>{data.title}</h1>
-    <p class="muted lede">{data.description}</p>
-    <div class="label meta">
-      {data.kind && <span>{data.kind}</span>}
-      <time datetime={data.completedDate.toISOString()}>{month}</time>
-      {data.demoUrl && <a href={data.demoUrl} rel="noopener">demo</a>}
-      {data.githubUrl && <a href={data.githubUrl} rel="noopener">code</a>}
+<BaseLayout title={data.title} description={data.description} ogImage={data.ogImage ?? `/og/${slug(project.id)}.png`} ogType="article">
+  <main id="main" class="page">
+    <header class="wrap-wide case-head">
+      <a href="/projects" class="back">← All projects</a>
+      <p class="case-meta">
+        <span class="status">{statusLabel[data.status]}</span>
+        {data.kind && <span>{data.kind}</span>}
+        <time datetime={data.completedDate.toISOString()}>{monthYear(data.completedDate)}</time>
+      </p>
+      <h1>{data.title}</h1>
+      <p class="result">{data.result}</p>
+      {(data.demoUrl || data.githubUrl) && (
+        <p class="case-links">
+          {data.demoUrl && <a href={data.demoUrl} rel="noopener" class="primary">{demoLabel(data.demoUrl)}</a>}
+          {data.githubUrl && <a href={data.githubUrl} rel="noopener">Read the code</a>}
+        </p>
+      )}
+    </header>
+
+    <section class={`wrap-wide case-layout${data.figure ? '' : ' no-figure'}`} aria-label="Summary">
+      <dl class="facts">
+        {facts.map((f) => (
+          <div>
+            <dt>{f.term}</dt>
+            <dd>{f.detail}</dd>
+          </div>
+        ))}
+      </dl>
+      {data.figure && (
+        <figure class="figure">
+          <a href={data.figure.src} class="figure-link">
+            <img src={data.figure.src} alt={data.figure.alt} loading="eager" />
+            <span class="sr-only">Open the full-size image</span>
+          </a>
+          <figcaption>{data.figure.caption}</figcaption>
+        </figure>
+      )}
+    </section>
+
+    {writing.length > 0 && (
+      <section class="wrap-wide related" aria-labelledby="related-title">
+        <h2 id="related-title" class="label">Writing about this project</h2>
+        <ul>
+          {writing.flatMap((w) => (w.parts.length ? w.parts : [w])).map((p) => (
+            <li><a href={p.href}>{p.title}</a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <div class="wrap write-up">
+      <h2 class="write-up-title">The full write-up</h2>
+      {sections.length >= 4 && (
+        <nav class="toc" aria-label="On this page">
+          <p class="label">On this page</p>
+          <ol>
+            {sections.map((h) => (
+              <li><a href={`#${h.slug}`}>{h.text}</a></li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      <div class="prose"><Content /></div>
     </div>
-
-    <dl class="kicker">
-      <dt class="label">Problem</dt>
-      <dd>{data.problem}</dd>
-      <dt class="label">Solution</dt>
-      <dd>{data.solution}</dd>
-    </dl>
-
-    <div class="prose"><Content /></div>
   </main>
 </BaseLayout>
 
 <style>
-  .back {
-    display: inline-block;
-    text-decoration: none;
+  .case-head h1 {
+    max-width: 22ch;
+    margin-bottom: 1.25rem;
+  }
+
+  .case-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: var(--secondary);
+  }
+
+  .result {
+    font-size: clamp(1.1875rem, 2vw, 1.375rem);
+    line-height: 1.5;
+    max-width: 48rem;
+    margin: 0;
+  }
+
+  .case-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin: 1.5rem 0 0;
+  }
+
+  .case-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-weight: 600;
+  }
+
+  .case-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
+    margin-top: 3rem;
+  }
+
+  .case-layout.no-figure {
+    grid-template-columns: minmax(0, 52rem);
+  }
+
+  .facts {
+    margin: 0;
+  }
+
+  .facts > div {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 1.25rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .facts dt {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary);
+    padding-top: 0.15rem;
+  }
+
+  .facts dd {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .figure-link {
+    display: block;
+    border-radius: 6px;
+  }
+
+  .related {
+    margin-top: 2.5rem;
+  }
+
+  .related ul {
+    list-style: none;
+    margin-top: 0.5rem;
+  }
+
+  .related li {
+    padding: 0.25rem 0;
+  }
+
+  .write-up {
+    margin-top: 4rem;
+  }
+
+  .write-up-title {
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
     margin-bottom: 1.5rem;
   }
 
-  .back:hover {
-    color: var(--fg);
-  }
-
-  h1 {
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .lede {
-    margin: 0 0 1rem;
-    font-size: 1.0625rem;
-  }
-
-  .meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+  .toc {
     margin-bottom: 2.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface);
+    border-radius: 12px;
   }
 
-  .meta a {
-    color: var(--fg-2);
-    text-decoration: underline;
-    text-decoration-color: var(--fg-3);
+  .toc .label {
+    margin: 0 0 0.5rem;
   }
 
-  .meta a:hover {
-    color: var(--fg);
+  .toc ol {
+    list-style: none;
+    columns: 2 14rem;
+    column-gap: 2rem;
   }
 
-  .kicker {
-    margin: 0 0 3rem;
+  .toc li {
+    break-inside: avoid;
+    padding: 0.125rem 0;
   }
 
-  .kicker dt {
-    padding-top: 1rem;
-    border-top: 1px solid var(--line);
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0;
   }
 
-  .kicker dd {
-    margin: 0.25rem 0 1rem;
+  @media (max-width: 900px) {
+    .case-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 540px) {
+    .facts > div {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.25rem;
+    }
   }
 </style>

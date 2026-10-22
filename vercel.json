@@ -18,6 +18,11 @@
       "source": "/mara-credit-case/:path*",
       "destination": "https://mara.rahilbhavan.com/:path*",
       "permanent": true
+    },
+    {
+      "source": "/riscv",
+      "destination": "/riscv/post",
+      "permanent": false
     }
   ]
 }

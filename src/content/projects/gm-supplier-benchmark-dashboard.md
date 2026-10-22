@@ -13,8 +13,8 @@ figure:
   alt: "PPCO Supplier Intelligence Dashboard showing average SG&A and EBIT tiles, an SG&A versus EBIT scatter plot, a vehicle-zone part map and a revenue bar chart of top suppliers."
   caption: "The deployed supplier explorer, with 210 suppliers in the default view."
 demoUrl: "https://gm-mecg.vercel.app"
-githubUrl: "https://github.com/RahilBhavan/gm_mecg"
 kind: "consulting"
+track: "product"
 featured: false
 completedDate: 2026-04-24
 ---
@@ -216,7 +216,7 @@ def build_trends_payload(
 ## Links & Resources
 
 - **Live dashboard**: [gm-mecg.vercel.app](https://gm-mecg.vercel.app)
-- **Repository**: [github.com/RahilBhavan/gm_mecg](https://github.com/RahilBhavan/gm_mecg)
+- **Repository**: private (client work)
 
 ---
 

@@ -13,6 +13,7 @@ figure:
   alt: "Chart of monthly transfer activity comparing XRPL and Ethereum TBILL token velocity"
   caption: "Module 2 shows monthly transfer activity on XRPL against Ethereum as a velocity signal."
 kind: "consulting"
+track: "crypto"
 featured: true
 completedDate: 2026-02-27
 ---

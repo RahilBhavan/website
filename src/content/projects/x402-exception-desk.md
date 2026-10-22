@@ -15,6 +15,7 @@ figure:
 demoUrl: "https://rahilbhavan.github.io/x402-exception-desk/"
 githubUrl: "https://github.com/RahilBhavan/x402-exception-desk"
 kind: "payments ops"
+track: "crypto"
 completedDate: 2026-09-23
 ogImage: "https://rahilbhavan.github.io/x402-exception-desk/social-card.png"
 ---

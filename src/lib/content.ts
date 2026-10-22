@@ -10,6 +10,15 @@ export const statusLabel = {
   shipped: 'Shipped',
 } as const;
 
+export const trackLabel = {
+  crypto: 'Crypto finance',
+  ai: 'AI engineering',
+  product: 'Product',
+  hardware: 'Hardware',
+} as const;
+
+export type Track = keyof typeof trackLabel;
+
 export const demoLabel = (url: string) => (/youtube\.com|youtu\.be/.test(url) ? 'Watch the video' : 'Open the live site');
 
 type Post = CollectionEntry<'blog'>;
@@ -20,10 +29,11 @@ export type WritingEntry = {
   description: string;
   date: Date;
   parts: { title: string; href: string }[];
+  track?: Track;
 };
 
 // A series shows once, at the date of its newest part, so a list never opens on "Part 3/3".
-export function groupWriting(posts: Post[]): WritingEntry[] {
+export function groupWriting(posts: Post[], trackOf: (post: Post) => Track | undefined = () => undefined): WritingEntry[] {
   const series = new Map<string, Post[]>();
   const entries: WritingEntry[] = [];
 
@@ -36,6 +46,7 @@ export function groupWriting(posts: Post[]): WritingEntry[] {
         description: post.data.description,
         date: post.data.publishDate,
         parts: [],
+        track: trackOf(post),
       });
       continue;
     }
@@ -50,6 +61,7 @@ export function groupWriting(posts: Post[]): WritingEntry[] {
       description: `A ${ordered.length}-part series. ${ordered[0].data.description.replace(/^Part 1 of [^:]*:\s*/, '')}`,
       date: new Date(Math.max(...ordered.map((p) => p.data.publishDate.valueOf()))),
       parts: ordered.map((p) => ({ title: p.data.title, href: `/writing/${slug(p.id)}` })),
+      track: trackOf(ordered[0]),
     });
   }
 

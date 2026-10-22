@@ -12,6 +12,7 @@ figure:
   alt: "Overhead photo of the full breadboard computer built from TTL chips, September 2024."
   caption: "The full board from above, September 2024."
 kind: "hardware"
+track: "hardware"
 featured: false
 completedDate: 2024-12-15
 ---

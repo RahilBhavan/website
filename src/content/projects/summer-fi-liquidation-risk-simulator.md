@@ -6,11 +6,12 @@ problem: "When ETH fell 27% intraday on August 5, 2024 and gas spiked to 681 Gwe
 solution: "Built a compact Python model that reads 24 hourly price and gas observations, evaluates liquidation and stop-loss triggers hour by hour for Aave V3 and Morpho parameters, estimates exit value net of modeled slippage and gas, and sweeps 5 initial LTVs by 5 buffers per protocol. A Next.js simulator runs the same model in TypeScript with a parity check against the Python fixtures."
 result: "Sweeping 50 stop-loss scenarios through the Aug 5, 2024 ETH crash gives Aave V3 21 stop-loss exits and 4 liquidations, and Morpho 12 exits and 6 liquidations."
 status: "prototype"
-verification: "12 unit tests cover the model logic. A parity check runs the TypeScript simulator model against Python-generated fixtures before every build."
+verification: "11 unit tests in the public repo cover the model logic, and the backtest report and 50-scenario sweep are committed alongside it."
 next: "Hourly data cannot show whether an exit would land before a breach inside the hour. Minute-level data and measured order-book depth would replace the heuristics."
 demoUrl: "https://summer.rahilbhavan.com"
 githubUrl: "https://github.com/RahilBhavan/summer-fi-risk-analysis"
 kind: "risk model"
+track: "crypto"
 featured: false
 completedDate: 2026-08-12
 ---
@@ -22,7 +23,7 @@ completedDate: 2026-08-12
 
 **Who it's for:** Risk and operations teams on DeFi lending products, and anyone evaluating how to set and escalate stop-loss buffers.
 
-**Impact:** A reproducible sweep of 50 scenarios (5 LTVs x 5 buffers x 2 protocols), a written backtest report, 12 unit tests on the model logic, and a deployed simulator whose TypeScript model is parity-checked against the Python output. The scenarios are illustrative; they are not claims about live protocol use or organizational work.
+**Impact:** A reproducible sweep of 50 scenarios (5 LTVs x 5 buffers x 2 protocols), a written backtest report, 11 unit tests on the model logic, and a deployed simulator whose TypeScript model is parity-checked against the Python output. The scenarios are illustrative; they are not claims about live protocol use or organizational work.
 
 ## The Problem
 
@@ -214,7 +215,7 @@ def parameter_sweep(df: pd.DataFrame, protocol: Protocol = "AaveV3") -> pd.DataF
 - 50 sweep rows: 25 per protocol (5 LTVs x 5 buffers x 1 static strategy)
 - Aave V3: 21 `sl_triggered`, 4 `liquidated`
 - Morpho: 7 `active`, 12 `sl_triggered`, 6 `liquidated`
-- 12 unit tests on the model logic
+- 11 unit tests on the model logic
 - Model assumptions: Aave V3 threshold 0.825 and 5% penalty; Morpho threshold 0.945 and 1% penalty
 
 The report's recommendation: use the sweep as a scenario-analysis input when selecting stop-loss buffers, and validate thresholds, execution, and controls against current protocol configuration and finer-grained data before operational use.

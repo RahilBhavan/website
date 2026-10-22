@@ -11,6 +11,7 @@ next: "Applicant submission needed a reliability pass after the portal opened. T
 demoUrl: "https://mecg-website-three.vercel.app"
 githubUrl: "https://github.com/amanigupta27/mecg-website"
 kind: "web app"
+track: "product"
 featured: false
 completedDate: 2026-09-01
 ---

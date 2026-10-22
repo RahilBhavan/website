@@ -10,6 +10,7 @@ verification: "225 unit tests and a CI matrix on Python 3.10 to 3.13. Running th
 next: "No customers, recovered dollars or production accuracy yet, and the sample leaves every ISWC and IPI blank, so exact-identifier matching has not seen real data."
 demoUrl: "https://prestorecovery.com"
 kind: "co-founder"
+track: "product"
 featured: true
 completedDate: 2026-09-09
 ---

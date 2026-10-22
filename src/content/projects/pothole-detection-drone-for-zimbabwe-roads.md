@@ -14,6 +14,7 @@ figure:
   caption: "The bill of materials laid out, from the Cube Orange flight controller to the ESCs."
 demoUrl: "https://www.youtube.com/watch?v=LpTeKHJ6wRc"
 kind: "hardware"
+track: "hardware"
 featured: true
 completedDate: 2024-06-15
 ---

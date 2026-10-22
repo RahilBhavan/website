@@ -38,6 +38,8 @@ const projects = defineCollection({
     figure: z
       .object({ src: z.string(), alt: z.string(), caption: z.string() })
       .optional(),
+    // Which recruiting track the work speaks to; drives the topic filters on /projects and /writing.
+    track: z.enum(['crypto', 'ai', 'product', 'hardware']),
     // Short label shown next to the status, e.g. "consulting", "hardware", "risk model".
     kind: z.string().optional(),
     // Shown under Selected work on the homepage.

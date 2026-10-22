@@ -12,6 +12,7 @@ figure:
   alt: "Rack to grid calculator with 72 GPUs at 1,400 W giving 131 kW per rack, 166 A per line at 480 V AC, 164 A per conductor at 800 V DC and 3,931 L of water per day."
   caption: "The rack-to-grid form with its default inputs. Every output names its denominator, and the source line cites the course's worked numbers."
 kind: "tool"
+track: "ai"
 featured: true
 demoUrl: "https://rahilbhavan.com/tools/datacenter-math/"
 githubUrl: "https://github.com/RahilBhavan/website"

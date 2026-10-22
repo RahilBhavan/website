@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Toc from '../../components/Toc.astro';
 import { getCollection } from 'astro:content';
 import { demoLabel, groupWriting, monthYear, slug, statusLabel } from '../../lib/content';
 
@@ -18,9 +19,8 @@ const { project } = Astro.props;
 const { Content, headings } = await project.render();
 const { data } = project;
 
-const sections = headings.filter((h) => h.depth === 2);
 const writing = groupWriting(
-  await getCollection('blog', (post) => !post.data.draft && post.data.project?.id === project.id)
+  await getCollection('blog', (post) => !post.data.draft && post.data.project?.id === slug(project.id))
 );
 
 const facts = [
@@ -83,16 +83,7 @@ const facts = [
 
     <div class="wrap write-up">
       <h2 class="write-up-title">The full write-up</h2>
-      {sections.length >= 4 && (
-        <nav class="toc" aria-label="On this page">
-          <p class="label">On this page</p>
-          <ol>
-            {sections.map((h) => (
-              <li><a href={`#${h.slug}`}>{h.text}</a></li>
-            ))}
-          </ol>
-        </nav>
-      )}
+      <Toc headings={headings} />
       <div class="prose"><Content /></div>
     </div>
   </main>
@@ -198,33 +189,6 @@ const facts = [
     padding-top: 2rem;
     border-top: 1px solid var(--border);
     margin-bottom: 1.5rem;
-  }
-
-  .toc {
-    margin-bottom: 2.5rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--surface);
-    border-radius: 12px;
-  }
-
-  .toc .label {
-    margin: 0 0 0.5rem;
-  }
-
-  .toc ol {
-    list-style: none;
-    columns: 2 14rem;
-    column-gap: 2rem;
-  }
-
-  .toc li {
-    break-inside: avoid;
-    padding: 0.125rem 0;
-  }
-
-  .toc a {
-    display: inline-block;
-    padding: 0.25rem 0;
   }
 
   @media (max-width: 900px) {

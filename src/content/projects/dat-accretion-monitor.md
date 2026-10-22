@@ -13,6 +13,7 @@ figure:
   alt: "Table of the latest filed week: Strategy STRC at 84% of break-even, BitMine BMNP at 99.7%, and SharpLink with no preferred stock."
   caption: "The live break-even table on October 21, 2026, with filings through October 11."
 kind: "financial analysis"
+track: "crypto"
 demoUrl: "https://rahilbhavan.github.io/dat-accretion/"
 githubUrl: "https://github.com/RahilBhavan/dat-accretion"
 completedDate: 2026-09-28

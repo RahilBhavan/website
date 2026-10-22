@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProjectEntry from '../../components/ProjectEntry.astro';
+import TrackFilter from '../../components/TrackFilter.astro';
 import { getCollection } from 'astro:content';
 
 export const prerender = true;
@@ -8,6 +9,9 @@ export const prerender = true;
 const projects = (await getCollection('projects')).sort(
   (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
 );
+
+const counts: Record<string, number> = {};
+for (const p of projects) if (p.data.track) counts[p.data.track] = (counts[p.data.track] ?? 0) + 1;
 
 const description =
   'Builds, risk models and consulting work, newest first. Each one says whether it is a proposal, a prototype or shipped, and how it was checked.';
@@ -22,7 +26,8 @@ const description =
       and revenue.
     </p>
 
-    <div class="grid">
+    <TrackFilter target="#project-grid" counts={counts} noun="projects" />
+    <div class="grid" id="project-grid">
       {projects.map((project) => <ProjectEntry project={project} headingLevel="h2" />)}
     </div>
   </main>

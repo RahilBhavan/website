@@ -13,6 +13,7 @@ figure:
   alt: "Yield Fidelity demo landing page with links to the calculator, dashboard and methodology, and buttons to run an estimate or view the monitor."
   caption: "The demo's landing page. The project is a proposal, and the demo shows the user-facing calculator."
 kind: "proposal"
+track: "crypto"
 featured: false
 demoUrl: "https://yield.rahilbhavan.com"
 completedDate: 2026-03-03

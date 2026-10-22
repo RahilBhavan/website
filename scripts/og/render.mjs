@@ -1,5 +1,5 @@
 // Renders 1280x640 social cards into public/og/ for the home page, the crypto finance hub,
-// and every project without its own ogImage. Run: node scripts/og/render.mjs
+// every project without its own ogImage, and every published post. Run: node scripts/og/render.mjs
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -36,12 +36,17 @@ const card = ({ kicker, title, body, footer }) => `<!doctype html>
   <footer><span>${escape(footer)}</span><span>rahilbhavan.com</span></footer>
 </body></html>`;
 
-const projects = readdirSync('src/content/projects')
-  .filter((f) => f.endsWith('.md'))
-  .map((f) => ({
-    slug: f.replace(/\.md$/, ''),
-    data: yaml.load(readFileSync(join('src/content/projects', f), 'utf8').match(/^---\n([\s\S]*?)\n---/)[1]),
-  }));
+const entries = (dir) =>
+  readdirSync(dir)
+    .filter((f) => /\.mdx?$/.test(f))
+    .map((f) => ({
+      slug: f.replace(/\.mdx?$/, ''),
+      data: yaml.load(readFileSync(join(dir, f), 'utf8').match(/^---\n([\s\S]*?)\n---/)[1]),
+    }));
+
+const projects = entries('src/content/projects');
+const posts = entries('src/content/blog').filter((p) => !p.data.draft);
+const longDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 const cards = [
   {
@@ -67,13 +72,20 @@ const cards = [
       body: p.data.result,
       footer: `${statusLabel[p.data.status]} · ${new Date(p.data.completedDate).getFullYear()}`,
     })),
+  ...posts.map((p) => ({
+    file: `writing/${p.slug}.png`,
+    kicker: '<b>Rahil Bhavan</b> · Writing',
+    title: p.data.title,
+    body: p.data.description,
+    footer: longDate(p.data.publishDate),
+  })),
 ];
 
-mkdirSync(outDir, { recursive: true });
+mkdirSync(join(outDir, 'writing'), { recursive: true });
 const work = mkdtempSync(join(process.env.XDG_CACHE_HOME ?? join(process.env.HOME ?? tmpdir(), '.cache'), 'og-'));
 try {
   for (const c of cards) {
-    const html = join(work, c.file.replace(/\.png$/, '.html'));
+    const html = join(work, c.file.replace(/\//g, '-').replace(/\.png$/, '.html'));
     writeFileSync(html, card(c));
     execFileSync(chromium, [
       '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',

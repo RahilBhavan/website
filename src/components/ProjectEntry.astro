@@ -12,7 +12,7 @@ const { data } = project;
 const Heading = headingLevel;
 ---
 
-<article class="entry">
+<article class="entry" data-track={data.track}>
   <div class="entry-meta">
     <span class="status">{statusLabel[data.status]}</span>
     <span>{data.kind && <>{data.kind} · </>}{data.completedDate.getFullYear()}</span>

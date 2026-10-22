@@ -12,9 +12,10 @@ figure:
   src: "/images/projects/coin-revenue-bridge/bridge-summary.webp"
   alt: "Four figures: $863.8M reported revenue increase, $852.9M volume effect, $10.9M effective-yield effect and a $0.0M residual."
   caption: "The volume-first bridge from the live case study. Consumer spot volume rose from $34B to $94B."
-demoUrl: "https://rahilbhavan.github.io/coin-revenue-bridge/"
+demoUrl: "https://revenue.rahilbhavan.com/"
 githubUrl: "https://github.com/RahilBhavan/coin-revenue-bridge"
 kind: "revenue analysis"
+track: "crypto"
 completedDate: 2026-09-23
 ogImage: "https://rahilbhavan.github.io/coin-revenue-bridge/social-card.png"
 ---

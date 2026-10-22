@@ -1,20 +1,28 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
-import { groupWriting, monthYear } from '../../lib/content';
+import TrackFilter from '../../components/TrackFilter.astro';
+import { groupWriting, monthYear, slug } from '../../lib/content';
 
 export const prerender = true;
 
-const entries = groupWriting(await getCollection('blog', ({ data }) => !data.draft));
+const projectTracks = new Map((await getCollection('projects')).map((p) => [slug(p.id), p.data.track]));
+const entries = groupWriting(
+  await getCollection('blog', ({ data }) => !data.draft),
+  (post) => (post.data.project ? projectTracks.get(post.data.project.id) : undefined)
+);
+const counts: Record<string, number> = {};
+for (const e of entries) if (e.track) counts[e.track] = (counts[e.track] ?? 0) + 1;
 ---
 
 <BaseLayout title="Writing" description="Write-ups and series on the projects: what was built, what broke and what the numbers say.">
   <main id="main" class="wrap page">
     <h1>Writing</h1>
 
-    <ul class="entries">
+    <TrackFilter target="#writing-list" counts={counts} noun="entries" />
+    <ul class="entries" id="writing-list">
       {entries.map((entry) => (
-        <li class="entry">
+        <li class="entry" data-track={entry.track}>
           <p class="entry-meta">
             {entry.parts.length > 0 && <>{entry.parts.length}-part series · </>}{monthYear(entry.date)}
           </p>

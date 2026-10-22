@@ -9,6 +9,7 @@ status: "prototype"
 verification: "Checked by replaying the Euler Finance exploit, with zero false positives reported in that case study. The page also reports reorg handling tested in scenarios."
 next: "It has only run in replay and testnet settings. Multi-chain support and ML anomaly detection are listed as future work."
 kind: "security"
+track: "crypto"
 featured: false
 completedDate: 2024-12-01
 ---

@@ -1,0 +1,96 @@
+---
+import { trackLabel, type Track } from '../lib/content';
+
+interface Props {
+  // The list whose direct children carry data-track.
+  target: string;
+  counts: Partial<Record<Track, number>>;
+  noun: string;
+}
+
+const { target, counts, noun } = Astro.props;
+const tracks = (Object.keys(trackLabel) as Track[]).filter((t) => counts[t]);
+const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
+---
+
+<div class="track-filter" data-target={target} data-noun={noun} hidden>
+  <div class="chips" role="group" aria-label="Filter by topic">
+    <button type="button" aria-pressed="true" data-track="">All <span>{total}</span></button>
+    {tracks.map((t) => (
+      <button type="button" aria-pressed="false" data-track={t}>{trackLabel[t]} <span>{counts[t]}</span></button>
+    ))}
+  </div>
+  <p class="count" aria-live="polite"></p>
+</div>
+
+<script>
+  // Without JavaScript the filter stays hidden and every entry shows.
+  for (const root of document.querySelectorAll<HTMLElement>('.track-filter')) {
+    const list = document.querySelector(root.dataset.target!);
+    if (!list) continue;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('button')];
+    const count = root.querySelector('.count')!;
+    const show = (track: string) => {
+      let shown = 0;
+      for (const item of list.children as HTMLCollectionOf<HTMLElement>) {
+        const match = !track || item.dataset.track === track;
+        item.hidden = !match;
+        if (match) shown++;
+      }
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.track === track));
+      count.textContent = track ? `Showing ${shown} ${root.dataset.noun}.` : '';
+    };
+    for (const b of buttons) b.addEventListener('click', () => show(b.dataset.track ?? ''));
+    root.hidden = false;
+  }
+</script>
+
+<style>
+  .track-filter {
+    margin: 0 0 1.5rem;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--secondary);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9375rem;
+    cursor: pointer;
+  }
+
+  button span {
+    color: var(--secondary);
+    margin-left: 0.25rem;
+  }
+
+  button:hover {
+    background: var(--border);
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--canvas);
+  }
+
+  button[aria-pressed='true'] span {
+    color: var(--canvas);
+  }
+
+  .count {
+    margin: 0.75rem 0 0;
+    min-height: 1.5em;
+    font-size: 0.875rem;
+    color: var(--secondary);
+  }
+</style>

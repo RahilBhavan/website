@@ -15,6 +15,7 @@ figure:
 demoUrl: "https://mara.rahilbhavan.com/"
 githubUrl: "https://github.com/RahilBhavan/mara-credit-case"
 kind: "credit case"
+track: "crypto"
 featured: true
 completedDate: 2026-09-23
 ogImage: "https://mara.rahilbhavan.com/social-card.png"

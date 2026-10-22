@@ -4,9 +4,18 @@ tagline: "Splits Coinbase's $863.8M Q4 2024 consumer revenue jump into volume an
 description: "A source-backed bridge that splits Coinbase's $863.8M Q3 to Q4 2024 rise in consumer transaction revenue into volume and effective-yield effects, built only from public SEC filings, with a reproducible workbook and memo."
 problem: "Coinbase's consumer transaction revenue rose from $483.3M in Q3 2024 to $1,347.1M in Q4 2024. Did customers trade more, or did Coinbase earn more on each dollar traded? The answer shapes how a planner should think about the next quarter, and the public numbers change definition over time, so a careless series mixes numbers that do not compare."
 solution: "Built a Python and SQLite core over 13 frozen SEC documents that keeps original and recast values apart, enforces information cutoffs and definition families, and computes the bridge with decimal arithmetic in three factor orders. It feeds a two-page memo, a seven-sheet formula workbook, a reviewer packet, and a live case study, plus a standalone script that recomputes the bridge from package files."
-demoUrl: "https://rahilbhavan.github.io/coin-revenue-bridge/"
+result: "Volume explains $852.9M to $859.9M of Coinbase's $863.8M Q3 to Q4 2024 consumer revenue rise, depending on factor order. Yield explains $3.9M to $10.9M."
+status: "prototype"
+verification: "Unit tests run in CI, an evidence validator exits non-zero on failure, and reproduce.py recomputes the bridge from package files. Each view reconciles with a $0.0M rounded residual."
+next: "No outside practitioner has reviewed the work yet."
+figure:
+  src: "/images/projects/coin-revenue-bridge/bridge-summary.webp"
+  alt: "Four figures: $863.8M reported revenue increase, $852.9M volume effect, $10.9M effective-yield effect and a $0.0M residual."
+  caption: "The volume-first bridge from the live case study. Consumer spot volume rose from $34B to $94B."
+demoUrl: "https://revenue.rahilbhavan.com/"
 githubUrl: "https://github.com/RahilBhavan/coin-revenue-bridge"
 kind: "revenue analysis"
+track: "crypto"
 completedDate: 2026-09-23
 ogImage: "https://rahilbhavan.github.io/coin-revenue-bridge/social-card.png"
 ---

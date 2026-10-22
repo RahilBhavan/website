@@ -1,0 +1,77 @@
+---
+title: "USDO's supply drawdown reads better as cohorts"
+description: "Consulting analysis of OpenEden's USDO supply as cohorts, and of TBILL transfer activity on XRPL versus Ethereum, with every gap labeled."
+publishDate: 2026-10-21
+project: "openeden-rwa-intelligence-suite"
+tags: ["rwa", "stablecoins", "on-chain-data", "consulting", "python"]
+draft: false
+---
+A supply chart for a token is one line. USDO's line went up to $298.8M and came down to $63.1M, using DeFiLlama data as of Feb 27, 2026. If you only look at that line, the natural question is "what went wrong?", and you go looking for one answer.
+
+I did this analysis as consulting work for OpenEden, a tokenized T-bill protocol whose real-world asset (RWA) products include PRISM, USDO and TBILL. What follows is my reading of the public parts of that work. It's not a statement from OpenEden, and nothing here should be read as OpenEden endorsing these conclusions. The question I want to walk through is narrower than "what went wrong": who arrived, who left, and when.
+
+Case page: [/projects/openeden-rwa-intelligence-suite](/projects/openeden-rwa-intelligence-suite).
+
+## The problem was three questions that needed reproducible answers
+
+The brief had three parts, and each became a module with its own Markdown report generated from cached data:
+
+1. Competitive positioning. A matrix comparing PRISM with tokenized yield peers (Ondo, Maple, Superstate, Hamilton Lane), plus a value proposition and an investor objection handler with confidence levels and sourcing where available. A lot of that module is about saying which comparisons are apples to oranges, and what's knowable today versus undisclosed.
+2. On-chain usage. How TBILL activity on the XRP Ledger (XRPL) compares with Ethereum, a Doppler Finance case study, a weighted chain priority matrix for USDO expansion, and three 90-day recommendations.
+3. USDO supply. A 12-month bear, base and bull scenario model, and a root-cause analysis of the drawdown that followed the end of incentives.
+
+The common requirement was that the work could be validated and handed off.
+
+## Supply as cohorts instead of a single line
+
+The idea in module 3 is to split the supply series into groups of capital that arrived and left at different times. The boundaries between cohorts come from structural inflection points in the supply series itself, the places where the line changes behavior.
+
+Here's the cohort flow, from the DeFiLlama stablecoins API (USDO, ID 241), as of 2026-02-27:
+
+| Stage | Cohort | Supply |
+|---|---|---|
+| Sources | Cohort A (baseline) | $50.1M |
+| Sources | New incentive capital | $248.7M |
+| Peak supply | Cohort B (peak) | $298.8M |
+| Post-drawdown | Cohort C (retained) | $89.5M |
+| Post-drawdown | Redeemed (B to C) | $209.3M |
+| Steady state | Cohort D (steady) | $63.1M |
+| Steady state | Redeemed (C to D) | $26.4M |
+
+Read top to bottom, it tells a different story than the single line. A $50.1M baseline existed before incentives. $248.7M of new capital came in with them. Then $209.3M was redeemed in the drawdown, and a further $26.4M on the way to steady state.
+
+That framing is the module's main takeaway: the contraction fits a cohort retention problem, peak to steady state, better than a single-narrative explanation. Once you see most of the peak as incentive capital, the useful question is how much of each cohort stays, not why "the token" lost supply.
+
+The table is self-consistent, which is the first check I'd want as a reader. $50.1M plus $248.7M is $298.8M. $298.8M minus $209.3M is $89.5M. $89.5M minus $26.4M is $63.1M.
+
+The module also lists three hypotheses for the drawdown (H1, H2 and H3), each with its data gaps noted next to it, and the bear, base and bull scenarios come with suggested actions.
+
+## Velocity is not custody
+
+Module 2 looked at a different gap. Where a token is held and how much it moves are separate things.
+
+![Chart of monthly transfer activity comparing XRPL and Ethereum TBILL token velocity](/images/projects/openeden/module2_chart1.png)
+*Module 2 shows monthly transfer activity on XRPL against Ethereum as a velocity signal.*
+
+Over the chart's 12-month lookback (30-day windows starting Feb 2025 through Jan 2026), Ethereum TBILL had 314 transfers and the XRPL token (TBL) had 21. Two labels on the chart limit how far that goes. It's a count proxy, because USD volume wasn't collected. And the XRPL count captures primary-market activity only.
+
+A second chart puts cumulative transfers next to a unique-holder snapshot: 27 holders on Ethereum and 3 on XRPL. A third estimates holder archetypes (long-term hold, protocol integrator, active trader) per chain. That one is tagged as an assumption on the chart itself, because the archetypes come from aggregate transfer frequency and holding duration, and precise categorization would need per-wallet analysis.
+
+The module's reading is that XRPL holds a large share of tokenized T-bills but shows much lower TBILL transfer activity than Ethereum, and that the difference comes from composability and secondary-market rails. The three 90-day recommendations are aimed at moving XRPL from "storage" to "velocity".
+
+## How it was checked
+
+The checks are about reproducibility more than about being right on the first try.
+
+- Raw and processed data are cached as timestamped artifacts, so each report rests on a fixed snapshot of what was pulled.
+- The transformations have unit tests.
+- Every claim is either sourced or tagged. `[ASSUMPTION]` marks something inferred, and `[DATA: as of]` pins a figure to the date it was pulled. Low-confidence comparisons are called out as such.
+- The whole pipeline reruns with `make run-all`, and the tests with `make test`, so the reports can be refreshed instead of rewritten.
+
+## What's still open
+
+The cohort flow comes from aggregate supply data, not per-wallet data. So the retention split is an estimate. The table can say that $89.5M stayed after the drawdown. It can't say whether that $89.5M was the original baseline holders, incentive capital that stuck around, or some mix. Those are very different answers for anyone deciding whether the next incentive program is worth running.
+
+The velocity work has the same limit from the other side. Transfer counts aren't USD volume, the XRPL side only sees the primary market, and the holder archetypes are estimates until someone does per-wallet analysis.
+
+Per-wallet data is the next test for both modules. For supply, it would split the $89.5M retained cohort into baseline holders and incentive capital that stayed, and turn the retention estimate into a count.

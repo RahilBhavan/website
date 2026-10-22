@@ -1,0 +1,87 @@
+---
+title: "Why would a 1inch limit order with a stop-loss never fill?"
+description: "Limit Canvas turns drawn strategies into 1inch limit-order extensions, and the proof that matters is a Foundry test where the order actually fills."
+publishDate: 2026-10-21
+project: "limit-canvas-1inch-order-extensions-from-a-canvas"
+tags: ["defi", "solidity", "1inch", "code generation", "testing"]
+draft: false
+---
+Say you want a limit order that sells ETH if the oracle price drops below a floor, but only when gas is cheap. The 1inch Limit Order Protocol (LOP) can express that. The maker signs the order, and a taker fills it when the conditions pass.
+
+Except it might never fill. If one offset in the extension bytes is wrong, or the order's salt doesn't match the extension's hash, the protocol rejects the order. Nothing about the order looks wrong until someone tries to fill it.
+
+The full case is on the [project page](/projects/limit-canvas-1inch-order-extensions-from-a-canvas), and the [code is on GitHub](https://github.com/RahilBhavan/limit-canvas). There's no live demo. The studio runs locally, nothing has been deployed, and it's an independent project, not affiliated with or endorsed by 1inch.
+
+## Extensions are where orders break
+
+An LOP order can carry an extension, extra bytes that tell the protocol to run checks before a fill. A predicate is a check that must pass, like "the price is below 750" or "the base fee is at most 25 gwei." An amount getter decides how much of the order a taker can fill right now, which is how a time-sliced (TWAP) order works.
+
+Two rules make extensions hard to write by hand:
+
+- The extension calldata has to be packed with exact offsets, so the protocol can find each part.
+- The low 160 bits of the order's `salt` must equal the low 160 bits of `keccak256(extension)`.
+
+If either is wrong, the order never fills. That's why most of this project is about encoding, not about strategy ideas.
+
+## Draw it, generate it, fill it
+
+Limit Canvas is a Bun monorepo with five packages. In the studio you draw the strategy as a graph. The demo is a gas-safe ETH stop-loss: maker intent, a price condition and a gas guard, joined by AND, packed into one LOP extension.
+
+![The Limit Canvas studio showing a gas-safe ETH stop-loss as a graph: maker intent, a price condition below 750 and a base-fee cap of 25 gwei joined by AND, packed into an LOP extension, and a readiness gate with 1 warning.](/images/projects/limit-canvas-1inch-order-extensions-from-a-canvas/studio-stop-loss.webp)
+*The studio after Run demo, with synthetic addresses and inputs. The warning flags that the strategy sets audited: true without an audit provenance record.*
+
+The graph saves as a strategy document that a Zod schema validates. An SDK packs the extension and derives the salt. Its rule is short:
+
+```
+salt = (saltHigh96 << 160) | low160(keccak256(extension))
+```
+
+The top 96 bits are free, and the bottom 160 bits are the extension hash. A code generator then writes the Solidity, a deploy script, a README and a `manifest.json` that records the strategy hash, extension hash, LOP version and compiled bytecode hash. The same strategy file produces byte-identical output, so two manifests can be compared to see whether anything material changed.
+
+## The decision was to prove a fill, not a byte match
+
+The easy test would be a snapshot: pack the bytes, compare them to a saved copy. That only proves the code does what it did last time. It doesn't prove the protocol accepts the order.
+
+So the integration tests deploy LOP 4.3.2 locally, pinned by commit, with mock oracles and tokens. They build an order with the generated extension, sign it with the maker's key and call the protocol's own `fillOrderArgs`. Then they check the balance changes, or the revert.
+
+| Template | What the integration test does |
+|---|---|
+| Stop-loss | Fills when the price is below the threshold, reverts on a stale oracle, reverts on a decimals mismatch |
+| Gas guard | Fills when the base fee is within the cap, reverts above it |
+| TWAP slice | Fills a slice through the amount getter, reverts above the cap |
+| DCA schedule | Registers a tranche series in an on-chain registry, with no order fill |
+
+The salt rule gets checked on both sides too. A TypeScript test asserts the low 160 bits of the salt equal the extension hash, and the Solidity test helper builds salts with the same rule.
+
+The DCA row matters. The README says all four templates run end to end with "a Foundry fill test," but the DCA integration test only registers a series. It never calls `fillOrderArgs`. So the honest claim is that three of the four templates are proven to fill.
+
+## What the gas snapshot shows
+
+The repo checks in a gas snapshot, and CI fails if it changes. The stop-loss and gas-guard templates are each benchmarked next to a deliberately naive baseline.
+
+| Benchmark | Template (gas) | Naive baseline (gas) |
+|---|---:|---:|
+| Stop-loss check | 22,712 | 13,526 |
+| Gas guard check | 7,700 | 7,412 |
+| Full `fillOrderArgs` on stop-loss with gas guard | 208,825 | none |
+
+The templates cost more than the baselines. The package docs say the baselines exist to measure "are we better than the dumb implementation." On gas alone, they aren't. The naive stop-loss calls `latestAnswer()` twice and checks only that the price is positive. The template reads the full latest round and reverts on a stale answer, an incomplete round or wrong decimals, which adds a `decimals()` call. So the extra gas buys those oracle checks. That's my reading of the two contracts. The repo doesn't explain the gap itself.
+
+## How it was checked
+
+The README records these results on 2026-10-21:
+
+- All 22 Bun tests passed, across the strategy format, the SDK and the code generator.
+- All 34 Foundry tests passed: 17 unit, 11 integration, 1 fuzz and 5 benchmark.
+
+CI also asserts that the LOP submodule sits at the 4.3.2 commit, runs `forge snapshot --check`, and fails if the committed bytecode hashes change. The codegen command line refuses mainnet output unless the template is marked `audit-ready` and the strategy sets `audited: true`. `audit-ready` is this repo's own maturity label, not an audit.
+
+There's also a self-review written from the point of view of a 1inch protocol engineer. Nobody at 1inch wrote, reviewed or endorsed it. It lists four release blockers and five production gaps as closed.
+
+## What's still open
+
+No external audit has looked at the generated contracts. Nothing has been deployed, and there are no live users. The studio's simulation panel is a logical replay with synthetic inputs, not an on-chain `simulate` call. The SDK builds the payload shape for the 1inch Orderbook API, but nothing in the repo signs or submits an order, so the flow ends with a payload and an extension.
+
+TWAP and DCA fills depend on a keeper that pings the order each slice, and the project ships none. The generated bundle only documents what a keeper must do.
+
+The next test the self-review names is about chains. The address registry lists 10 chains, 9 mainnets and Sepolia, but every integration test assumes an EVM-mainnet-shaped environment. zkSync Era has a different LOP address and historically different gas semantics, and no test exercises it yet. An integration test there is what would make this a multichain reference instead of a single-chain one.

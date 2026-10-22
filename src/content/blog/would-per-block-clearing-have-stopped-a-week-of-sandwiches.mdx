@@ -1,0 +1,81 @@
+---
+title: "Would per-block clearing have stopped a week of sandwiches?"
+description: "236 sandwiches cost 244 Uniswap traders $12,387 in one week on one pool. Replayed through two-phase clearing, no attack made money."
+publishDate: 2026-10-21
+project: "mev-sandwich-study-two-phase-clearing-on-uniswap"
+tags: ["mev", "defi", "uniswap", "mechanism-design"]
+draft: false
+---
+You send a swap to Uniswap with a slippage limit, the worst price you will accept. A bot sees it waiting, buys the same token just ahead of you to push the price up, lets your trade fill at the worse price, then sells right after. That's a sandwich attack. You still get your trade, at or near that worst price.
+
+A 2025 paper by Chan, Wu and Shi proposes a different way to clear each block, one that's designed so this attack stops paying. Would it have helped the people who actually got sandwiched? This study replays one real week to find out.
+
+The full case is on the [project page](/projects/mev-sandwich-study-two-phase-clearing-on-uniswap), and the [code and data are on GitHub](https://github.com/RahilBhavan/mev-sandwich-batch-study).
+
+Two limits sit next to every number below. It's one pool, the Uniswap v3 WETH/USDT 0.01% pool, and one week, October 5 to 11, 2026 (blocks 26,122,440 to 26,172,657). And the mechanism results are a counterfactual. They replay the orders people actually sent, so they can't say how bots, builders and traders would change their behavior under a different rule.
+
+## Measuring the loss needs exact replay
+
+To say what a victim lost, you need what they would have received if the attacker hadn't been there. That means re-running the block without the attacker's swaps, and that's only trustworthy if your swap math matches Uniswap's to the last unit.
+
+So the study ports Uniswap v3's integer math to Python and sets a gate. Every swap of the week has to reproduce exactly, both the amounts and the pool's price, liquidity and tick after the swap. Result: 70,669 of 70,669 swaps match, 4,041 of them across liquidity changes.
+
+A gate is only useful if it can fail, so the study also tried breaking it on purpose. A wrong fee breaks 70,645 swaps. Dropping the 20 ticks nearest the start price breaks 1,284. Ignoring the 129 liquidity events breaks 334.
+
+## What a week of sandwiches cost
+
+The detector looks for a front-run and a back-run in the same block, in opposite directions, with at least one victim trading between them. The back-run has to sell 90 to 110% of what the front-run bought.
+
+| Measure | Value |
+|---|---|
+| Swaps in the week | 70,669 |
+| Sandwiches | 236 (193 at the strict ±1% amount match) |
+| Victims | 244 |
+| Victim loss | $12,387 |
+| Median victim loss | $14.13 |
+| Attacker gross | $8,713, of which $4,400 (50%) went to gas |
+
+The losses are lopsided. The 20 largest sandwiches carry 64% of the week's loss. The largest single loss was $1,714, on a $17,637 sale that had no minimum output at all.
+
+The slippage number is the one that explains how the attack works. For 115 victims, the study could decode the minimum output they'd set from their router calldata. Their total tolerance was $1,582, and attackers took $1,544 of it, or 98%. The median victim lost 100% of their own tolerance. In the methods note's words, attackers "size the front-run to push each victim exactly to its minimum."
+
+## How two-phase clearing removes the profit
+
+Today a pool fills a block's swaps one at a time, in the order they land. The mechanism clears the whole block in two phases instead.
+
+1. **Set one reference price.** Take the pool's marginal price at the start of the block. Drop any order whose limit is worse than that price.
+2. **Phase 1, match the two sides.** Fill the smaller side (buyers or sellers) completely at the reference price against the larger side. The pool doesn't move.
+3. **Phase 2, fill what's left.** Run the rest of the larger side through the pool one order at a time, each stopped at its own limit price.
+
+A sandwich needs the front-run to move the price and the back-run to sell at the moved price. Under these rules that profit is gone. Replayed through the mechanism, no sandwich made money for its attacker in any run, and the best case across every ordering and variant was exactly $0.
+
+That doesn't mean victims get all their money back if the same orders still show up. Here is the share of the $12,387 loss victims keep under each variant:
+
+| Variant | Loss victims keep |
+|---|---:|
+| Attackers stop (their orders removed) | 100.0% |
+| Same orders, arrival order | 51.7% |
+| Same orders, random tie-break (mean of 200; 5th to 95th percentile 67.8% to 84.0%) | 75.5% |
+| Same orders, attacker legs without limits (random mean) | 93.6% |
+| Same orders, every order without a limit | 87.6% |
+
+![Step chart of cumulative victim loss over 236 sandwiches ranked by loss: $12,387 in the status quo, $3,041 with the same orders under per-block clearing, and about $0 if attackers stop.](/images/projects/mev-sandwich-study-two-phase-clearing-on-uniswap/cumulative-loss.webp)
+*Uniswap v3 WETH/USDT 0.01%, October 5 to 11, 2026. The two lower lines are counterfactual replays, the middle one the mean of 200 random tie-breaks.*
+
+Why only about half in arrival order? The mechanism doesn't stop a trade ahead of the victim from moving the price in phase 2. It removes the profit. With the attacker's own executed prices as limits, the back-run's limit is worse than the reference price, so it gets dropped. The front-run then fills only until the price reaches its own average price, about half its size, and the victim behind it still pays for that half. When the back-run has no limit, it lands on the other side and gets matched against the front-run in phase 1, so the front-run never touches the pool. That's why recovery jumps when attacker legs have no limits.
+
+The same pipeline, unchanged except for the pool setting, ran on the SIMD/WETH 0.01% memecoin pool for the same week. It found 240 sandwiches and $1,330 lost, and one automated buyer carried 95% of that loss. No attack paid under the mechanism there either, and victims kept 73% on average with the same orders.
+
+## How it was checked
+
+- The test suite covers the v3 math, calldata decoding, the detector, and the mechanism's rules, including the paper's Theorem 3.1 on 200 random sandwiches. The recorded run on October 21, 2026 was `19 passed`.
+- A local re-implementation of Dune's public sandwich rule, run on the same logs, confirms 235 of the study's 236 sandwich blocks (99.6%). It flags 20 more blocks, and all of them fail the study's 90 to 110% amount check, so the headline count is on the conservative side.
+- 30 of 30 randomly sampled hits have sandwich structure: 25 textbook sandwiches, 3 that lost the attacker money and 2 whose front-run also routes through other pools. The AI agent that built the pipeline did that review from receipts, and it read Etherscan pages for 5 hits.
+
+## What's still open
+
+The biggest open question is behavior. The replay holds the order flow fixed, and under a different clearing rule bots, builders and traders would act differently. The "attackers stop" row assumes they simply stop. The methods note calls the real response "an empirical game the replay can't settle."
+
+The sample is narrow too. A week is one sample, not a yearly rate. The study pool is the busiest WETH/USDT pool, not the busiest pool, and a later scan found that v3 USDC/WETH 0.01% has about 2.4 times the swaps. The detector sees only same-block, single-pool sandwiches. Attacker payments to builders by internal ETH transfer aren't counted, so attacker profit net of gas is an upper bound.
+
+Two checks are still pending. A human Etherscan spot-check of the hits hasn't been done yet, and the Dune query in the repo hasn't been run on Dune itself.

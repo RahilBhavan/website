@@ -1,0 +1,50 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+// Long pages only: four or more sections.
+const sections = Astro.props.headings.filter((h) => h.depth === 2);
+---
+
+{sections.length >= 4 && (
+  <nav class="toc" aria-label="On this page">
+    <p class="label">On this page</p>
+    <ol>
+      {sections.map((h) => (
+        <li><a href={`#${h.slug}`}>{h.text}</a></li>
+      ))}
+    </ol>
+  </nav>
+)}
+
+<style>
+  .toc {
+    margin-bottom: 2.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface);
+    border-radius: 12px;
+  }
+
+  .toc .label {
+    margin: 0 0 0.5rem;
+  }
+
+  ol {
+    list-style: none;
+    columns: 2 14rem;
+    column-gap: 2rem;
+  }
+
+  li {
+    break-inside: avoid;
+    padding: 0.125rem 0;
+  }
+
+  a {
+    display: inline-block;
+    padding: 0.25rem 0;
+  }
+</style>

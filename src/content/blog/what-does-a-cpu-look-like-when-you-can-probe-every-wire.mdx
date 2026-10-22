@@ -1,0 +1,100 @@
+---
+title: "What does a CPU look like when you can probe every wire?"
+description: "An 8-bit breadboard computer built from more than 200 TTL chips in six swappable modules, and used to teach 30 students in workshops."
+publishDate: 2026-10-21
+project: "8-bit-computer-from-ttl-logic"
+tags: ["hardware", "computer architecture", "ttl", "teaching"]
+draft: false
+---
+Textbooks explain how a CPU fetches and runs an instruction. The explanation stays abstract until you can watch the bits move. Register transfers, control signals and timing are hard to reason about when your only feedback is a figure in a book.
+
+There was no hands-on computer architecture lab for students to close that gap. So between May and December 2024, in Zimbabwe, I built an 8-bit computer on breadboards from more than 200 TTL (transistor-transistor logic) chips, wrote lab materials for it, and used it to teach 30 students in hands-on workshops.
+
+The case page is at [/projects/8-bit-computer-from-ttl-logic](/projects/8-bit-computer-from-ttl-logic). There's no repo or live demo. It's a physical machine.
+
+## The problem is the gap between a diagram and a working machine
+
+Most students meet computer architecture as a block diagram. The gap between that diagram and a working CPU is where most of them lose the thread. Simulators help, but they hide timing and electrical behavior. Students rarely get to see a bus, a control signal or a clock cycle directly.
+
+TTL chips fix that. They keep every signal visible and probe-able, which is the whole point for teaching. No FPGA (a reprogrammable chip that hides the logic inside it) and no microcontroller were used. The whole machine is discrete chips on breadboards.
+
+![First breadboard, May 2024](/images/projects/8-bit-computer/01-first-breadboard-may-2024.jpg)
+*First breadboard, May 2024.*
+
+## The machine is six modules on one bus
+
+The computer is split into six modules:
+
+1. Clock
+2. Registers
+3. ALU (arithmetic logic unit, the part that adds and subtracts)
+4. RAM
+5. Program counter
+6. Output display (7-segment)
+
+They all share one bus, a set of wires every module can read from or write to. On each clock pulse, the control logic picks which module drives the bus and which one latches what's on it. An instruction runs as a short sequence of those transfers.
+
+Each module can be swapped without rebuilding the rest. That matters for two reasons. A fault can be traced to one board. And a lesson can focus on one part at a time.
+
+The machine runs a custom instruction set. Instructions are decoded by the control logic into control signals for each module. Results show up on the 7-segment display, driven from the output module. The clock and register modules carry status LEDs, so you can see their state at a glance.
+
+## An instruction is a few bus transfers in a row
+
+The fetch phase is the same for every instruction. The program counter supplies an address. RAM supplies the instruction byte stored there. The instruction register latches it, and the program counter moves on to the next address.
+
+The execute phase depends on the opcode now sitting in the instruction register. The control logic decodes it into the signals for the remaining steps. That might mean moving a value from RAM into a register, or putting an ALU result on the bus.
+
+Here's the shape of that sequence for a "load register from memory" instruction. This table is illustrative only. It shows how a machine of this kind sequences the steps, not the exact signals of the finished build, which differ in step count and signal names.
+
+| Step | Phase | Bus source | Bus destination | Other |
+|---|---|---|---|---|
+| 0 | Fetch | Program counter | Memory address | |
+| 1 | Fetch | RAM | Instruction register | Advance program counter |
+| 2 | Execute | Instruction register (operand) | Memory address | |
+| 3 | Execute | RAM | Register | |
+
+*Illustrative microcode-style sequence, not the build's real control signals.*
+
+On paper that's four rows. On the real machine, the program counter, the instruction register, the ALU and the bus between them are all on the bench where you can probe them.
+
+## Modularity was a debugging tool
+
+With more than 200 chips and the wiring between them on breadboards, one loose connection can corrupt a bus transfer. Worse, the symptom often shows up far from the cause.
+
+The answer was to keep modules independent. Each one was built and tested on its own breadboard before it joined the bus, so a fault could be isolated to one board instead of hunted across the whole machine. The photo dates give the rough order. The first breadboard was in May 2024, the clock and register modules with status LEDs in June, and the bus, registers, ALU and the full board with the 7-segment output by September.
+
+![Overhead photo of the full breadboard computer built from TTL chips, September 2024.](/images/projects/8-bit-computer/05-full-board-overhead-sep-2024.jpg)
+*The full board from above, September 2024.*
+
+The lesson the case page records is that modularity is a debugging tool, not just a design nicety. It's also what made the project tractable for one person.
+
+## The result is a machine that 30 students used
+
+By December 2024 the machine had its custom instruction set, documentation and lab materials, and had been used in workshops. Here's the build by the numbers:
+
+| What | Value |
+|---|---|
+| TTL chips | More than 200 |
+| Swappable modules | 6 |
+| Output | 7-segment display |
+| Students taught in hands-on workshops | 30 |
+| Build period | May to December 2024 |
+
+A machine that only its builder can operate doesn't teach anyone. So the documentation and lab materials walk a group through the modules and the fetch/execute cycle, written so a workshop group can follow along at the breadboard.
+
+Writing those materials turned out to matter for the machine too. It forced a clearer description of the control sequence than the wiring alone had given me. The documentation written for students doubled as the clearest specification of the machine.
+
+![Seven-segment output display, September 2024](/images/projects/8-bit-computer/07-seven-segment-output-sep-2024.jpg)
+*Seven-segment output display, September 2024.*
+
+## How it was checked
+
+Each module was built and tested on its own breadboard before joining the bus. Then the machine and the lab materials were run in hands-on workshops for 30 students. It was built by one person, with parts sourced in Zimbabwe, where component availability is limited.
+
+## What's still open
+
+The evidence is that the machine was built, it runs, and 30 students worked through it in workshops. What the case page doesn't record is a measure of what those students took away. There's no before-and-after check of their understanding, so the claim that a physical machine holds a workshop's attention better than a simulator is an observation from running the workshops, not a tested result.
+
+The page also doesn't publish the real instruction set or control signals. The table above is a stand-in, and the case page names no next test.
+
+Which leaves the open question. Do students who probe a real bus understand the fetch/execute cycle better than students who only step through a simulator?

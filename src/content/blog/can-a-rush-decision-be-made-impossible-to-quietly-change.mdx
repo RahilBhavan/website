@@ -1,0 +1,74 @@
+---
+title: "Can a rush decision be made impossible to quietly change?"
+description: "How the MECG recruitment platform locks evaluations and decisions in the database, and what still broke when the Fall 2026 portal opened."
+publishDate: 2026-10-21
+project: "mecg-recruitment-platform"
+tags: ["supabase", "postgres", "nextjs", "access control", "recruitment"]
+draft: false
+---
+Before this platform, the Michigan Engineering Consulting Group (MECG) ran recruitment on forms, spreadsheets and group chats. Scores could be seen by peers and changed after they were submitted. Nothing stopped a decision from going out before it was final. Applicants had no way to check their own status.
+
+So the question was narrow. If a club agrees on rules for judging applicants, can software make those rules hold even when someone goes around the screen they're shown on?
+
+The case page is at [/projects/mecg-recruitment-platform](/projects/mecg-recruitment-platform), and the live site is at [mecg-website-three.vercel.app](https://mecg-website-three.vercel.app). The platform's code is private, so everything below comes from the public case page.
+
+## The problem was that every step depended on someone remembering
+
+Rush is a loop: mark who came, collect scores, combine them, decide, tell the applicant. Done by hand, each step depends on someone remembering to do it and doing it the same way every time. The case page lists the gaps that caused:
+
+- No single source of truth for who applied, who attended and who was evaluated
+- Scores visible to peers and editable after submission
+- No status view for applicants
+- Nothing that enforced a decision was final before it went out
+
+The people on the other end were applicants waiting on outcomes, members asked to score consistently across rounds, and a board that has to stand behind its decisions.
+
+## The rules live in the database, not the UI
+
+The design choice that shapes everything else is where the rules are enforced. A check in a React component is a suggestion. Anyone who calls the backend directly skips it. So the platform puts its rules in Postgres (through Supabase) as row-level security (RLS) policies and RPCs (remote procedure calls, meaning database functions the app calls by name). Check-in, evaluation submission and decision locking all go through database functions that check the caller's permission for that recruitment cycle. The app's routes stay thin. The check-in route, for example, only confirms someone is signed in, calls the database function, and turns its answer into an HTTP status.
+
+The case page names the trade-off plainly. Rules in SQL and RPCs are harder to iterate on than UI checks, but they hold when the UI is bypassed.
+
+Two rules carry most of the weight.
+
+**Evaluations can't be edited once submitted.** A member scores an applicant on anchored 1 to 5 scales, with `N/O` (not observed) as an option for anything they didn't see. A form only counts if at least 75 percent of the rubric weight was actually observed and the required criterion is filled in. `N/O` stays missing. It never becomes a zero, so not seeing something doesn't drag a score down. Once submitted, the evaluation is fixed. Members also can't see peer scores or aggregate rankings.
+
+**A decision needs two people to lock it, and a separate step to release it.** Final decisions need two distinct, conflict-free approvals from Board or Owner accounts before they lock. Locking and releasing are different actions. An outcome appears to an applicant only after a locked decision is explicitly released. The case page doesn't spell out what counts as a conflict, so I won't guess at it here.
+
+Around those two rules sit the rest of the agreed process:
+
+| Rule | Value on the case page |
+|---|---|
+| Minimum observed rubric weight for a valid evaluation | 75 percent |
+| Independent evaluations required per round | At least 2 |
+| Score spread that triggers structured review | 25 points |
+| Round weights (dry run) | Speed Dating 40 percent, Group Case 60 percent |
+| Approvals needed to lock a decision | 2, distinct and conflict-free |
+
+The round weights are from a dry run, not a statement of what the live cycle used.
+
+A few smaller decisions follow the same instinct. Users can't grant roles to themselves, and only Owners create the other internal roles. Changing a password bumps the account's session version, which logs out every older session. And attendance is kept out of scoring on purpose. QR check-in is a convenience at the door, not proof of identity, so it never feeds rankings.
+
+## The result is a portal that opened on September 1, 2026
+
+The Fall 2026 MECG application portal opened on September 1, 2026, with immutable evaluations and two distinct approvals required to lock a decision.
+
+I was one of three contributors on the repository. My share, per the case page, was 5 merged pull requests and 66 commits. The Fall 2026 rush release added about 9,700 lines across 199 files. That release unified the admin, member and recruitment workspaces under one shell, added editors so the board can change application questions and rubric criteria without a database migration, and added cycle cloning, applicant withdrawal and reapplication, a message log and batch release of decisions.
+
+## How it was checked, and what that found
+
+The release gates run in a fixed order. First come the deterministic ones: `npm test`, a type check, lint and a production build. The scoring logic is written as pure functions, so it's tested without Supabase at all. A contract check in CI compares the SQL and the TypeScript without needing a database. Then come the live gates: a database gate that runs the migrations against a real database, and verification scripts for the backend, auth and the workflow. The case page says the live verifier checks that privacy and authorization failures happen when they should, not only that the happy path works.
+
+Running the migrations and tests against the real database before launch found four defects, which were fixed, and the migration ledger was reconciled with production. Migrations and tests that pass in isolation can still disagree with the state a live project is actually in. The lesson the case page records is that the last gate before a launch has to be the real database.
+
+## What broke at launch
+
+An application submission touches three things: the application itself, a receipt, and attendance. If one step succeeds and a later one fails, the applicant is stranded, half in and half out. Applicant submission needed a reliability pass after the portal opened, not before. During September 2026 that work landed: submission, receipts and attendance were hardened to survive partial failures, and a sweep was added that repairs stranded receipts on the next submit.
+
+Reapplication had its own snag. It was blocked by routing, not by the schema, and the case page says that took a while to diagnose.
+
+## What's still open
+
+The evidence here is what the case page records. It's a list of gates, the four defects they caught before launch, and the reliability problems that showed up after the portal opened. It isn't a measure of whether scoring became fairer or more consistent for applicants. The page reports no numbers on that.
+
+The two changes the case page says it would make are both about timing. Run the real-database gate earlier and more often, and ship the stranded-receipt sweep before launch rather than after. The next cycle is where both get tested. Will the receipt sweep and an earlier real-database gate let the portal open without a post-launch reliability pass?

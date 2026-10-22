@@ -4,8 +4,13 @@ tagline: "Matching engine and claim workflow that recovers unclaimed music royal
 description: "A stdlib-only Python engine that matches a music catalog against MLC and SoundExchange registry data, produces explainable recovery leads, and drives a crash-recoverable claim workflow that can never pay or invoice the same catalog row twice."
 problem: "Songwriters and labels leave royalties unclaimed because the registries that pay them (the MLC for compositions, SoundExchange for recordings) hold shares that are missing, under-claimed, or attached to the wrong party. Finding those gaps means reconciling a partner's catalog against bulk registry feeds with inconsistent identifiers, and any tool that guesses at shares or double-counts a claim creates a financial error rather than fixing one."
 solution: "Built the matching engine, the DDEX BWARM ingester, and the recovery workflow for a three-person founding team: exact ISRC/ISWC matching with a fuzzy fallback and near-tie guard, a streaming parser validated against the official DDEX sample, a workspace with atomic writes, an append-only journal, and an exclusive lock, run-independent entry keys that make double payment or double invoicing impossible by construction, and a SHA-256 packet commitment for timestamping on Base."
+result: "Turns gaps between a partner catalog and MLC and SoundExchange registry data into explainable recovery leads, with a claim workflow that cannot pay or invoice the same row twice."
+status: "prototype"
+verification: "225 unit tests and a CI matrix on Python 3.10 to 3.13. Running the ingester on the official DDEX BWARM sample found seven parser defects, all fixed."
+next: "No customers, recovered dollars or production accuracy yet, and the sample leaves every ISWC and IPI blank, so exact-identifier matching has not seen real data."
 demoUrl: "https://prestorecovery.com"
 kind: "co-founder"
+track: "product"
 featured: true
 completedDate: 2026-09-09
 ---

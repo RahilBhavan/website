@@ -1,4 +1,4 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection, reference, z } from 'astro:content';
 
 const blog = defineCollection({
   type: 'content',
@@ -14,6 +14,7 @@ const blog = defineCollection({
       part: z.number(),
     }).optional(),
     readingTime: z.string().optional(),
+    project: reference('projects').optional(),
   }),
 });
 
@@ -27,9 +28,21 @@ const projects = defineCollection({
     description: z.string(),
     problem: z.string(),
     solution: z.string(),
-    // Mono label shown next to the title, e.g. "consulting", "hardware", "proposal".
+    // One sentence with the outcome and its numbers; leads list rows and the case page.
+    result: z.string(),
+    // proposal: a plan or pitch. prototype: built and run on historical, synthetic or own data.
+    // shipped: live, delivered to a client, or used by real people.
+    status: z.enum(['proposal', 'prototype', 'shipped']),
+    verification: z.string(),
+    next: z.string().optional(),
+    figure: z
+      .object({ src: z.string(), alt: z.string(), caption: z.string() })
+      .optional(),
+    // Which recruiting track the work speaks to; drives the topic filters on /projects and /writing.
+    track: z.enum(['crypto', 'ai', 'product', 'hardware']),
+    // Short label shown next to the status, e.g. "consulting", "hardware", "risk model".
     kind: z.string().optional(),
-    // Shown in the Building list on the homepage.
+    // Shown under Selected work on the homepage.
     featured: z.boolean().default(false),
     demoUrl: z.string().url().optional(),
     // Allow empty string; treat as undefined so optional URL validation passes
@@ -38,7 +51,7 @@ const projects = defineCollection({
       .optional()
       .transform((s) => (s === '' ? undefined : s)),
     completedDate: z.coerce.date(),
-    // Absolute URL of a 1280x640 social card; falls back to /og.png.
+    // Absolute URL of a project-hosted 1280x640 social card; otherwise scripts/og/render.mjs makes one.
     ogImage: z.string().url().optional(),
   }),
 });

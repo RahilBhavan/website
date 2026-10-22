@@ -4,7 +4,15 @@ tagline: "Rack-to-grid, KV cache, and $/token calculator with the course's numbe
 description: "A single-page calculator that follows a GPU rack from grid current to the price of a token: rack kW, line current at 480 V AC and 800 V DC, facility MWh and water per day, KV cache concurrency, and dollars per million tokens. Every formula is checked against the worked examples in the From Watts to Tokens course."
 problem: "GPU performance work stops at the rack boundary. The power, cooling, and cost numbers that decide whether a cluster is late, water-limited, or too expensive per token live in a different vocabulary, and the worked examples that teach them are spread across a sixteen-chapter course."
 solution: "Wrote the course's formulas as pure functions with the course's worked numbers as unit tests, then wired them to three small forms on one static page: rack to grid, KV cache and concurrency, and dollars per token. No frameworks, no build step, and every output names its denominator."
+result: "One static page turns a GPU rack into line current, facility MWh, water per day, KV cache concurrency and dollars per million tokens."
+status: "prototype"
+verification: "A Node test file checks the formulas against the course's worked numbers, such as 100 kW at 480 V being about 120 A and a 64 GiB pool holding 25 requests at 8K context."
+figure:
+  src: "/images/projects/datacenter-math/rack-to-grid.webp"
+  alt: "Rack to grid calculator with 72 GPUs at 1,400 W giving 131 kW per rack, 166 A per line at 480 V AC, 164 A per conductor at 800 V DC and 3,931 L of water per day."
+  caption: "The rack-to-grid form with its default inputs. Every output names its denominator, and the source line cites the course's worked numbers."
 kind: "tool"
+track: "ai"
 featured: true
 demoUrl: "https://rahilbhavan.com/tools/datacenter-math/"
 githubUrl: "https://github.com/RahilBhavan/website"

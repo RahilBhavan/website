@@ -4,9 +4,19 @@ tagline: "Credit committee case that cuts a $5.0M revolver request to a conditio
 description: "A credit committee package that sizes a hypothetical $5.0M, 12-month secured revolver to MARA Holdings from public filings: a tested decision engine, a two-page memo, and a conditional $3.0M limit set by stressed collateral proceeds."
 problem: "A lender is asked for a $5.0M, 12-month secured revolver by a bitcoin miner with $421.3M of cash, 35,577 bitcoin, and about $2.4B of debt. How much should it lend, against what, and on which conditions? The borrower's size says little about the answer, because the facility is only as good as the collateral behind it and the route from that collateral to repayment cash."
 solution: "Built a standard-library Python decision engine with Decimal arithmetic that runs a collateral waterfall and four caps (obligor, collateral, single-name, concentration) across eleven scenarios, from issuer facts pulled out of MARA's filing XBRL and a fictional collateral schedule. The engine feeds a two-page credit memo, an opposing memo, a committee packet, a 16-sheet formula workbook, and a live decision view, all checked by 65 unit tests and a 49-check validator."
+result: "Cuts a $5.0M secured revolver request to a conditional $3.0M limit, set by $3,870,600 of stressed collateral proceeds at 1.25x coverage."
+status: "prototype"
+verification: "65 unit tests and a 49-check validator that reconciles the engine, workbook, memos and hashes, plus a 16-sheet workbook audited cell by cell against the engine."
+next: "The caps and costs are illustrative, and no independent reviewer has reproduced the numbers yet."
+figure:
+  src: "/images/projects/mara-credit-case/decision-view.webp"
+  alt: "MARA decision view: a $3,000,000 conditional approval, $3,870,600 of available proceeds, and four-cap bars with collateral binding at $3,046,480."
+  caption: "The live decision view. Collateral is the binding cap, and funding stays blocked until the simulated conditions are evidenced."
 demoUrl: "https://mara.rahilbhavan.com/"
 githubUrl: "https://github.com/RahilBhavan/mara-credit-case"
 kind: "credit case"
+track: "crypto"
+featured: true
 completedDate: 2026-09-23
 ogImage: "https://mara.rahilbhavan.com/social-card.png"
 ---

@@ -4,9 +4,18 @@ tagline: "Tests four queue rules for x402 payment exceptions across 3,600 synthe
 description: "A synthetic settlement-to-delivery exception desk for x402 payments on Base: 65 events across 16 incidents through one deterministic reducer, four queue policies compared, and a 3,600-scenario sweep showing no policy wins every objective."
 problem: "When a payment settles on chain but the paid-for resource never arrives, or a request times out with no clear outcome, an operator has to decide which case to handle first and what evidence makes a retry, recovery, refund, or closure safe. A wrong call can charge a customer twice or treat an approved refund as settled."
 solution: "Built a standard-library Python desk where an append-only SQLite event log is the evidence boundary. One deterministic reducer turns synthetic events into case states, a separately written oracle checks every incident, and four queue policies run on the same workload and across a 3,600-scenario sweep. A 26-check consistency gate ties every generated file to one run."
+result: "Keep FIFO: deadline-first cut value-weighted overdue time 64% but left the same 6 cases overdue, and across 3,600 synthetic scenarios no policy wins every objective."
+status: "prototype"
+verification: "The reducer matches a separately written oracle on 16 of 16 incidents, and a 26-check consistency gate ties generated files to one run. CI runs on Python 3.9 and 3.11."
+next: "Handling times are model inputs, not measurements, and no payments practitioner has reviewed the workflow yet."
+figure:
+  src: "/images/projects/x402-exception-desk/case-view.webp"
+  alt: "x402 exception desk case view under a simulated-data banner, showing case hp-01's payment, delivery and refund reservation states."
+  caption: "One synthetic case in the operator view. The banner marks the data as simulated, with no actions executed."
 demoUrl: "https://rahilbhavan.github.io/x402-exception-desk/"
 githubUrl: "https://github.com/RahilBhavan/x402-exception-desk"
 kind: "payments ops"
+track: "crypto"
 completedDate: 2026-09-23
 ogImage: "https://rahilbhavan.github.io/x402-exception-desk/social-card.png"
 ---

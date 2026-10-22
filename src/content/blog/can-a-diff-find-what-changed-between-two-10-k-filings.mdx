@@ -1,0 +1,77 @@
+---
+title: "Can a diff find what changed between two 10-K filings?"
+description: "Aligning Risk Factors and MD&A across consecutive 10-Ks: 46 of 46 labelled changes found, but only 3 of 28 important ones ranked in the top ten."
+publishDate: 2026-10-21
+project: "filing-change-tracker"
+tags: ["sec filings", "text comparison", "evaluation", "python"]
+draft: false
+---
+Most of a company's Risk Factors section is the same as last year. The interesting part is the small set of paragraphs that changed: a new sentence in a cybersecurity risk, a reserve estimate that moved, a growth rate that slipped by a point. Finding those means comparing two documents that each run to hundreds of blocks.
+
+A plain diff sounds like enough. It isn't, because companies don't just edit paragraphs. They split one into two, merge two into one and move them around. Once that happens, a line-by-line comparison reports a deletion and an addition where a reader would see one change.
+
+Case page: [/projects/filing-change-tracker](/projects/filing-change-tracker). Code: [github.com/RahilBhavan/filing-tracker](https://github.com/RahilBhavan/filing-tracker). There's no live demo. The review app runs on localhost.
+
+It has two siblings built on SEC filings. The [Financial Metrics Analyst](/projects/financial-metrics-analyst) serves structured XBRL numbers through an MCP server, and the [Filing Research Assistant](/projects/filing-research-assistant) answers one question from one filing with checked quotes. This one compares two years of the same filing, and it calls no LLM.
+
+## Align first, then compare
+
+The tool works on two sections of the 10-K: Risk Factors (Item 1A) and MD&A, the management's discussion and analysis (Item 7). It starts from the issuer's own DOCX or PDF, not a cleaned-up text file, and converts each into blocks. Every block keeps a locator back to the original, down to the page and bounding box for a PDF.
+
+Then it aligns the old year's blocks with the new year's. Each match uses the subsection it sits in and the text around it, not just its own words. It handles exact matches that moved, and it handles one paragraph splitting into two or two merging into one. When a match is uncertain, it says so instead of hiding it.
+
+Here's what that looks like on a Berkshire Hathaway label from FY2023 to FY2024:
+
+| Old year | New year | What changed |
+| --- | --- | --- |
+| One insurance-liability paragraph | Two paragraphs | Litigation language expands, and estimated unpaid losses go from $146 billion to $147.6 billion |
+
+This label is also the one that shows how easy it is to get wrong. It was first written as a standalone addition, a brand-new paragraph. After inspecting both originals it was corrected to a split of an existing paragraph. Same text, different answer, depending on how you read the boundary.
+
+## Numbers get their own pass
+
+The tool extracts narrative numbers with a metric, unit and period. On the Microsoft FY2023 to FY2024 pair, it pairs "Microsoft Cloud revenue increased 22% to $111.6 billion" with "increased 23% to $137.4 billion." It reports a $25.8 billion change and a 1 percentage point change, and it tells the reader to verify the metric definition and scope.
+
+It's also built to abstain. Table rows, several metrics in one sentence, unsupported currencies, non-annual periods and duplicate quantities all produce no computed change.
+
+![Filing review app on Microsoft 2023 to 2024: 255 changes, and a changed MD&A passage where Microsoft Cloud revenue goes from 22% ($111.6 billion) to 23% ($137.4 billion).](/images/projects/filing-change-tracker/review-app.webp)
+*The localhost review app on the Microsoft FY2023 to FY2024 pair, with the computed change and links to both source passages.*
+
+## The first revision found nothing new
+
+There are two engines. V1 is the baseline. V2 added the context-aware matching and the split and merge handling. Both were scored against 50 labels on 3 real filing pairs: 46 changed decisions and 4 unchanged controls. A detection only counts if it gets the exact old and new block group and the change type.
+
+The V2 release on September 21 recovered 42 of 46 changes. So did V1. The September 21 results file says it directly: the features improved the review workflow, but the sample showed no aggregate detection gain. The misses were things like Microsoft's effective tax rate passage, which both engines read as a removal plus an addition instead of one changed paragraph.
+
+The September 22 revision changed the matching and ranking. On the current run:
+
+| Pair | Labelled changes | V1 recovered | V2 recovered | Important changes in V2 top 10 |
+| --- | ---: | ---: | ---: | ---: |
+| Microsoft FY2022 to 2023 | 19 | 18 | 19 | 2/12 |
+| Microsoft FY2023 to 2024 | 19 | 18 | 19 | 0/10 |
+| Berkshire FY2023 to 2024 | 8 | 6 | 8 | 1/6 |
+| Total | 46 | 42 | 46 | 3/28 |
+
+Counting the controls, V2 matches 50 of 50 exact decisions and V1 matches 46 of 50.
+
+Two things keep that 46 of 46 from meaning what it looks like. First, the Berkshire label above was corrected from a standalone addition to a paragraph split after inspecting both originals, and the original label and its scores are kept in the repo. That's a fix to the answer key, not to the algorithm. Second, Berkshire was held back as a reserved pair until V2 was frozen, but the code changed after that first score. So the current code no longer matches the freeze, and all three pairs are now development data. A fresh holdout claim needs a new issuer and year pair nobody has touched.
+
+## Finding changes isn't ranking them
+
+The tool ranks each edit with visible rules, so a reader can start at the top. That ranking is weak. Only 3 of 28 labelled important changes appear across the three V2 top-ten lists.
+
+And the top ten can't be graded as noise either. Of the 30 top-ten entries, 4 have labels and 26 don't, so there's no way to say how many of them are useless. Recovery is good on this sample. Prioritization is unproven.
+
+V2 compared each pair in 1.23 s, 1.37 s and 3.41 s in the recorded run. That's machine time only. It excludes human reading and says nothing about whether an analyst saves time.
+
+## How it was checked
+
+There are 54 unit tests, and they pass as of a rerun on October 21, 2026. A verify script runs them plus four commands on fictional Alder Components filings, which are author-written regression data, not real filings. A browser check passed nine checks on disposable synthetic state. The benchmark script rewrites the results file with code hashes, misses and timings.
+
+The 50 labels are the weak link. They were written during development, and the label files credit the implementation author and say they are not independently reviewed. They're a purposeful sample, not whole-filing ground truth. The two Microsoft pairs share FY2023, so they aren't independent experiments either.
+
+## What's still open
+
+No independent reviews or human sessions are complete, so importance judgments and time savings are not validated. PDF columns, tables and page breaks can still create misleading paragraph boundaries, and the matcher only groups two adjacent paragraphs. Lexical rules can't resolve a paragraph that was rewritten in different words.
+
+The repo lists the next gates in order. Judge every top-ten entry on each pair and then improve ranking against targets set in advance. Get independent source annotations and reconcile disagreements. Run on a new issuer and year pair untouched during development. Then run counterbalanced manual and assisted review sessions, grading accuracy, before claiming anyone saves time. The blank review packets for that study are already in the repo. Nobody has filled one in yet.

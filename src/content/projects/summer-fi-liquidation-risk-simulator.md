@@ -3,10 +3,15 @@ title: "Summer.fi Liquidation Risk Simulator"
 tagline: "Stop-loss stress test replaying the Aug 5, 2024 ETH crash on Aave V3 and Morpho"
 description: "A reproducible stress-test case study that replays the August 5, 2024 ETH crash through a static stop-loss model for Aave V3 and Morpho positions, with a parameter sweep and an interactive Next.js simulator."
 problem: "When ETH fell 27% intraday on August 5, 2024 and gas spiked to 681 Gwei, automated stop-loss controls had to fire in conditions where execution cost and slippage ate into whatever they saved. A risk team choosing a stop-loss buffer needs a way to compare buffer choices across protocols with explicit, reviewable assumptions rather than intuition."
-solution: "Built a compact Python model that reads 24 hourly price and gas observations, evaluates liquidation and stop-loss triggers hour by hour for Aave V3 and Morpho parameters, estimates exit value net of modeled slippage and gas, and sweeps 5 initial LTVs by 5 buffers per protocol. A Next.js simulator runs the same model in TypeScript with a parity check against the Python fixtures."
+solution: "Built a compact Python model that reads 24 hourly price and gas observations, evaluates liquidation and stop-loss triggers hour by hour for Aave V3 and Morpho parameters, estimates exit value net of modeled slippage and gas, and sweeps 5 initial LTVs by 5 buffers per protocol. A Next.js simulator runs a TypeScript port of the same model."
+result: "Sweeping 50 stop-loss scenarios through the Aug 5, 2024 ETH crash gives Aave V3 21 stop-loss exits and 4 liquidations, and Morpho 12 exits and 6 liquidations."
+status: "prototype"
+verification: "11 unit tests in the public repo cover the model logic, and the backtest report and 50-scenario sweep are committed alongside it."
+next: "Hourly data cannot show whether an exit would land before a breach inside the hour. Minute-level data and measured order-book depth would replace the heuristics."
 demoUrl: "https://summer.rahilbhavan.com"
 githubUrl: "https://github.com/RahilBhavan/summer-fi-risk-analysis"
 kind: "risk model"
+track: "crypto"
 featured: false
 completedDate: 2026-08-12
 ---
@@ -18,7 +23,7 @@ completedDate: 2026-08-12
 
 **Who it's for:** Risk and operations teams on DeFi lending products, and anyone evaluating how to set and escalate stop-loss buffers.
 
-**Impact:** A reproducible sweep of 50 scenarios (5 LTVs x 5 buffers x 2 protocols), a written backtest report, 12 unit tests on the model logic, and a deployed simulator whose TypeScript model is parity-checked against the Python output. The scenarios are illustrative; they are not claims about live protocol use or organizational work.
+**Impact:** A reproducible sweep of 50 scenarios (5 LTVs x 5 buffers x 2 protocols), a written backtest report, 11 unit tests on the model logic, and a deployed simulator that runs a TypeScript port of the model. The scenarios are illustrative; they are not claims about live protocol use or organizational work.
 
 ## The Problem
 
@@ -68,12 +73,12 @@ On August 5, 2024, ETH opened at $2,910, fell to a trough of $2,120 (about a 27.
 
 **Simulator:**
 - Next.js 16, React 19, Recharts, Tailwind CSS 4, GSAP
-- `riskModel.ts` ports the Python model; a parity check compiles and executes it against Python-generated fixtures before every build
+- `riskModel.ts` ports the Python model; `data.json` holds the sweep output the pages display
 - Shareable scenario URLs (`?protocol=AaveV3&ltv=0.70&buffer=0.05`)
 
 **Why this stack:**
 - pandas keeps the hourly walk short and readable
-- A TypeScript port with a parity gate means the interactive simulator cannot drift from the published numbers
+- A TypeScript port lets the simulator rerun scenarios in the browser without a server
 
 ### Architecture & Design Decisions
 
@@ -91,7 +96,6 @@ On August 5, 2024, ETH opened at $2,910, fell to a trough of $2,120 (about a 27.
 2. **Two protocol parameter sets** (Aave V3, Morpho) retained in every output row
 3. **Parameter sweep** over 5 initial LTVs and 5 buffers per protocol
 4. **Interactive simulator** with URL-shareable scenarios and a documentation hub
-5. **Parity check** between the Python and TypeScript models
 
 ## Technical Highlights
 
@@ -200,9 +204,9 @@ def parameter_sweep(df: pd.DataFrame, protocol: Protocol = "AaveV3") -> pd.DataF
 
 **The Problem:** A TypeScript reimplementation of the model in the web app could silently diverge from the Python results in the report.
 
-**The Solution:** `generate:data` regenerates the web app fixtures from the Python model, and a parity check compiles and executes the TypeScript model against them. The build runs validation first.
+**The Solution:** Not solved yet. The web app ships the Python sweep output as `data.json`, but nothing checks that `riskModel.ts` reproduces it.
 
-**What I learned:** When two implementations must agree, make agreement a build gate.
+**What I learned:** When two implementations must agree, agreement has to be a build gate. Adding one is the next step.
 
 ## Results & Metrics
 
@@ -210,7 +214,7 @@ def parameter_sweep(df: pd.DataFrame, protocol: Protocol = "AaveV3") -> pd.DataF
 - 50 sweep rows: 25 per protocol (5 LTVs x 5 buffers x 1 static strategy)
 - Aave V3: 21 `sl_triggered`, 4 `liquidated`
 - Morpho: 7 `active`, 12 `sl_triggered`, 6 `liquidated`
-- 12 unit tests on the model logic
+- 11 unit tests on the model logic
 - Model assumptions: Aave V3 threshold 0.825 and 5% penalty; Morpho threshold 0.945 and 1% penalty
 
 The report's recommendation: use the sweep as a scenario-analysis input when selecting stop-loss buffers, and validate thresholds, execution, and controls against current protocol configuration and finer-grained data before operational use.
@@ -221,7 +225,6 @@ The report's recommendation: use the sweep as a scenario-analysis input when sel
 
 - A tiny, validated model with explicit assumptions is easier to defend than a large one
 - Keeping protocol parameters in the model class made the combined sweep a two-line change
-- The parity gate between Python and TypeScript
 
 ### What Didn't Work
 

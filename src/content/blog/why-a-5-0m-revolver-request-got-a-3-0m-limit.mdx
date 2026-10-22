@@ -1,0 +1,112 @@
+---
+title: "Why a $5.0M revolver request got a $3.0M limit"
+description: "A hypothetical credit case on MARA Holdings: four caps, one stressed collateral waterfall, and why the smallest cap set the limit."
+publishDate: 2026-10-21
+project: "mara-credit-case"
+tags: ["credit", "risk", "python", "case study"]
+draft: false
+---
+A bitcoin miner with $421.3M of cash asks for a $5.0M, 12-month secured revolver. On size alone that looks easy. But a secured lender doesn't get repaid from the borrower's size. It gets repaid from the collateral it controls, after a stress, after costs, and only if it can turn that collateral into cash.
+
+So the question is narrow. How much should a lender approve, against what, and what has to be true before any money moves?
+
+The full case is on the [project page](/projects/mara-credit-case). The [live decision view](https://mara.rahilbhavan.com/) lets you move the collateral yourself, and the [code is on GitHub](https://github.com/RahilBhavan/mara-credit-case).
+
+One thing up front. MARA is a public-information case only. The facility, the collateral, the Base repayment route, the covenants, the policy limits, the rating and the portfolio are all fictional. It's an independent project, not affiliated with or endorsed by Coinbase or MARA, and it doesn't claim MARA is a Coinbase customer.
+
+## The borrower looks big, and that's not the point
+
+The borrower facts come from MARA's Form 10-Q for the period ended June 30, 2026. As of that date:
+
+- $421.3M of cash and cash equivalents, with about 30% sitting in a majority-owned subsidiary and designated for its operations.
+- 35,577 bitcoin with a $2.1B fair value. 4,742 were loaned and 4,528 pledged, which leaves 26,307 unrestricted.
+- About $2.4B of debt, including a $150M line of credit due within a year, $48.1M of December 2026 notes, and $291.6M of notes holders can put in June 2027.
+
+A static liquidity screen leaves $96.8M after designated cash and near-term debt. If holders exercise the June 2027 put, it falls to negative $194.8M.
+
+Those facts frame the borrower. The case does not treat MARA's reported bitcoin as collateral for this facility. The collateral is one simulated lot of 4,000,000 USDC on Base.
+
+## The limit is the smallest of four caps
+
+The engine computes four caps and takes the lowest, rounded down to the nearest $100,000:
+
+| Cap | Amount | Basis |
+|---|---:|---|
+| Obligor | $7.50M | Illustrative standalone capacity for the borrower |
+| **Collateral** | **$3.05M (binding)** | Stressed proceeds ÷ 1.25x coverage, less $50,000 accrued |
+| Single-name | $6.00M | Illustrative policy limit for one name |
+| Concentration | $4.00M | Shared custody route and sector capacity in the fictional portfolio |
+
+The obligor, single-name and concentration caps are illustrative numbers, not calibrated credit policy. The collateral cap is the one worth walking through, because it binds.
+
+## How 4,000,000 USDC becomes a $3.05M cap
+
+The collateral waterfall starts from what the lot is worth and subtracts everything that stands between the lender and cash. Here is the base case, using the simulated lot and the fictional costs:
+
+| Step | Amount |
+|---|---:|
+| 4,000,000 USDC at a $1.00 reference price | $4,000,000 |
+| After a 2% price or convertibility stress | $3,920,000 |
+| Less execution cost (50 basis points) | $19,600 |
+| Less delay cost (25 basis points) | $9,800 |
+| Less fixed cost | $20,000 |
+| **Available proceeds** | **$3,870,600** |
+
+The committee wants proceeds to cover exposure 1.25 times. Dividing $3,870,600 by 1.25 and subtracting $50,000 of accrued amount gives a collateral cap of $3,046,480. Rounded down to the nearest $100,000, that's a $3.0M limit.
+
+At $3.0M, pro forma exposure is $3.05M and coverage is 1.27x. If the full $5.0M were drawn, the same proceeds would leave a $1,179,400 recovery shortfall. That gap is why the request gets cut.
+
+![MARA decision view: a $3,000,000 conditional approval, $3,870,600 of available proceeds, and four-cap bars with collateral binding at $3,046,480.](/images/projects/mara-credit-case/decision-view.webp)
+*The live decision view. Collateral is the binding cap, and funding stays blocked until the simulated conditions are evidenced.*
+
+## The approval is conditional, and the conditions can flip it to decline
+
+$3.0M is not a yes. Funding stays blocked until nine pre-funding conditions clear. Among them: verified ownership of the collateral, a first-priority lien, enforceable lender control of the collateral, and a tested route from the collateral to repayment cash. If any of those stays unknown, the answer is decline.
+
+The illustrative obligor rating is 3 / Watchful. It's an ordinal judgment, not a probability of default.
+
+## Eleven scenarios, and which cap binds in each
+
+The engine runs the same waterfall and caps across eleven scenarios. All of them use the simulated collateral and fictional costs:
+
+| Scenario | Decision | Limit | Binding cap |
+|---|---|---:|---|
+| Base | Approve reduced | $3.0M | Collateral |
+| Collateral down 30% | Approve reduced | $2.1M | Collateral |
+| Collateral down 50% | Approve reduced | $1.5M | Collateral |
+| Stale price | Decline | $0 | Hard blocker |
+| Zero collateral | Decline | $0 | Collateral |
+| Route delay, 24 hours | Approve reduced | $3.0M | Collateral |
+| Canonical withdrawal, 168 hours | Approve reduced | $2.4M | Collateral |
+| Route failure | Decline | $0 | Hard blocker |
+| Missing ownership evidence | Decline | $0 | Hard blocker |
+| Borrower cash stress | Approve reduced | $2.0M | Obligor |
+| Correlated portfolio stress | Approve reduced | $1.0M | Concentration |
+
+Two patterns show up. A stale price, a failed route or missing ownership evidence sends the limit to zero, no matter how much collateral is there. And the binding cap moves. Under borrower cash stress the obligor cap binds, and under correlated portfolio stress the concentration cap does.
+
+## How it was checked
+
+The engine is standard-library Python with `Decimal` arithmetic, and every memo, the workbook and the decision view are generated from its one decision record.
+
+The evidence is frozen. Five public sources are stored with SHA-256 hashes, and a script pulls the issuer facts from the filing XBRL and reconciles them to the memo values.
+
+- **65 unit tests**, including monotonicity checks (more stress never raises the limit) and hard-blocker checks.
+- **A 49-check validator** that reconciles the engine, workbook, memos, hashes and outputs, reporting PASS, FAIL or SKIP for each.
+- **A 16-sheet workbook** of live formulas, audited cell by cell against the engine.
+
+On October 21, 2026, all 65 tests passed and the validator reported 49 PASS, 0 FAIL, 0 SKIP. The validator doesn't recalculate the workbook in Excel or prove legal enforceability.
+
+## The strongest case against it
+
+The package includes an opposing memo, written as a self-challenge rather than an outside review. Its argument is that the $3.0M is precise but not yet persuasive. The binding cap comes from an invented collateral lot and invented costs, so it demonstrates a method, not an economically right limit for MARA.
+
+It also points out that a $5.0M request is about 1.2% of MARA's reported cash, before counting bitcoin. Its alternative is no approval on the present record. First get the facility purpose, borrowing-entity financials, a 13-week cash forecast, a legal-entity cash map, the full debt-service schedule and the real collateral terms. Then judge the full $5.0M directly.
+
+The memo's sharpest line is that a lower number can look conservative even when its inputs are synthetic.
+
+## What's still open
+
+The caps and costs are illustrative, not calibrated credit policy. No private borrower data, facility documents, lien search, legal opinion or wallet evidence was reviewed. And no independent reviewer has reproduced the numbers yet.
+
+The first external test is already written down. Give a second reader with financial-model review experience the raw inputs (4,000,000 fictional USDC, a $1.00 price, a 2% stress, 50 and 25 basis points of cost, $20,000 fixed, 1.25x coverage) without the answer. It passes if they land on $3,870,600 of proceeds and a $3,046,480 cap, each within $1. Until someone does, every check on this case is one the project ran on itself.

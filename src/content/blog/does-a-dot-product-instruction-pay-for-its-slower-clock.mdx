@@ -1,0 +1,83 @@
+---
+title: "Does a dot-product instruction pay for its slower clock?"
+description: "A five-stage RISC-V core gains a custom int8 DOT4 instruction. In simulation it cuts cycles, but the extra logic also lowers the post-route clock estimate."
+publishDate: 2026-10-21
+project: "rv32i-dot4-a-five-stage-core-checked-against-spike"
+tags: ["hardware", "risc-v", "computer architecture", "verification"]
+draft: false
+---
+Adding a custom instruction to a CPU is an easy way to make one benchmark look good. Count the cycles before and after, divide, and print the ratio. The catch is that the new hardware isn't free. More logic can make the longest path through the chip longer, which lowers the highest clock the design can run at. A design that saves cycles but loses clock speed can end up slower.
+
+This project is a five-stage RV32I core in SystemVerilog with one custom instruction, DOT4, a signed int8 dot product. The question it asks is whether DOT4 still wins once its cost to the clock is counted, and whether the core stays correct while doing it.
+
+Case page: [/projects/rv32i-dot4-a-five-stage-core-checked-against-spike](/projects/rv32i-dot4-a-five-stage-core-checked-against-spike). Project page with interactive figures: [rahilbhavan.github.io/riscv](https://rahilbhavan.github.io/riscv/). Code: [github.com/RahilBhavan/riscv](https://github.com/RahilBhavan/riscv).
+
+Everything below comes from simulation and place-and-route. No board has run the core, so every clock figure is a post-route estimate from the tools, not a measurement on hardware.
+
+## What DOT4 does
+
+RV32I is the base 32-bit integer RISC-V instruction set. Multiplying is not part of it (that's the separate M extension), so on this core a multiply is a software routine built out of shifts, adds or table lookups. A fair baseline can't quietly use the M extension.
+
+DOT4 packs four int8 values into each 32-bit register. It multiplies the four pairs of signed bytes from two registers and writes the sum of the four products to the destination register. There is no accumulation and no saturation. It lives in the custom-0 opcode space that RISC-V reserves for extensions like this.
+
+The pipeline around it is the textbook five stages: fetch, decode, execute, memory and writeback. Values forward from later stages to execute, a load followed directly by a consumer stalls one cycle, and taken branches resolve in execute and squash the two younger stages.
+
+## The fair baseline is the hard part
+
+Comparing DOT4 to a naive loop would flatter it. The benchmark uses three pure-RV32I kernels for a 256-element int8 dot product:
+
+| Kernel | Cycles (RTL simulation) |
+|---|---|
+| DOT4 | 585 |
+| Quarter-square table (strongest pure RV32I) | 3,403 |
+| Shift-and-add multiply | 14,589 |
+
+The quarter-square kernel turns each multiply into two table lookups and a subtraction, using ab = floor((a+b)²/4) - floor((a-b)²/4). It is the strongest pure-RV32I version in the benchmark, and it is the one DOT4 is judged against. It also uses 2 KiB of data memory for its table, which DOT4 does not need.
+
+The experiment log breaks the loops down. DOT4 spends 9 cycles per 32-bit word (four elements): 7 instructions plus 2 squashed slots after the taken loop branch, and DOT4 itself is 1 of the 9. Quarter-square spends 53 cycles per word.
+
+On cycles alone, DOT4 is 5.817 times fewer cycles than quarter-square at 256 elements.
+
+## Then the clock cost comes out
+
+The repo builds the core twice, once with DOT4 and once without, and runs each through Yosys and nextpnr for a Lattice iCE40 HX8K over five route seeds. Compared with the DOT4=0 build, the DOT4 unit adds 868 logic cells, about 18%, and lowers the median post-route clock estimate by 3.798 MHz, about 9%.
+
+So the fair comparison divides each kernel's cycle count by its own core's median clock estimate. That gives time per dot product, not cycles per dot product:
+
+| Vector length | DOT4 cycles | Quarter-square cycles | Cycle ratio | Ratio after clock cost (median) |
+|---|---|---|---|---|
+| 16 | 45 | 223 | 4.956 | 4.493 |
+| 64 | 153 | 859 | 5.614 | 5.09 |
+| 256 | 585 | 3,403 | 5.817 | 5.274 |
+
+At 256 elements, DOT4 is 5.3 times faster than quarter-square after its clock cost, with a range of 4.7 to 5.7 times when the extreme seeds are paired. Against shift-and-add it is 22.6 times faster. So the clock cost moves the ratio from 5.817 to 5.274, and DOT4 still wins on this kernel.
+
+The ratio also grows with vector length. The cycle counts run from reset release through the final trap, so they include setup and pipeline fill, which weigh more on a 16-element vector than a 256-element one. The log also notes that nothing is unrolled, and it guesses (inferred, not measured) that unrolling would shrink DOT4's loop overhead more than the baselines', so these speedups are not an upper bound.
+
+## Checking that the faster core is still correct
+
+A speedup on a core that computes the wrong answer means nothing, so most of the repo is checking. The tests run in two simulators, Icarus and Verilator.
+
+- **Reference model.** 252 directed, random and generated hazard programs pass. 11,924 retired instruction records and all byte writes match a Python sequential model over 20 random seeds.
+- **Spike.** 39/39 RV32I tests from riscv-arch-test 3.10.0 match the signatures of Spike, the reference RISC-V simulator, and 50 random programs match its commit log. The README notes this is not ACT4 and not certification.
+- **Hazards.** 108 generated programs hit 327/327 combinations of producer type, consumer operand and distance, which is where forwarding and stall bugs hide.
+- **DOT4 lanes.** All 262,144 isolated signed lane pairs match a scalar oracle, and the 1,023 unsupported custom-0 encodings trap with no side effect. Multi-lane sums are not swept exhaustively.
+- **Mutants.** Someone has to check the checkers. The repo makes 23 deliberate single-bug edits to the RTL, and the targeted checkers catch 23/23.
+
+The output check earned its place once. The first quarter-square table covered only -255 to 255, and the extremes test vector (-128 × -128) caught it at the output word. The trace check passed, because the reference model read the same wrong table.
+
+Each report records the SHA-256 of the sources it measured, and a build script stops if the README quotes a number that differs from the reports.
+
+The README also says plainly that the implementation was generated with assistant support, starting from a placeholder README with no earlier core draft. That makes the checks above the main evidence that the core does what it claims.
+
+## Where the clock number stands
+
+The core alone, in a registered timing shell, gets a median post-route estimate of 35.76 MHz over seeds 1 to 5, with a range of 33.85 to 37.08 MHz, using 5,497 of 7,680 iCE40 logic cells (71.6%). The shell leaves out the memories, peripherals and external I/O timing. The README's own rule is not to write "runs at" until a board runs a checked program at that clock.
+
+A board image exists. It adds block-RAM memories and a self-test that reports over LEDs and UART. The self-test passes in RTL simulation, and the image routes at 36.92 MHz post-route against the board's 12 MHz oscillator. It has not run on a board (`board_tested: false` in `reports/board.json`).
+
+## What's still open
+
+The speedup is for one kernel, on simulated cycles divided by estimated clocks. Nothing here was measured on silicon. The core has no CSRs, interrupts, privileged traps or memory wait states, and there is no formal verification with riscv-formal.
+
+The next test the repo names is the first hardware run: flash the board image onto an iCE40-HX8K Breakout and see whether the self-test reports a pass on its LEDs and serial line. Until then, 5.3 times is a simulation result with an estimated clock under it.

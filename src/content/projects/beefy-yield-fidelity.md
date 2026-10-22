@@ -4,7 +4,16 @@ tagline: "Proposal and demo for Net Realized APY transparency on Beefy vaults"
 description: "A proposal for real-time Net Realized APY transparency: break-even calculator, vault drift monitoring, and multi-chain yield health for the Beefy Cowmoonity."
 problem: "The Gas Gap: users depositing small amounts often don't realize that L2 gas fees and Beefy's performance fees can make net return negative for the first 30+ days. Strategy Drift: realized APY depends on harvest frequency; if a vault is harvested less often due to low TVL, users earn less than the \"Target APY\" shown on the UI."
 solution: "A lightweight, high-performance monitoring layer that provides Yield Fidelity metrics: a user-facing break-even calculator, a DAO-facing vault drift dashboard, and multi-chain alerts so users and strategists see true net yield."
+result: "Proposes a break-even calculator, vault drift dashboard and multi-chain alerts so Beefy users see net realized APY, with a demo of the user-facing piece."
+status: "proposal"
+verification: "No checks recorded on this page."
+next: "Milestone 1 is an MVP of the Next.js break-even calculator on one chain, for example Base."
+figure:
+  src: "/images/projects/beefy-yield-fidelity/demo-home.webp"
+  alt: "Yield Fidelity demo landing page with links to the calculator, dashboard and methodology, and buttons to run an estimate or view the monitor."
+  caption: "The demo's landing page. The project is a proposal, and the demo shows the user-facing calculator."
 kind: "proposal"
+track: "crypto"
 featured: false
 demoUrl: "https://yield.rahilbhavan.com"
 completedDate: 2026-03-03

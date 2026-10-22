@@ -1,0 +1,96 @@
+---
+title: "Did Coinbase's Q4 2024 revenue jump come from volume or yield?"
+description: "Splitting Coinbase's $863.8M Q3 to Q4 2024 rise in consumer transaction revenue into volume and effective yield, from public SEC filings only."
+publishDate: 2026-10-21
+project: "coin-revenue-bridge"
+tags: ["finance", "coinbase", "python", "sec filings"]
+draft: false
+---
+Coinbase's consumer transaction revenue went from $483.3M in Q3 2024 to $1,347.1M in Q4 2024. That's a rise of $863.8M in one quarter. Did customers trade more, or did Coinbase earn more on each dollar they traded?
+
+The two answers point a planner in different directions for the next quarter. And there's a trap on the way. The public numbers change definition over time, so a careless series ends up mixing numbers that don't compare.
+
+The full case is on the [project page](/projects/coin-revenue-bridge). There's a [live case study](https://revenue.rahilbhavan.com/) and the [code is on GitHub](https://github.com/RahilBhavan/coin-revenue-bridge). It's an independent analysis of public filings, not affiliated with or endorsed by Coinbase, and it uses no internal Coinbase data.
+
+## The problem is that "consumer revenue" isn't one series
+
+Coinbase has changed what its numbers mean. In Q1 2024 it moved Base sequencer and payment-related revenue out of consumer revenue and into other transaction revenue, then recast earlier quarters. Later it changed its definition of trading volume and recast again.
+
+So the Q3 2023 consumer revenue Coinbase first reported was $274.5M, and the comparable recast value published in Q1 2024 is $247.0M. For Q4 2023 it's $492.5M first reported and $468.9M recast. Both versions are real. They just answer different questions, and the recast numbers weren't public at the earlier dates.
+
+That's why I built the data layer around one rule: one row per metric, per quarter, per publication vintage. A restated number never overwrites the one first published. A Python and SQLite core only lets a calculation use numbers that were public at the time and that share a definition.
+
+## The bridge splits one change into two effects
+
+Revenue here is treated as volume times effective yield. Effective yield is consumer revenue divided by consumer spot volume. It's a proxy, not Coinbase's fee rate. Consumer spot volume excludes derivatives, and some consumer revenue doesn't tie to spot volume at all.
+
+The inputs, from the filings:
+
+| Quarter | Consumer revenue | Consumer spot volume | Effective yield |
+|---|---:|---:|---:|
+| Q3 2024 | $483.3M | $34B | 1.4215% |
+| Q4 2024 | $1,347.1M | $94B | 1.4331% |
+
+Volume rose from $34B to $94B. Effective yield moved from 1.4215% to 1.4331%.
+
+A bridge asks how much of the $863.8M each change explains. The catch is the order. If you move volume first at the starting yield, then move yield at the ending volume, the yield step gets credit for the extra volume too. If you go the other way, volume gets that credit. Neither order is wrong, so the analysis shows both, plus the symmetric Shapley split, which averages the two orders to divide that interaction evenly:
+
+| Bridge method | Volume effect | Effective-yield effect | Total |
+|---|---:|---:|---:|
+| Volume first | $852.9M | $10.9M | $863.8M |
+| Yield first | $859.9M | $3.9M | $863.8M |
+| Symmetric Shapley | $856.4M | $7.4M | $863.8M |
+
+Each view reconciles to the reported change with a $0.0M rounded residual.
+
+![Four figures: $863.8M reported revenue increase, $852.9M volume effect, $10.9M effective-yield effect and a $0.0M residual.](/images/projects/coin-revenue-bridge/bridge-summary.webp)
+*The volume-first bridge from the live case study. Consumer spot volume rose from $34B to $94B.*
+
+## The answer is volume
+
+Whatever order you pick, volume explains $852.9M to $859.9M of the rise, and effective yield explains $3.9M to $10.9M. Customers traded far more, and Coinbase earned about the same on each dollar traded.
+
+That's a descriptive answer, not a causal one. The bridge explains a reported change. It doesn't say why volume rose, and it makes no forecast or investment recommendation.
+
+## Sensitivities, not a forecast
+
+For planning, the package runs mechanical sensitivities around the Q4 2024 actuals:
+
+| Case | Volume change | Yield change | Implied revenue |
+|---|---:|---:|---:|
+| Downside | -20% | -10 bps | $1,002.5M |
+| Reference (Q4 2024 actual) | 0% | 0 bps | $1,347.1M |
+| Upside | +20% | +10 bps | $1,729.3M |
+
+These aren't guidance, probabilities or forecasts. They show how far revenue moves if the two inputs move by set amounts.
+
+## Why there's no forecast at all
+
+The original plan included one. Before looking at any results, the design set a gate: at least twelve comparable quarters, eight to train and four to test. The public filings support nine under one definition. A longer series would have meant mixing the pre- and post-reclassification numbers, which is exactly the mistake the vintage rule exists to stop.
+
+The gate failed, so the project reports the bridge and publishes no forecast. The validation report lists the forecast checks as NOT RUN.
+
+## How it was checked
+
+The sources are 13 public documents, all from SEC EDGAR: ten Coinbase shareholder letters (Q3 2023 to Q4 2025) filed as 8-K exhibits, the 2025 Form 10-K, the Q2 2026 earnings deck, and the SEC submissions index. Each is frozen with a SHA-256 hash, and a source register lists the URL, accession number and hash for every one.
+
+The bridge is computed with decimal arithmetic in all three orders. Then:
+
+- The test suite runs 13 tests, in CI.
+- A standalone `reproduce.py` in the reviewer package recomputes the bridge from package-local files and prints `PASS: bridge reconciles within $0.1M`.
+- An evidence validator reports 15 checks as PASS and exits non-zero if any check fails.
+- A reviewer packet lists the strongest objections and how to test them.
+
+The outputs are a two-page decision memo, a seven-sheet formula workbook, the reviewer packet and the live case study.
+
+## The strongest objections
+
+The project's adversarial review names several. Revenue divided by volume creates the yield that's then used to explain revenue, so the model can look circular. Public consumer volume is incomplete, since some consumer revenue doesn't tie to spot volume. And Q4 2024 is a visually dramatic quarter, so it could look cherry-picked.
+
+The responses in the package are to call the ratio effective yield rather than a price, keep a residual when needed, and frame the takeaway as "investigate mix," not "change price."
+
+## What's still open
+
+No outside practitioner has reviewed the work yet. The review protocol is written and ready for two independent reviewers. An FP&A (financial planning and analysis) practitioner would judge whether the bridge improves a management conversation without implying causality, and whether the sensitivities stay clearly separate from forecasting. An accounting or data-governance reviewer would check whether original and recast vintages are distinguishable and correctly sourced, whether the Q2 to Q4 2025 definition crosswalk justifies quarantining that data, and whether every published number traces to a frozen source or formula.
+
+Until those two come back with written feedback, the bridge is checked by its own tests, not by someone who does this for a living.

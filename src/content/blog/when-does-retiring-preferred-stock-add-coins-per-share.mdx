@@ -1,0 +1,77 @@
+---
+title: "When does retiring preferred stock add coins per share?"
+description: "Strategy sells common to retire STRC; BitMine sells BMNP to buy back common. One ruler, applied to SEC filings, says when each trade adds."
+publishDate: 2026-10-21
+project: "dat-accretion-monitor"
+tags: ["finance", "crypto", "sec-filings", "python"]
+draft: false
+---
+In mid-2026 two digital asset treasury (DAT) companies ran opposite trades. Strategy sold common stock and used the cash to retire its STRC preferred. BitMine sold its new BMNP preferred and used the cash to buy back common stock. Did either trade add to the coins behind each common share?
+
+The project's starting hypothesis was that both did. The filings said otherwise.
+
+Case page: [/projects/dat-accretion-monitor](/projects/dat-accretion-monitor). Live page: [rahilbhavan.github.io/dat-accretion](https://rahilbhavan.github.io/dat-accretion/). Code and data: [github.com/RahilBhavan/dat-accretion](https://github.com/RahilBhavan/dat-accretion).
+
+## Coin counts alone don't say what a share owns
+
+Headlines report how many coins a treasury company holds. A common shareholder owns something narrower. Debt and preferred stock rank ahead of common, and new shares split the pile further. So a company can buy coins every week while each common share's claim on them shrinks, or the other way round.
+
+The three companies also report different metrics, so their numbers don't line up. The project needed one ruler that works for Strategy (bitcoin), BitMine (ether) and SharpLink (ether), and that a reader can check against the filings.
+
+## One ruler for three firms
+
+Strategy publishes its own metric, net sats per share, defined in the glossary of its August 24, 2026 free writing prospectus. I applied that same definition to all three firms. Per firm, per week:
+
+- Net coins N are coins held, plus USD assets, minus out-of-the-money convertible debt and preferred notional, converted to coins at the coin price.
+- Net coins per share n is N divided by fully diluted shares.
+- Net mNAV, m, is the share price divided by the coin value of n. At m = 1.2, buyers pay $1.20 per $1 of net coins behind a share.
+- q is the preferred stock's price divided by its $100 notional.
+
+Every capital action moves n by a predictable amount:
+
+| Action | Adds to n when |
+|---|---|
+| Issue common | m > 1 |
+| Buy back common | m &lt; 1 |
+| Issue preferred | q > 1 |
+| Retire preferred | q &lt; 1 |
+| Buy or sell coins | neutral on day one |
+
+Here's the intuition with toy numbers (an illustration, not filed figures). A preferred share is a $100 claim ahead of common. If the company buys it back for $90, claims fall by $100 and cash falls by $90, so the $10 difference now belongs to common holders. That's q = 0.90.
+
+A rotation pairs two legs. Strategy's first leg sells common, which adds while m > 1. Its second leg retires STRC, which adds while q &lt; 1. Put together, Strategy's rotation adds while m > q, so it stops adding once STRC trades above $100 × m. BitMine's rotation runs the other way and adds while m &lt; q, so it stops adding once BMNP trades below $100 × m. SharpLink has no preferred, so no rotation line applies.
+
+Here's a real filed trade. In the week ending July 26, 2026, Strategy paid $25.0M to retire $28.893M of STRC notional, an average of $86.53 per $100 share (q = 0.8653). That removed $3.893M more in claims than it cost, which works out to +15.65 sats per share across 388,176,305 fully diluted shares. The page links that number to the 8-K it came from.
+
+## What the filings show, as of the week ending October 11, 2026
+
+Python parsers read SEC 8-K and 10-Q filings into a ledger of 98 actions since June 1, 2026 (Strategy 49, BitMine 43, SharpLink 6), each linked to its filing. Here is where each firm sat in its latest filed week:
+
+| Firm | Net mNAV m | Preferred close | Break-even ($100 × m) | Rotation adds while |
+|---|---|---|---|---|
+| Strategy | 1.191 | STRC $99.65 | $119.07 | STRC below break-even |
+| BitMine | 0.998 | BMNP $99.53 | $99.79 | BMNP above break-even |
+| SharpLink (last filed date, Aug 3) | 0.809 | no preferred | m = 1 | issue if m > 1, buy back if m &lt; 1 |
+
+STRC closed below its break-even on 22 of 22 filed dates, so Strategy's rotation was on its adding side every time. BMNP closed below its break-even in 18 of 18 weeks with a BMNP price, so BitMine's rotation was on its adding side in none of them. SharpLink's m was below 1 on all 4 of its filed holdings dates. These counts change weekly. Through the September 20 filing week they were 18 of 18 for Strategy and 0 of 15 for BitMine.
+
+![Table of the latest filed week: Strategy STRC at 84% of break-even, BitMine BMNP at 99.7%, and SharpLink with no preferred stock.](/images/projects/dat-accretion/break-even-2026-10-21.webp)
+*The live break-even table on October 21, 2026, with filings through October 11.*
+
+These are measurements under one definition. They don't say whether any trade was a good decision, and they aren't a forecast.
+
+The model also splits each week's change in n into causes. Summed from Strategy's first week (May 31) through October 11, value to common rose $2,038.1M. Coin price moves account for +$2,462.4M of that and filed actions for +$406.3M, while carry (preferred dividends and convertible interest) took -$355.3M. The filings leave -$255.9M unexplained. Almost all of that residual (-$257.4M) sits before August 2, when Strategy's 8-Ks didn't itemize cash flows.
+
+## How it was checked
+
+Strategy's KPI API publishes its own net sats per share but keeps no history, so a daily job saves it. A check script, `check.py`, rebuilds Strategy's metrics from the filings and compares. As of October 21, 2026 it passed 19 of 19 checks. In the run published with the page, the rebuilt net sats per share was within 0.151% of the API, against a 0.5% tolerance. Another check fetched all 46 unique filing URLs in the ledger, and every one returned HTTP 200. The repo also has 170 offline pytest cases, which passed on October 21.
+
+Passing checks didn't catch everything. Starting with its 8-K filed October 13, Strategy moved its weekly tables into a press release exhibit, and the parser skipped that filing with only a printed line. The week ending October 11 was missing while every check still passed. It was found on October 14, when the page stopped at October 4 for Strategy but not for BitMine. The parser now follows the exhibit. That week added 250 BTC for $21.5M, and its USD-asset check passes with a $0.0M difference.
+
+## What's still open
+
+BitMine's verdict is the weakest one. Its releases never state a share count between filings, so the model estimates it from 10-Q anchors on May 31 and July 9 plus unexplained cash. Its releases also count staked ETH as purchased, which gives the share-count estimate an upward bias of up to 0.55% by October 11. That bias raises m by the same proportion. BitMine's closest week, October 11, sits only 0.27% above the line, and removing the bias would put it on the adding side. So "0 of 18" could be "1 of 18".
+
+SharpLink is measured on only four dates (June 16, June 28, June 30 and August 3), because those are the only dates its filings state ETH holdings. The model carries nothing forward between them. Residuals are tested only for Strategy from August 2 on. The independent ETH-holdings source hasn't updated BitMine since August 23, so later BitMine weeks aren't independently checked. And a weekly refresh, PR #41 from October 20, is still open, so the next merge will move these numbers again.
+
+The next check is BitMine's next 10-K share count. It resets the estimate, and it will say whether October 11 really sat on the non-adding side of the line.

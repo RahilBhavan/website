@@ -1,0 +1,79 @@
+---
+title: "Why Strategy's 15.2-year dividend runway depends on one gate"
+description: "One public-filings model gives Strategy 37.5 months, 3.1 years or 15.2 years of preferred dividend coverage. The gap is about whether common stock can be sold."
+publishDate: 2026-10-21
+project: "strategy-preferred-coverage-model-dividend-runway"
+tags: ["finance", "bitcoin", "excel", "sec-filings"]
+draft: false
+---
+Strategy owes cash every year on five preferred stocks (STRF, STRC, STRE, STRK and STRD) and on its convertible notes. As of the October 15, 2026 snapshot, those charges come to $1,559.7M a year. How long can the company keep paying them?
+
+The same workbook gives three answers: 37.5 months, 3.1 years and 15.2 years. None of them is wrong. They answer different questions, and the difference comes down to whether the company can keep selling common stock.
+
+The full case is on the [project page](/projects/strategy-preferred-coverage-model-dividend-runway). The [live page and calculator](https://rahilbhavan.github.io/strategy-preferred-coverage-model/) and the [code and workbook](https://github.com/RahilBhavan/strategy-preferred-coverage-model) are public.
+
+This is independent educational work from public SEC filings and issuer releases. It's not affiliated with Strategy, it doesn't describe Strategy's internal forecast, and it isn't investment advice. Every figure below is dated. Balance-sheet inputs run through October 11, 2026, and prices are from October 15, 2026.
+
+## Bitcoin is not cash until it is sold
+
+The model keeps three things apart that a single coverage number tends to blend.
+
+- **Cash.** The USD Reserve held $4,880M as of the October 11, 2026 weekly filing.
+- **Saleable common.** The remaining common ATM (at-the-market) authorization was $18,807.6M. That's permission to sell shares, not money anyone has committed to pay.
+- **Bitcoin.** It backs the claims, but it isn't cash until it's sold.
+
+The charges also have an order. The project's textbook puts the simplified stack as debt, then STRF, STRC, STRE, STRK, STRD, then common. STRE adds a risk the dollar preferreds don't have, since it ties a dollar cash obligation to the EUR/USD rate.
+
+## Three runways from one set of charges
+
+The first two answers are simple division, and you can redo them from the inputs.
+
+| Funding counted | Calculation | Runway |
+|---|---|---|
+| Reserve only | $4,880M ÷ $1,559.7M a year | 37.5 months |
+| Reserve plus the full common ATM | ($4,880M + $18,807.6M) ÷ $1,559.7M a year | 15.2 years |
+
+Both hold charges flat and leave out principal. The 15.2-year number also assumes the market buys every share in the ATM. The project's textbook calls it "a conditional capacity calculation, not a funding forecast."
+
+The third answer comes from a gate. Net mNAV is the stock price divided by net bitcoin value per fully diluted share. The project's textbook explains why 1x matters. Issuing common to buy bitcoin adds net bitcoin per share only above 1x net mNAV, under unchanged prices and the issuer's dilution assumptions. The model has a 1x issuance gate. When net mNAV drops below 1x, common sales stop and only the Reserve is left. That's the 3.1-year case, which is the 37.5 months again, counted in years.
+
+The model reconstructs net mNAV at 1.175x as of the snapshot, using estimated share counts, dated stock awards and the observed moneyness of each convertible note. So the gate is open as of the snapshot. The textbook adds a caution, though. "An mNAV above 1x alone does not establish self-funding." On the deployed calculator, setting net mNAV to 0.8x moves static coverage from 15.2 years to 3.1.
+
+The gate is an assumption. Strategy's filed capital framework describes discretion near 1x, not an unconditional ban on selling below it, so the workbook makes the gate an editable input.
+
+![Snapshot table showing $1,559.7M of annual preferred dividends plus interest, 37.5 months from the Reserve alone, 15.2 years with the registered ATM, and net mNAV 1.175x, above a calculator with sliders for bitcoin price, net mNAV and STRC rate.](/images/projects/strategy-preferred-coverage-model-dividend-runway/snapshot.webp)
+*The project page as of the October 15, 2026 snapshot. The calculator holds every input except bitcoin price, net mNAV and the STRC rate at that snapshot.*
+
+## A dated path replaces the flat division
+
+Flat division can't see timing. The textbook puts it this way. Static coverage "treats the ATM as usable and omits principal. A dated path can lose market access before a put or cash payment is due." So the workbook has a `Quarterly path` sheet that runs 20 quarters from an October 16, 2026 stub.
+
+Each quarter it rolls forward cash, the remaining ATM and the share count. It charges issuance fees. It pays each convertible put in full cash on its filed date, which adds up to $6,713.7M of puts in the 20 quarters. Demand for new shares scales down as the premium and the bitcoin price fall. After the first quarter with an unmet need, the sheet becomes a schedule of required financing. It measures what would have to be raised, not whether the company stays solvent.
+
+Here's what the path shows, from the LibreOffice recalculation on October 16, 2026:
+
+| Case | Unmet funding need over 20 quarters |
+|---|---|
+| Base | $0 |
+| No common sales at all (ATM-zero) | $9,470.3M |
+| Severe: BTC down 70%, net mNAV 0.8x, STRC at 15%, EUR/USD up 10% | $10,821.3M |
+
+The Severe case is scenario arithmetic, not a probability.
+
+One more number gets mixed up with runway. Bitcoin covers debt plus preferred claims 3.4x, and that cover falls to 1.0x at about $24,171 BTC. That's a gross claim cover. It says nothing about cash on hand to pay a dividend next quarter.
+
+## How it was checked
+
+The workbook is Excel formulas: 1,551 formula cells and 124 named ranges across 14 sheets. The build script writes formulas and doesn't compute results, so the numbers come from a spreadsheet engine.
+
+- All 16 rows on the `Checks` sheet read PASS in the saved workbook. One of them reconciles the charges to management's $1.703B estimate from August 23, 2026.
+- LibreOffice recalculated 10 input-change cases on disposable copies on October 16, 2026. The record says plainly that this is "not Microsoft Excel."
+- The web calculator reproduces the snapshot equations, and its test reported 7 calculator behavior checks passed on October 21, 2026.
+
+## What's still open
+
+The model has never been opened in Microsoft Excel. LibreOffice checks aren't Excel checks, and the two native What-If Data Tables still need desktop Excel to confirm they calculate.
+
+The inputs predate the Q3 2026 10-Q. STRC shares and basic common shares are reconstructed from weekly filings, and awards are anchored to Q2. The demand coefficients have no historical calibration, and the 1x gate, the STRC rate-band rule and the put elections are all assumptions. The model also assumes no new preferreds and no refinancing.
+
+The next test is written down in the repo. In desktop Excel, run a real Goal Seek that sets bitcoin cover of claims to 1x by changing the bitcoin price, and check that it lands near the analytical target of about $24,171. After that, the Q3 10-Q replaces the estimated share counts, and the three runways get recalculated on filed numbers.

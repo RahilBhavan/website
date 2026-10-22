@@ -1,0 +1,69 @@
+---
+title: "What does one GPU rack cost in amps, water and tokens?"
+description: "A static calculator follows one GPU rack from grid current to dollars per million tokens, with a course's worked examples as its unit tests."
+publishDate: 2026-10-21
+project: "datacenter-math"
+tags: ["datacenters", "gpus", "inference", "javascript", "calculator"]
+draft: false
+---
+A rack of 72 GPUs means something different to each person who touches it. A facility engineer sees amps on a feeder. An inference engineer sees how many requests fit in memory. A finance lead sees a price per token. GPU performance work usually stops at the rack boundary, and the numbers past it live in a different vocabulary.
+
+The easy mistake is a number without its denominator. "131" means nothing until you know it's kW per rack, not per GPU or per hall. So I built a page where every output names its unit, and every formula is pinned to a worked example from a course.
+
+Case page: [/projects/datacenter-math](/projects/datacenter-math). Live tool: [rahilbhavan.com/tools/datacenter-math](https://rahilbhavan.com/tools/datacenter-math/). Code: [calc.js and its tests in the website repo](https://github.com/RahilBhavan/website).
+
+## The worked examples were spread across sixteen chapters
+
+The formulas come from [From Watts to Tokens](https://kiankyars.github.io/gigawatt/), a course by Kian Kyars (draft updated September 10, 2026). The power, cooling and cost numbers that decide whether a cluster is late, water-limited or too expensive per token are in there, but the worked examples that teach them are spread across sixteen chapters.
+
+I wrote the course's formulas as pure functions in one dependency-free JavaScript module, used the course's worked numbers as unit tests, and wired the functions to three small forms on one static page. There's no framework and no build step.
+
+## Three forms, one rack
+
+The page computes these:
+
+| Output | Formula |
+|---|---|
+| Rack IT power | GPU count × watts per GPU × (1 + overhead fraction) |
+| Line current, three-phase AC | P / (√3 × V × PF) |
+| Conductor current, DC | P / (V × PF), with PF left at 1 |
+| Facility power | IT power × PUE |
+| Water per day | IT kWh per day × liters per IT kWh |
+| KV cache per token | 2 × layers × KV heads × head dim × bytes per element |
+| Resident requests | floor(pool / (context × bytes per token)) |
+| Dollars per million tokens | GPU-hour price / (tokens per second × 3,600) × 1,000,000 |
+
+PF is the power factor. PUE (power usage effectiveness) is facility energy divided by IT energy over the same period. The KV cache is memory the model keeps for each token of a request's context, so its size decides how many requests fit at once.
+
+Here's the rack form with its default inputs: 72 GPUs at 1,400 W each, a 0.3 overhead fraction for CPUs, NICs and fans, a 0.95 power factor, 480 V AC, 800 V DC, a PUE of 1.2 and 1.25 L of water per IT kWh.
+
+![Rack to grid calculator with 72 GPUs at 1,400 W giving 131 kW per rack, 166 A per line at 480 V AC, 164 A per conductor at 800 V DC and 3,931 L of water per day.](/images/projects/datacenter-math/rack-to-grid.webp)
+*The rack-to-grid form with its default inputs. Every output names its denominator, and the source line cites the course's worked numbers.*
+
+That's 131 kW per rack, 166 A per line at 480 V AC and 164 A per conductor at 800 V DC. Running the same defaults through the page's functions gives 0.157 MW at the meter, 3.77 MWh per day and 3,931 L of water per day. The water rate is per IT kWh, so it multiplies IT energy, not facility energy.
+
+One thing the defaults show. The DC current is only a little lower than the AC line current, even though 800 V is much higher than 480 V. Three-phase AC spreads power across three lines, which is the √3 in the formula. At the defaults, √3 × 480 V × 0.95 comes to about 790, close to the 800 in the DC formula. Comparing raw voltages without the formula would overstate the difference.
+
+The KV cache form uses Llama 3.1 70B as its default model, with 80 layers, 8 KV heads and a head dimension of 128. In BF16 (2 bytes per element) that's 327,680 bytes, or 320 KiB, per token. A 64 GiB pool holds 25 full requests at 8K context and 6 at 32K. Halve the context and concurrency roughly doubles.
+
+The cost form is the simplest. At $2.00 per GPU-hour and 1,000 tokens per second per GPU, a million tokens costs about $0.556 in compute. Halve throughput and the token price doubles. The page labels its rental ranges with the course's dates. H100 one-year rentals, 25th to 75th percentile, were $1.45 to $1.95 per GPU-hour in October 2025 and $2.10 to $2.70 in April 2026.
+
+## How it was checked
+
+A Node test file runs the functions against the course's worked numbers. When I ran it on October 21, 2026, all 9 tests passed. They check, among others:
+
+- A PUE of 1.20 from 1,500 kWh of IT energy plus 300 kWh of overhead, and 1.10 with 150 kWh of overhead.
+- 100 kW at 480 V three-phase is about 120 A. At 800 V DC it's exactly 125 A.
+- 10 MW at 10 kV is about 577 A, and about 289 A at 20 kV.
+- Llama 3.1 70B in BF16 is 327,680 bytes per token, and a 64 GiB pool holds 25 requests at 8K and 6 at 32K.
+- 100 MWh of IT energy in a day at 1.25 L per kWh is 125,000 L.
+- 84 kW into 2 kg/s of water with a specific heat of 4.2 gives a 10 K temperature rise.
+- $2.00 per GPU-hour at 1,000 tokens per second is about $0.556 per million tokens, and the cost falls as throughput rises.
+
+On the same day, the live page and its `calc.js` matched the files in the repo byte for byte.
+
+## What's still open
+
+The tests prove the code matches the course. They don't prove the course matches a real rack. Every check is a worked example from a course draft, not a measurement from a facility. Each output also leaves things out, as the page says. The KV figure excludes prefix sharing, block rounding and the model weights. The token price is compute only, with no occupancy, networking or margin.
+
+The tests also don't cover everything. Ten functions are exported, and eight have tests. `rackPowerKw` and `facilityMw` have none of their own, yet the first feeds every number in the rack form. The tested 120 A example uses a power factor of 1, while the page defaults to 0.95. A test that pins the default rack at 131.04 kW, and the current at 0.95, would close the gap between what the tests check and what a visitor sees first.

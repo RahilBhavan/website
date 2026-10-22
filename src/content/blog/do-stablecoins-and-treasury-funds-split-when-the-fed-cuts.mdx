@@ -1,0 +1,71 @@
+---
+title: "Do stablecoins and Treasury funds split when the Fed cuts?"
+description: "Ethereum mint and redeem logs for six dollar tokens, lined up against two Fed easing episodes. 2024 split them. 2025 only partly did."
+publishDate: 2026-10-21
+project: "ondo-flows-stablecoin-and-treasury-fund-issuance"
+tags: ["stablecoins", "tokenization", "on-chain-data", "rates"]
+draft: false
+---
+A tokenized Treasury fund like Ondo's OUSG pays about the T-bill rate. A payment stablecoin like USDC pays its holders nothing. When the Fed cuts rates, the fund's advantage over the stablecoin shrinks. So does money move from the funds toward the stablecoins?
+
+That's a hypothesis, not a fact. The project's own study guide draws the chain from a cut to lower yields to shifting demand, and labels it "Every arrow here is a hypothesis." This project measures what actually got minted and redeemed on Ethereum around the last two easing episodes.
+
+The full case is on the [project page](/projects/ondo-flows-stablecoin-and-treasury-fund-issuance). The [dashboard is live](https://ondo-nexus.vercel.app) and the [code is on GitHub](https://github.com/RahilBhavan/Ondo).
+
+Every stablecoin and fund figure below comes from one frozen snapshot of Ethereum logs, read on October 17, 2026. It covers the weeks of December 26, 2022 through October 5, 2026, and it stays stale until someone reruns the backfill scripts. The project is independent and isn't affiliated with or endorsed by Ondo Finance, Circle, Tether, PayPal, Paxos, BlackRock or Securitize.
+
+## A mint has to mean the same thing for six tokens
+
+The tracker covers six dollar tokens from five issuers. USDC (Circle), USDT (Tether) and PYUSD (PayPal, issued by Paxos) are stablecoins. BUIDL (BlackRock, through Securitize), OUSG and USDY (both Ondo) are tokenized Treasury products.
+
+Each one records issuance differently. USDC emits `Mint` and `Burn`. USDT emits `Issue` and `Redeem`. PYUSD shows up only as a transfer from or to the zero address. OUSG and USDY are minted through Ondo's InstantManager contracts. The tracker reduces all of them to one rule. A mint is supply created, and a redemption is supply destroyed.
+
+Two cleanups mattered more than the rest.
+
+- **Cross-chain transfers aren't new money.** Circle's CCTP (Cross-Chain Transfer Protocol) burns USDC on one chain and mints it on another. The tracker counts those events and then removes them. They were $188.7B of USDC mints and burns.
+- **One mistake was enormous.** Paxos minted 300 trillion PYUSD by mistake on October 15, 2025 and burned it minutes later. Both transactions are excluded.
+
+After that, the snapshot holds 3,162,056 decoded event logs, and 3.12M of them are USDC.
+
+| Asset | Mints | Redemptions | Net |
+|---|---:|---:|---:|
+| USDC | $415.6B | $438.4B | −$22.8B |
+| USDT | $82.8B | $26.1B | $56.7B |
+| PYUSD | $19.0B | $17.2B | $1.8B |
+| BUIDL | $2.3B | $2.1B | $195.7M |
+| OUSG | $1.3B | $747.9M | $598.1M |
+| USDY | $215.1M | $66.6M | $148.5M |
+| Five issuers | $521.1B | $484.5B | $36.6B |
+
+USDC shows a net redemption on Ethereum. That doesn't mean USDC shrank overall. Ethereum logs miss the other chains where USDC and USDT live, and Tron holds about half of USDT supply. So for the rate comparison, the three stablecoins use the change in circulating supply on all chains from DefiLlama. The three funds use Ethereum mints minus redemptions, since they're issued there.
+
+## One scale for tokens of very different size
+
+USDC minted $415.6B on Ethereum. USDY minted $215.1M. To put them on one chart, the tracker measures each token against its own history.
+
+It groups Fed cuts less than 120 days apart into one easing episode. That gives two episodes, September to December 2024 (three cuts, 100 bp) and September to December 2025 (three cuts, 75 bp). For each token, it compares mean weekly net issuance in the 12 weeks before the first cut with the mean from the first cut to 4 weeks after the last. Both are expressed in standard deviations (σ) of that token's own weekly net issuance over the whole sample. A reading of +0.5σ means the token's average week during the episode sat half a standard deviation above its average week over the whole sample.
+
+## 2024 split them, 2025 only partly did
+
+![One-page summary titled 'Fed cuts split stablecoin and Treasury-fund issuance in 2024; 2025 blurred it', with cumulative net issuance for six tokens, a dot plot of net issuance before and during two easing episodes, and a mints and redemptions table.](/images/projects/ondo-flows-stablecoin-and-treasury-fund-issuance/summary.webp)
+*The /summary page from the October 17, 2026 snapshot. Weekly mints and redemptions on Ethereum from January 2023 to October 5, 2026.*
+
+During the 2024 episode, the pattern matched the hypothesis. USDC and USDT ran above their own norm, at +0.5σ each. BUIDL and OUSG ran below theirs, at −0.2σ and −0.3σ.
+
+The 2025 episode only half repeated it. According to the summary page, BUIDL fell further (−0.3σ, the weakest window in its history) and USDT stayed above average (+0.4σ). But USDC fell back to average and OUSG recovered. USDY didn't start issuing until December 2025, so it has no reading for either episode.
+
+That's two episodes. The project calls the result descriptive, not evidence of cause, and the summary page calls it "a pattern to watch." There's also a timing problem the study guide points out. Yields fall as soon as traders expect cuts, so the 12 weeks before the first cut may already contain the effect.
+
+## How it was checked
+
+The main check compares the log-derived numbers with an independent source. Ethereum mints minus burns (CCTP included) matched DefiLlama's Ethereum supply change within 16% for USDC and 5% for PYUSD.
+
+The repo has six self-check scripts in `src/lib/*.check.ts`, and all six passed on October 21, 2026. One of them reconciles the committed snapshots. CI runs lint, the type check and the production build, but it doesn't run the self-checks.
+
+The Ondo pages are a different case from the snapshot. The `/flows` page reads OUSG and USDY InstantManager events from Blockscout at render time and refreshes newer log pages hourly. Every number on the dashboard carries a live, estimated or mocked badge, and the benchmark rows show why that matters. On October 21, 2026, DefiLlama's TVL endpoint returned 0 for all four competitor benchmark products, so those rows fall back to a September 24, 2026 snapshot labeled mocked.
+
+## What's still open
+
+The evidence limit is the sample. Two easing episodes and six tokens can't separate the rate channel from everything else that moved at the same time, and the summary page notes that the windows overlap in time with other drivers. The flows are Ethereum only, so USDT and USDC gross issuance is understated, and the stablecoin data is frozen at October 17, 2026.
+
+The study guide names the next test. Add Tron and Solana logs for USDT and USDC, use the T-bill yield level in a weekly regression instead of episode windows, and control for crypto prices to separate risk appetite from the cost of holding a zero-yield coin.

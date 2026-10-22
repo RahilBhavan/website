@@ -1,0 +1,77 @@
+---
+title: "Can a filing answer be forced to quote or abstain?"
+description: "A checker that rejects any non-verbatim quote or unquoted number: Haiku got 26 of 30 held-out filing questions right and abstained on 10 of 10."
+publishDate: 2026-10-21
+project: "filing-research-assistant"
+tags: ["ai", "retrieval", "sec filings", "evals"]
+draft: false
+---
+Ask a model how much ether BitMine held at the end of May 2026 and it'll answer, with a citation if you ask for one. But a citation request isn't a check. The quote might be paraphrased, or the number in the answer might not be in the quote at all, and the answer looks just as sure either way.
+
+So this project sets a hard rule. Every quote in a served answer has to appear word for word in a passage that was actually retrieved, and every multi-digit number has to sit inside a quote. If not, the user gets an abstention instead.
+
+Case page: [/projects/filing-research-assistant](/projects/filing-research-assistant). Code: [github.com/RahilBhavan/filing-research-assistant](https://github.com/RahilBhavan/filing-research-assistant). It's not deployed. The app and its container run locally, and the Azure steps have not been run.
+
+It has two siblings on SEC filings. The [Financial Metrics Analyst](/projects/financial-metrics-analyst) serves structured XBRL numbers with exact ratios, and the [Filing Change Tracker](/projects/filing-change-tracker) compares two years of the same 10-K. This one answers a free-text question from one filing's narrative text.
+
+## The rule runs in code, after the model
+
+The corpus is six SEC filings: the latest 10-K and the following 10-Q for Strategy, BitMine and Coinbase as of 2026-10-21. Each file is pinned by SHA-256. Only Business, MD&A and Risk Factors are indexed, which comes to 2,534 narrative passages. Tables are excluded.
+
+A question names one company and one filing. Then four steps run:
+
+1. Retrieval ranks that filing's passages and keeps the top 5.
+2. A writer sees only those 5 passages. It must return JSON with one sentence of at most 40 words and exact quotes, or abstain.
+3. The checker accepts the answer only if every cited passage was retrieved, every quote is a substring of its passage, and every multi-digit number in the sentence appears in a quote.
+4. Anything that fails becomes an abstention before display.
+
+So "served quotes are verbatim" isn't a measured rate. It's true by construction, because nothing reaches the screen without passing step 3.
+
+The rule is strict enough to reject right answers. On one held-out question, how much cash BitMine used to buy ether in its fiscal year ended August 31, 2025, Haiku found the gold passage at rank 1 and got the answer right. But it restated "August 31, 2025" outside its quote, so the checker rejected it.
+
+![Local app answering how many bitcoins Strategy held as of July 24, 2026, with a verbatim quote of 843,775 bitcoins from its 10-Q, accession 0001050446-26-000044.](/images/projects/filing-research-assistant/checked-answer.webp)
+*The local app with no API key, so the model-free extractive writer produced this answer. The quote was checked verbatim before display.*
+
+## Retrieval was picked before the test
+
+Retrieval fuses two rankers. BM25 scores passages by matching words. bge-small-en-v1.5 embeddings score them by meaning. Reciprocal-rank fusion merges the two lists.
+
+The method was chosen on a separate 6-question dev split before any held-out run. On the 30 answerable held-out questions, it put a gold passage first for 27 (MRR@5 0.900). BM25 alone did that for 23 (MRR@5 0.811). MRR@5 is the mean of 1 over the rank of the first gold passage, counting zero when none is in the top 5.
+
+There's a wrinkle. On held-out, plain embeddings without BM25 had a slightly higher recall at 5, 28 of 30 against 27. The choice wasn't revisited. Switching after seeing held-out scores would have turned the test set into a tuning set.
+
+## What 26 of 30 means
+
+There were 40 held-out questions, 30 answerable and 10 unanswerable from these sections. They were frozen before any writer ran. Each writer ran once.
+
+| Writer | Correct (judge) | Unanswerable abstained | False abstentions | p50 latency |
+| --- | ---: | ---: | ---: | ---: |
+| Claude Haiku 5.5, via Claude Code CLI | 26/30 | 10/10 | 4/30 | 2.31 s |
+| Extractive fallback, no model | 16/30 | 7/10 | 6/30 | under 0.1 s |
+| qwen2.5:0.5b, local through Ollama | 7/30 | 10/10 | 22/30 | 1.15 s |
+
+Abstaining on an answerable question counts as incorrect. Haiku attempted 27 answers and 26 passed the checker. Its four misses split cleanly. One was the fiscal-year rejection above. The other three were abstentions where the gold passage wasn't in the top 5, on BitMine's ether holdings, Strategy's second-quarter BTC Yield and Coinbase's headcount. So most of the remaining errors are retrieval errors, not writing errors.
+
+Haiku cost about $0.0003 per question at API list price. The run went through the Claude Code CLI because no API key was available, so the CLI-reported figure was $0.00070 including a cache-write premium it adds.
+
+The small local model is the useful contrast. qwen2.5:0.5b abstained on all 10 unanswerable questions too, but it also abstained on 22 of 30 answerable ones. In effect, the checker kept it from serving bad answers by making it mostly silent.
+
+## How it was checked, and by whom
+
+Correctness was judged by Claude Sonnet, a different model from the writer, which saw only served answers to answerable questions. The labels were committed before the judge ran. Sonnet agreed with them on 57 of 58 items across the three writers.
+
+That agreement is weaker than it sounds. On the Haiku run every served answer was correct by both raters, so 26 of 26 agreement says little about the judge. The informative cases are the extractive and qwen runs, which hold 10 items labelled incorrect, and the judge agreed on 9.
+
+The bigger caveat is who wrote the test. The questions, gold passages, reference answers and correctness labels were all written by the Claude Code agent that built the system. No human has reviewed them. With 40 questions, one question moves a rate by about 3 points, and Haiku isn't deterministic, so a rerun can differ.
+
+The 108 unit tests pass as of a rerun on October 21, 2026. The `anthropic` provider is covered by unit tests only.
+
+## What's still open
+
+The checker proves quotes are verbatim and numbers are quoted. It doesn't prove the answer is right. The report lists cases where that gap shows:
+
+- A Haiku answer labelled correct names KULR, which isn't in its quote. The checker checks numbers, not entities.
+- A qwen answer of "15%" quotes a worked example from the BTC Yield definition. The quote is faithful and the answer is wrong.
+- A qwen answer uses counts written as words, so the number check can't see that its quotes don't support it.
+
+Facts that live only in tables or notes are out of scope here. The independent citation review is written up in the repo but hasn't been done. In that review, someone other than the implementer sees only the questions and SEC source links, records whether each is answerable, then scores whether each system citation supports its answer: 0 unsupported, 1 partial, 2 complete. Until then, whether the quotes support the answers is unmeasured by any human, and that's the test the 26 of 30 still has to pass.

@@ -1,0 +1,82 @@
+---
+title: "Can an agent be kept from stating a number no tool returned?"
+description: "An MCP server serves SEC facts with filing accessions, and a tracer withholds any agent answer with an untraced number. One run of 50 tasks."
+publishDate: 2026-10-21
+project: "financial-metrics-analyst"
+tags: ["ai", "mcp", "sec filings", "evals", "python"]
+draft: false
+---
+Ask an LLM for Microsoft's FY2026 gross margin and it'll give you a number. The trouble is that a made-up number and a real one look exactly the same on the page. If the answer goes into a memo, the only way to know is to go find the filing yourself.
+
+So the question I built this around was narrow. Can the model be kept out of the arithmetic entirely, and can its answer be blocked if it contains any number that didn't come from a tool?
+
+Case page: [/projects/financial-metrics-analyst](/projects/financial-metrics-analyst). Code: [github.com/RahilBhavan/financial-metrics-analyst](https://github.com/RahilBhavan/financial-metrics-analyst). There's no live demo. It runs locally from frozen SEC snapshots.
+
+It has two siblings that work on the same filings differently. The [Filing Change Tracker](/projects/filing-change-tracker) compares the text of two consecutive 10-Ks with no LLM. The [Filing Research Assistant](/projects/filing-research-assistant) answers questions from narrative passages and checks that every quote is verbatim. This one serves structured numbers.
+
+## Even the filing data needs rules
+
+The obvious fix is "just look it up." SEC companyfacts gives you XBRL facts (the tagged numbers inside each filing) for every company. But looking up one number turns out to need a policy.
+
+One fiscal year can show up in several filings, because later 10-Ks repeat earlier years as comparatives. A later filing can change a value. A company can skip the standard tag entirely. The Kraft Heinz reference case shows all of this. Its FY2017 operating income was $6,773 million in the original filing and $6,057 million after restatement and recasting. The $716 million difference is an $80 million error correction plus a $636 million presentation change. The named standard revenue tag is also missing from its companyfacts data, even though the filing reports net sales. That's missing tag coverage, not zero revenue.
+
+So the selector has rules. It matches exact reviewed start and end dates, USD, approved US-GAAP tags, annual forms and a filing cutoff. It keeps the rejected candidates and the filing history. A changed value is flagged as a revision, not called a restatement unless a source says so. Conflicting values on one filing date produce an ambiguity instead of a guess.
+
+## The model proposes, the server computes
+
+The project is an MCP (Model Context Protocol) server over stdio, hand-written on the Python standard library without the MCP SDK. It has 7 tools. Four are SEC tools: resolve a company, get annual facts, get quarterly facts and calculate metrics. Three are read-only treasury tools that serve per-share figures for Strategy, BitMine and SharpLink from a frozen export of my [dat-accretion](https://github.com/RahilBhavan/dat-accretion) engine.
+
+Every number the server returns carries its filing accession, and the server calls no model. Ratios are computed as exact rational numbers, and display percentages are rounded to two places at the end.
+
+It also refuses rather than guesses:
+
+| Request | Outcome | Exit code |
+| --- | --- | ---: |
+| "Microsoft profit 2025" | `needs_clarification` (operating or net income?) | 3 |
+| An unsupported metric, like EBITDA | `refused` | 2 |
+| A value with a newer conflicting filing | blocked, not served stale | |
+
+The agent on top is a Claude tool-use loop. The model only proposes tool calls and writes prose. Tools run in the server process with their own schema checks, and the model gets no shell, file or network access.
+
+## The gate checks every number
+
+Before an answer goes out, a tracer compares every number in the draft against the tool results from that run. If any number isn't there, the agent gets one rewrite request. If the rewrite fails too, the answer is withheld with status `abstained_untraced`.
+
+The tracer compares magnitudes at the precision shown. So "reduced by 0.85 bps" traces to a tool value of −0.849852, because rounding is accepted and sign is dropped. Small integers have to match exactly. Dates, accessions and URLs have to appear verbatim.
+
+That design is deliberately blunt. The point is that the user never sees a number with no source, even if that means no answer.
+
+## One run of 50 tasks
+
+The 50 tasks were frozen and committed before any agent run. The prompt and tracer were built on a separate set of development questions and weren't changed after the run. Then the agent ran once on 2026-10-21 with `claude-haiku-5-5` through the Claude Code CLI.
+
+| Metric | Result |
+| --- | ---: |
+| Correct tool, 42 in-scope tasks | 42 / 42 |
+| Correct arguments and expected record returned | 42 / 42 |
+| Expected numbers quoted in the delivered answer | 41 / 42 |
+| Numbers in first drafts traced, before the gate | 379 / 383 |
+| Numbers in delivered answers traced | 368 / 368 |
+| Answers withheld by the gate | 1 |
+| Out-of-scope refusals | 8 / 8 |
+| False refusals on in-scope tasks | 0 |
+| Latency per task, p50 / p90 / max | 6.3 s / 9.3 s / 13.3 s |
+| Mean cost per task (CLI-reported, list price) | $0.0013 |
+
+The 368 of 368 is enforced by the gate, so it isn't a skill score. The more honest number is the 379 of 383 in first drafts, before the gate stepped in. All 50 tasks cost $0.066 together.
+
+The single withheld answer is the most interesting row. The task was Microsoft's FY2026 gross margin. The first draft paraphrased a warning code, `snapshot_older_than_7_days`, as "older than 7 days." The tracer doesn't read numbers inside identifiers, so it flagged the 7. That was a false positive. The rewrite then mistyped the period start as 2026-07-01, and the gate withheld it. The second rejection caught a real error. The same "7" caused the other three first-draft rejections, which passed after one rewrite. It wasn't fixed after the run, because a fix would tune against the frozen set.
+
+## How it was checked
+
+The agent eval measures tool use and quoting, not whether the tools are right. Its expected numbers come from the same deterministic tools. Tool correctness rests on a separate 161-case source and intent evaluation, which passes 161 of 161. Its expected values are hand transcriptions from 10-K, 10-Q and annual-report filings, written by the author or the building agent and not reviewed by anyone else.
+
+There are also 114 unit tests. 113 pass and 1 is skipped unless a dat-accretion checkout is present, and a rerun on October 21, 2026 gave the same result. The official `mcp==1.30.0` Python SDK passes 28 of 28 checks against the server, which is evidence with one second client, not protocol certification.
+
+## What's still open
+
+The agent result is one run of templated tasks that name exact weeks and metrics. It doesn't measure open-ended or ambiguous questions, and with no repeats there's no variance estimate. Prompt-injection resistance hasn't been measured. The Messages API backend has unit tests but has never been run live.
+
+Tracing also has a gap that matters. It proves a number came from a tool result. It doesn't prove the number sits next to the right label, so an answer could quote a real gross margin and call it the operating margin. Coverage is narrow too: 3 issuers with reviewed annual periods and 1 reviewed NVIDIA quarter.
+
+So the open tests are the ones this run can't speak to. Does the 379 of 383 hold up across repeated runs? Does the agent stay inside the gate on open-ended questions? And can the tracer check that each number is attached to the right label, not just that it exists?

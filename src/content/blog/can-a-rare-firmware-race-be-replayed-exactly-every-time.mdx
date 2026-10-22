@@ -1,0 +1,75 @@
+---
+title: "Can a rare firmware race be replayed exactly, every time?"
+description: "A Phase-0 Cortex-M record and replay prototype catches a race that hits 1 or 2 times in 1,000 and replays it bit-identically 20 of 20 times on a host emulator."
+publishDate: 2026-10-21
+project: "cortex-m-replay-recording-rare-firmware-races"
+tags: ["hardware", "embedded", "debugging", "cortex-m"]
+draft: false
+---
+An interrupt lands at exactly the wrong instruction, a pair of values that should always agree stops agreeing, and the firmware misbehaves. Run it again and nothing happens. Embedded races are hard to fix because they don't come back when you go looking for them.
+
+On desktop Linux, a tool called `rr` handles this by recording every source of nondeterminism during one run and feeding the same inputs back on replay. This project asks whether the same idea works for bare-metal Cortex-M firmware: record a rare race once, then replay it exactly, register for register, as many times as you want.
+
+Case page: [/projects/cortex-m-replay-recording-rare-firmware-races](/projects/cortex-m-replay-recording-rare-firmware-races). Code: [github.com/RahilBhavan/cortex-m-deterministic-replay](https://github.com/RahilBhavan/cortex-m-deterministic-replay).
+
+This is a Phase-0 prototype. Everything runs on the host, on an instruction emulator. There is no physical board capture yet.
+
+## You don't need every instruction, only every outside event
+
+A full instruction trace of a microcontroller is a lot of data. The design bet here is that you don't need it. A program's behavior only depends on its code and its inputs. On a microcontroller the inputs that make one run differ from the next are interrupts (IRQs), reads from memory-mapped peripheral registers (MMIO reads), and data that DMA writes into memory behind the CPU's back.
+
+So the recorder writes down only those three kinds of event, each stamped with the exact retired instruction count at which it happened. Replay re-runs the same firmware image and applies each event at its recorded count. If the recording is complete, the replay has no choice but to follow the same path.
+
+The test of "the same path" is strict. After every instruction, replay compares 17 fields of CPU state: registers R0 to R12, the stack pointer, the link register, the program counter and xPSR (the status register). Anything less than all 17 matching counts as a divergence, and a differ reports the first mismatched snapshot with its disassembly.
+
+## The race is built on purpose
+
+The firmware is a purpose-built race, not a bug found in someone else's code. It keeps a two-word invariant: the second word should always equal the first word XORed with `0x5a5a5a5a`. A timer interrupt handler writes the two words with two separate stores, and the other side reads them separately and counts a corruption when the pair doesn't agree.
+
+A seeded scheduler picks one of five instruction positions at which to inject the timer interrupt:
+
+| Insertion count | Retired instruction before the IRQ | Pair consistent? |
+|---|---|---|
+| 0 | none, entry before initialization | yes |
+| 1 | `movs r2, #0` | yes |
+| 2 | `ldr r3, [pc, #32]` | yes |
+| 3 | `str r2, [r3, #0]`, first word stored | no |
+| 4 | `mov.w r2, #0x5a5a5a5a`, second value prepared, not stored | no |
+
+The scheduler weights are 998, 1, 1, 1 and 1 across counts 0 to 4, so the corrupting positions are rare by design. The repo notes that the exact program counter values depend on the build, and the insertion counts are the contract.
+
+## Which emulator, and why not QEMU
+
+QEMU 11.0.3 boots the same firmware image on an `mps2-an385` board model. It still couldn't do the job. Its interfaces don't expose an exact per-instruction retirement callback, full register snapshots, a way to override an MMIO read, or a way to inject an IRQ at a given instruction count. The repo documents that dead end rather than patching QEMU.
+
+The recorder uses Unicorn 2.1.4 instead. It steps one instruction at a time, and a narrow exception shim injects the IRQ at an exact count. That shim is not a model of the Cortex-M interrupt controller (the NVIC). It has no hardware stacking, priorities, masking or nested interrupts.
+
+The events go into DTRC v2, the project's trace format: tagged events with variable-length integers, a build ID and a CRC32 checksum, so a corrupted or mismatched trace gets rejected instead of replayed.
+
+## What the numbers say
+
+| Check | Result |
+|---|---|
+| Race campaign, seeds 0 to 3 | 2, 1, 2 and 1 corruptions per 1,000 trials |
+| Replay of one corrupting schedule (IRQ at instruction 4, seed 0) | 20 of 20 identical |
+| Real-firmware replay | 100,000 of 100,000 snapshots identical |
+| Trace codec | 10,000 seeded random encode and decode round trips |
+| Golden trace stream | 66 bytes, 7 events, 9.43 bytes per event |
+
+The race campaign numbers are counts from 1,000 seeded trials each, and the repo says it makes no probability claim beyond that campaign. The 20 of 20 result shows the modeled race reproduces deterministically. It does not say anything about real interrupt latency or cache behavior on silicon.
+
+The 66-byte stream is a size, not a speed. The project reports no bytes-per-second figure on purpose, because an instruction count on a host emulator is not a clock, so there's no honest duration to divide by.
+
+There's also a hardware side. A SystemVerilog capture gateway (FIFOs, DDR capture, a clock-domain crossing and reset synchronizers) carries the 66-byte golden stream byte for byte in Icarus and Verilator simulation. Yosys synthesizes it for a Lattice ECP5 at 41 LUT4, 93 flip-flops, 2 EBR and 22 CCU2C. Place and route gives a 211.42 MHz estimate, but the constraints file sets only a 100 MHz clock and assigns no pins, and the run reports 54 unassigned I/O warnings. That figure is a provisional tool estimate, not board timing.
+
+## How it was checked
+
+The suite has 39 tests. CI run 31524893189 on 2026-08-11 passed all 39 against the built firmware. Among them, one test changes a single MMIO read on replay and checks that the differ points at the first mismatch, so the comparison is shown to fail when it should.
+
+The numbers were not all re-run recently. On 2026-10-21, on a host without the Arm toolchain or Icarus, 23 tests passed, 14 errored on the missing firmware ELF and 2 skipped. The 100,000-snapshot, race and RTL numbers come from CI and the checked-in docs, not from that day.
+
+## What's still open
+
+The evidence stops at the host. The replay is exact for a race that lives in an emulator with a simplified interrupt shim, and it covers only the 16-bit Thumb branches this firmware needs, not full Thumb-32 control flow. Real replay supports IRQ, MMIO read and DMA events only.
+
+The repo's hardware handoff list starts unchecked: pick a board and pins, bring in a physical trace through the Embedded Trace Macrocell (ETM), check clock-domain crossing and reset on silicon, capture a golden stream on the device, and accept a physical replay against the same 17 fields. The open question is whether a race caught on a real chip, with a real interrupt controller, replays as exactly as this one does on the host.

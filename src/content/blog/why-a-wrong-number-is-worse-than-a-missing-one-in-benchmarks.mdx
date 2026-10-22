@@ -1,0 +1,70 @@
+---
+title: "Why a wrong number is worse than a missing one in benchmarks"
+description: "Building five years of supplier financial history for a GM purchasing dashboard, and why the pipeline only trusts verified tickers."
+publishDate: 2026-10-21
+project: "gm-supplier-benchmark-dashboard"
+tags: ["data-pipelines", "dashboards", "finance", "consulting", "python"]
+draft: false
+---
+Picture a buyer preparing to negotiate with a supplier. The dashboard says the supplier's operating margin is healthy, so there's room to push on price. But the supplier's name was matched to the wrong stock ticker, and the revenue on screen belongs to a different company.
+
+That happened on this project. Automatic name-to-ticker lookups produced some wrong matches, and the wrong company's revenue landed in the dataset. A blank cell would have been honest. A wrong number looked like information.
+
+Case page: [/projects/gm-supplier-benchmark-dashboard](/projects/gm-supplier-benchmark-dashboard). Live dashboard: [gm-mecg.vercel.app](https://gm-mecg.vercel.app).
+
+## The problem is that public numbers aren't convenient numbers
+
+The dashboard was built for General Motors' purchasing team through the Michigan Engineering Consulting Group (MECG). The project page states that GM's PPCO team used it for supplier negotiations. Beyond that sentence, nothing here speaks for GM.
+
+The numbers a buyer wants are public for listed suppliers: revenue, SG&A (selling, general and administrative expenses) and EBIT (earnings before interest and taxes). SG&A and EBIT as a percentage of revenue tell a buyer how much room a supplier has. The trouble is that the data sits across SEC filings and finance portals. Before the dashboard, each negotiation meant looking up a supplier's filings, computing margins by hand and finding peers to compare against.
+
+There were also structural gaps:
+
+- No consistent margin computation across suppliers.
+- No view of how a supplier's margins moved over time.
+- Supplier names don't map cleanly to tickers.
+- Private companies have no public financials at all.
+
+## My part was five years of history
+
+The dashboard is a multi-page Flask app: a home view, supplier explorer, company compare, map, parts index, an add-company workflow, a data refresh page, and the historical trends page. It's CSV-backed on purpose, so the client can clone the repository and see the same dataset immediately, and inspect or hand-correct it.
+
+My main contribution was the trends page and the five-year data pipeline behind it, merged as PR #3 in the client repository (+5,597 lines). It works in four steps:
+
+1. Pull five years of annual revenue, SG&A and EBIT from Yahoo Finance (via yfinance) for every supplier with a verified ticker.
+2. Write them to one long-format file, `supplier_history.csv`, with one row per company per year. Each row also carries SG&A %, EBIT %, SG&A plus EBIT %, and year-over-year changes in revenue, SG&A and EBIT.
+3. Build a cached `trends_data.json` with per-supplier year data, portfolio aggregates (total revenue, health counts, concentration) and a lookup for sparklines.
+4. Serve that payload through three endpoints and draw it with Plotly: supplier trends, portfolio composition, margins, a waterfall and a heatmap. The existing supplier list also got sparklines, so you can see direction in the explorer without opening the trends page.
+
+## The decision was to trust only verified tickers
+
+The fix for the misaligned revenue came in three parts. Tighten the validation on the fallback ticker lookup. Scrub the stale rows. Then build the history pipeline only on tickers that were already verified in the scraped dataset.
+
+The last part is the one that matters for five years of history. If the pipeline guessed tickers, every wrong guess would become five wrong rows, and each would flow into margins, year-over-year changes, portfolio totals and sparklines. Putting ticker verification upstream of every downstream number means a supplier without a verified ticker simply has no history. That's a visible gap rather than a hidden error.
+
+The other decision was about speed. Recomputing per-supplier trends, aggregates and sparklines on every request would make the trends page slow with this many suppliers. So `trends_data.json` is prebuilt, and it's rebuilt whenever the scraper job succeeds. The page reads a file, and the cache can't lag behind the data it came from.
+
+![PPCO Supplier Intelligence Dashboard showing average SG&A and EBIT tiles, an SG&A versus EBIT scatter plot, a vehicle-zone part map and a revenue bar chart of top suppliers.](/images/projects/gm-supplier-benchmark-dashboard/supplier-explorer.webp)
+*The deployed supplier explorer, with 210 suppliers in the default view.*
+
+## The result is 952 supplier-year rows for 225 suppliers
+
+As of the project's completion on April 24, 2026, `supplier_history.csv` held annual history for 225 suppliers across 2021 to 2025, in 952 supplier-year rows. That's fewer rows than five per supplier, which fits a trade-off the project page records: Yahoo Finance history is incomplete for some suppliers, and private companies have none.
+
+Those are counts of what the pipeline wrote, not a measure of whether every value is right.
+
+## How it was checked
+
+The project page records no checks. It lists no tests or validation report for the history data.
+
+What exists is prevention. Only verified tickers feed the history, and the stale misaligned rows were scrubbed. That lowers the chance of a wrong number. It doesn't prove there isn't one.
+
+## What's still open
+
+Three limits remain, from the project page's own learnings:
+
+- Automatic name-to-ticker resolution without validation didn't work, and that's why the verified-ticker gate exists.
+- The map and trends pages rely on CDN assets, so they need internet even for a local run.
+- Quarterly data lives in a separate Excel export (the companion `gm_mecg` project, which exports quarterly financials from SEC and Yahoo Finance data) instead of in the dashboard.
+
+The next test is the check the history data doesn't have yet: a validation report that flags any supplier whose revenue changed by an implausible amount between refreshes. My guess is that a wrong ticker match would often show up as that kind of jump, which would make this the check most likely to catch the original failure if it came back.

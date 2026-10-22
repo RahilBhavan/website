@@ -1,0 +1,91 @@
+---
+title: "Can a stop-loss beat liquidation when ETH drops 27% in a day?"
+description: "Replaying the August 5, 2024 ETH crash through a static stop-loss model for Aave V3 and Morpho, 50 scenarios, one hour at a time."
+publishDate: 2026-10-21
+project: "summer-fi-liquidation-risk-simulator"
+tags: ["defi", "risk", "aave", "morpho", "python"]
+draft: false
+---
+On August 5, 2024, ETH opened at $2,910, fell to $2,120 and closed at $2,450. That trough is about a 27.1% drop inside one day. Gas peaked at 681.4 Gwei. If you had a leveraged ETH position with an automated stop-loss that day, the stop-loss had one job: get you out before the lending protocol liquidated you and took a penalty.
+
+This project asks how often a stop-loss wins that race, and how much the answer depends on the buffer you pick. This is a backtest of one historical day with stated assumptions, not a forecast or a record of real executions.
+
+Case page: [/projects/summer-fi-liquidation-risk-simulator](/projects/summer-fi-liquidation-risk-simulator). Live simulator: [summer.rahilbhavan.com](https://summer.rahilbhavan.com). Code: [RahilBhavan/summer-fi-risk-analysis](https://github.com/RahilBhavan/summer-fi-risk-analysis).
+
+## The problem is a race with two bad endings
+
+A lending position has a loan-to-value ratio (LTV), which is debt divided by collateral value. When ETH falls, LTV rises. Each protocol has a liquidation threshold. Cross it and the protocol sells your collateral and charges a penalty.
+
+A stop-loss sits below that threshold. The gap between the two is the buffer. Trigger too early and you pay gas and slippage to exit a move that might reverse. Trigger too late and you get liquidated anyway. A risk team choosing a buffer is choosing where to stand between those two outcomes, and the point of this project is to make that choice from compared scenarios with written assumptions instead of intuition.
+
+The model uses these protocol assumptions:
+
+| Protocol | Liquidation threshold | Liquidation penalty |
+|---|---|---|
+| Aave V3 | 0.825 | 5% |
+| Morpho | 0.945 | 1% |
+
+These are the model's parameters. Live protocol configuration needs checking before anyone uses them for real.
+
+## The model walks the day one hour at a time
+
+The input is a CSV of 24 hourly rows (00:00 to 23:00 UTC) with ETH price and gas. I built a small Python model that walks those rows in order. At each hour it checks two things, in this order:
+
+1. Is LTV at or above the liquidation threshold? Then the position is `liquidated`.
+2. Otherwise, is LTV at or above the stop-loss trigger (threshold minus buffer)? Then it's `sl_triggered`.
+
+A position that never hits either stays `active` through the whole day.
+
+The order matters, and it's a deliberate choice. With one observation per hour, the data can't show whether a stop-loss would have executed before the price crossed the liquidation line somewhere inside that hour. So the model checks liquidation first. That's the conservative call. It keeps liquidation outcomes reachable instead of quietly assuming the bot was always fast enough.
+
+When a position exits, the model estimates what's left:
+
+- **Liquidated.** Collateral value minus debt minus the penalty on the debt.
+- **Stop-loss.** Collateral value after slippage, minus debt, minus gas.
+
+Slippage is a simple function of gas: 0.1% base, plus 0.5% per 100 Gwei, capped at 5%. Gas cost assumes a fixed 300,000-gas exit transaction. Neither is an order-book model. Remaining value floors at zero.
+
+Then the sweep. Five starting LTVs (0.60, 0.65, 0.70, 0.75, 0.80) times five buffers (0.02, 0.05, 0.08, 0.10, 0.12), per protocol, each with 1 ETH of collateral. That's 25 scenarios per protocol and 50 in total, written to `reports/sweep_results.csv`.
+
+## Aave V3 had 21 stop-loss exits and 4 liquidations
+
+Across the 50 scenarios:
+
+| Protocol | Stop-loss exits | Liquidations | Never triggered |
+|---|---|---|---|
+| Aave V3 | 21 | 4 | 0 |
+| Morpho | 12 | 6 | 7 |
+
+The four Aave liquidations are all the same shape: a starting LTV of 0.65 or 0.70 with a buffer of 0.02 or 0.05. Here's the 0.70 row on Aave V3, straight from the sweep file:
+
+| Buffer | Status | Hour | Value left (USD, 1 ETH collateral) |
+|---|---|---|---|
+| 0.02 | liquidated | 04:00 | 311.15 |
+| 0.05 | liquidated | 04:00 | 311.15 |
+| 0.08 | stop-loss | 03:00 | 629.22 |
+| 0.10 | stop-loss | 02:00 | 721.93 |
+| 0.12 | stop-loss | 01:00 | 793.69 |
+
+The reason is in the price data. Between 03:00 and 04:00, ETH went from $2,690 to $2,450. With a 0.05 buffer, the stop-loss trigger sits at 0.775. In that single hourly step the 0.70 position went from below its stop-loss line to past the liquidation threshold. On hourly data, a narrow buffer never gets a chance to fire. Widening the buffer to 0.08 moved the exit to 03:00, and the value left went from $311.15 to $629.22.
+
+Morpho's high threshold (0.945) means more room before anything happens. Seven Morpho scenarios never triggered at all: every 0.60 start and the 0.65 start with the two narrowest buffers. But when Morpho positions did get liquidated, it happened later in the slide, at lower prices. The 0.70 position with a 0.05 buffer was liquidated at 06:00 with $62.63 left, even with the smaller 1% penalty.
+
+Two more things show up when you read the sweep file row by row.
+
+First, several Aave exits happen at 00:00. For a start at 0.75 with a buffer of 0.08 or more, or a start at 0.80 with a buffer of 0.05 or more, the stop-loss line is already below the starting LTV. Those exits aren't reacting to the crash. The position opened inside its own stop band. That's a reminder that a sweep grid includes combinations nobody would set up on purpose.
+
+Second, every trigger in the sweep lands between 00:00 and 06:00, and the gas peak of 681.4 Gwei came at 08:00, after the trough. In this one day's data, the exits happened before the worst gas. That's what the CSV shows for August 5, not a rule about crashes in general.
+
+## How it was checked
+
+The pytest suite pins the things a reader could otherwise doubt. It asserts the dataset has 24 rows, opens at $2,910, bottoms at $2,120, closes at $2,450 and peaks at 681.4 Gwei. It asserts the protocol parameters. It checks that when one observation crosses both lines, the model returns `liquidated`, not `sl_triggered`. It checks the representative backtests: Aave V3 at 0.70 with a 0.05 buffer liquidates at 04:00 with $311.15 left, and Morpho at the same settings liquidates at 06:00 with $62.63 left. It checks that the sweep has 25 rows per protocol and 50 combined, and that bad inputs (non-positive prices, negative gas, a dynamic strategy the model doesn't support) raise errors instead of being coerced.
+
+The web simulator runs a TypeScript port of the same model (`riskModel.ts`), so a reader can change protocol, starting LTV and buffer and share the scenario by URL, for example `?protocol=AaveV3&ltv=0.70&buffer=0.05`.
+
+## What's still open
+
+The biggest limit is the one the model was built around. Hourly data can't show whether an exit would have landed before a breach inside the hour. The 03:00 to 04:00 jump that liquidated the narrow-buffer Aave positions might have given a fast bot a window at minute resolution, or it might not. This data can't tell.
+
+The second limit is execution cost. Slippage here is a heuristic driven by gas, not measured liquidity. A real exit during a crash depends on how deep the order book was at that moment.
+
+So the sweep is a scenario-analysis input for picking a buffer, not an answer. The report's own recommendation is to validate thresholds, execution and controls against current protocol configuration and finer-grained data before anyone uses it operationally. The next test is the one that would replace both heuristics: minute-level price and gas for the crash window, and measured order-book depth, to see whether the 0.05 buffer still loses the race when the hour is broken into sixty pieces.

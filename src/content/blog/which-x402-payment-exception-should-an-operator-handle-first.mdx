@@ -1,0 +1,82 @@
+---
+title: "Which x402 payment exception should an operator handle first?"
+description: "A synthetic exception desk for x402 payments on Base: one reducer, four queue rules, and a 3,600-scenario sweep where no rule wins every objective."
+publishDate: 2026-10-21
+project: "x402-exception-desk"
+tags: ["payments", "operations", "simulation", "python"]
+draft: false
+---
+A payment request times out. The customer has no receipt and the seller has no final answer. Should the system charge again?
+
+No. A timeout tells you what the caller saw, not what happened to the payment. A wrong call here can charge a customer twice, or treat an approved refund as if it had already settled. And once several cases like this pile up, someone has to decide which one to handle first.
+
+The full case is on the [project page](/projects/x402-exception-desk). The [operator report is live](https://rahilbhavan.github.io/x402-exception-desk/) and the [code is on GitHub](https://github.com/RahilBhavan/x402-exception-desk).
+
+All data in this project is synthetic. The 65 events, the 16 incidents, every amount, identity and handling time, and the whole 3,600-scenario sweep are generated fixtures, not real Base payment traffic. The desk makes no live payments. It's an independent project, not affiliated with or endorsed by Coinbase, and it doesn't describe any Coinbase system or process.
+
+## Payment and delivery are separate facts
+
+x402 is a public protocol for paying for a web resource. Its v2 specification keeps verifying and settling a payment as separate steps, and delivering the paid-for resource is a separate fact again. On Base, those facts can disagree. The chain shows a payment but the resource never arrived. A request times out with no clear result. A refund is approved but hasn't settled.
+
+Each disagreement becomes a case. The state model keeps four facts apart:
+
+- A timeout means the outcome is unknown, not failed, so it never triggers a new charge.
+- Chain evidence shows payment, not delivery.
+- A refund approval reserves balance but is not a settled refund.
+- One piece of payment evidence cannot pay for two orders.
+
+## One reducer turns events into case states
+
+The design starts from an append-only SQLite event log, and that log is the evidence boundary. Every projection, reconciliation row, operator view and policy result is derived from it.
+
+One deterministic reducer groups the events by case and folds them into payment, delivery and refund state, plus the next actions the desk allows and forbids. Replaying the same events gives the same result, and a duplicate event ID doesn't create a second effect.
+
+Take the timeout that later succeeds. In the oracle, that case ends with the payment observed and the resource prepared but not yet acknowledged. The allowed actions are to deliver the persisted resource or reconcile the original attempt. The forbidden ones are to charge again or to create a second entitlement. To close it, the desk needs the canonical payment observation, a matching resource digest and the client's acknowledgment.
+
+The 16 incidents cover cases like an authorization rejection, a payment observed without delivery acknowledgment, payment evidence reused across two orders, an observation before finality that later becomes invalid, and two refunds competing for the same refundable balance.
+
+![x402 exception desk case view under a simulated-data banner, showing case hp-01's payment, delivery and refund reservation states.](/images/projects/x402-exception-desk/case-view.webp)
+*One synthetic case in the operator view. The banner marks the data as simulated, with no actions executed.*
+
+## The proposed queue rule failed its gate
+
+Nine of the 16 cases are actionable. I compared FIFO (first in, first out) against a proposed deadline-first queue. Before the run, I set a gate. Deadline-first had to cut overdue cases by at least 15% with zero control failures.
+
+It didn't. Deadline-first cut value-weighted overdue time by 64%, but it left the same 6 cases overdue. So FIFO stays.
+
+Afterward I added two more policies, value-first and a hybrid that works the SLA (service-level agreement) window first and then goes by value. Here are all four on the same synthetic workload:
+
+| Policy | Overdue cases | Median delay (min) | p95 delay (min) | Value-weighted overdue (USDC-minutes) | Control failures |
+|---|---:|---:|---:|---:|---:|
+| FIFO (baseline) | 6 | 66.1 | 107.1 | 4,428.9 | 0 |
+| Deadline-first (proposed) | 6 | 55.1 | 107.1 | 1,582.2 | 0 |
+| Value-first | 4 | 47.1 | 137.1 | 1,371.9 | 0 |
+| Hybrid (SLA window, then value) | 4 | 77.1 | 127.1 | 982.1 | 0 |
+
+Value-first and hybrid both cut overdue cases to 4. That looks like a win, but they were added after the gate was set, they haven't run on a held-out workload, and their p95 delay is worse than FIFO's. The handling times and incident frequencies behind every row are synthetic.
+
+## No policy wins every objective
+
+One workload is one draw. So the desk sweeps 3,600 synthetic scenarios: 100 seeds, 1 to 3 operators, 0.5x, 1x or 2x handling time, 0 or 15 minutes of evidence delay, and 0 or 10 minutes of finality delay. Every policy in a scenario gets the same workload. Here's the share of scenarios where each policy had the best result:
+
+| Objective | FIFO | Deadline-first | Value-first | Hybrid |
+|---|---:|---:|---:|---:|
+| Fewest overdue cases | 9.7% | 20.8% | **51.7%** | 17.8% |
+| Least value-weighted overdue time | 7.4% | 22.0% | 30.1% | **40.5%** |
+| Lowest p95 delay | **50.0%** | 11.1% | 17.6% | 21.3% |
+
+Ties split the credit. Control failures tie at 25% each, because the seeded failures belong to the workload, not to the queue order.
+
+The takeaway is that the queue rule should follow from the objective a team picks. If overdue count matters most, value-first won most often. If value-weighted delay matters most, hybrid did. If tail delay matters most, FIFO did.
+
+## How it was checked
+
+The oracle is written separately from the reducer. It states the expected payment state, delivery state, financial totals, exception type, safe actions, forbidden actions and closure evidence for all 16 incidents. The reducer matches it on 16 of 16. Keeping them apart matters because a test that derives both the answer and the expected answer from the same function can confirm its own mistake.
+
+A 26-check consistency gate ties every generated file to one run ID and to the fixture, oracle and workload hashes. A release script runs the tests, regenerates the outputs, runs the gate, checks the memo, workbook and video against recorded hashes, and rebuilds a deterministic release archive. CI runs it on Python 3.9 and 3.11. On October 21, 2026, the suite ran 66 tests and passed. The code uses only the Python standard library.
+
+## What's still open
+
+This is a simulation. Handling times are model inputs, not measurements, so the policy results show tradeoffs, not a production recommendation. It doesn't test a live x402 implementation, and no payments practitioner has reviewed the workflow yet.
+
+That review is the next test, and its protocol is already written. At least three practitioners who have handled payments, treasury, reconciliation, risk or customer-funds exceptions get the same build and three tasks: a timeout with late settlement, an evidence mismatch, and a refund with an unknown outcome. Its pass criteria include zero critical errors across all sessions (like recommending a second charge while the original is unresolved, or treating chain settlement as proof of delivery) and a score of at least 10 out of 12 from every reviewer. Nobody has run it yet.

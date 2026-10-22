@@ -1,0 +1,86 @@
+---
+title: "How did a fuzzer find a one-wei hole in my lending vault?"
+description: "A lending vault with 12 invariants checked in CI and by a testnet monitor, the rounding bug the solvency rule caught, and what a self-graded 94 means."
+publishDate: 2026-10-21
+project: "guardian-pipeline-12-invariants-from-ci-to-testnet"
+tags: ["smart contracts", "security", "fuzzing", "solidity", "defi"]
+draft: false
+---
+A borrower repays a loan in full. The vault's books say the debt is gone and the cash came in. But if the vault collects one wei less than its total debt actually fell, the books no longer balance, and nobody reading the code line by line is likely to notice.
+
+In this project a fuzzer caught exactly that. I wrote a lending vault, wrote down 12 rules it must never break, and had Foundry's fuzzer try to break them.
+
+The full case is on the [project page](/projects/guardian-pipeline-12-invariants-from-ci-to-testnet), and the [code is on GitHub](https://github.com/RahilBhavan/guardian-pipeline). This is a separate, newer project from my 2024 [Rust invariant monitor](/projects/smart-contract-invariant-monitor-and-guardian), which replayed the Euler exploit against mainnet history. Here I wrote the vault myself.
+
+## The vault is a teaching example
+
+`Vault.sol` is an over-collateralized lending vault with two assets. Lenders supply one asset and earn interest. Borrowers post a different asset as collateral, priced by an oracle, and borrow against it. If a position goes bad, a liquidator can close it and collect a 5% bonus.
+
+It's not built to hold real money. It uses a permissionless mock oracle, has no bad-debt reserve and has no governance. The demo copy runs on Base Sepolia, a test network that holds no real value. It's an independent project, not affiliated with Base, Coinbase or any protocol named in the exploit replays.
+
+## Twelve rules, checked twice
+
+An invariant is a statement about the contract's state that should be true after every transaction. The vault has 12 of them, INV-01 to INV-12. The most important is INV-01, protocol solvency:
+
+```
+cash + totalBorrowed ≥ totalSupplyAssets
+```
+
+In words, the tokens the vault holds plus the debt owed to it must cover everything lenders can withdraw. If that ever fails, some lender can't get their money back.
+
+The same 12 rules get checked in two places.
+
+| Where | What runs | When |
+|---|---|---|
+| Before deployment | A Foundry invariant harness with eight handlers (deposit, collateral, borrow, time warp, liquidate, donation, oracle moves, reentrancy) | Every push and pull request to `main`, 2,000 runs at depth 150 |
+| After deployment | A TypeScript monitor with one check per invariant, reading the demo vault on Base Sepolia | Per block as a daemon, or about every 5 minutes from a scheduled workflow |
+
+The design decision was to make these two copies of the same list, not two separate ideas of safety. A CI job called `mirror-parity` fails if the monitor and the harness drift apart. The point is that the rule the fuzzer tested is the exact rule the monitor watches.
+
+## The bug the solvency rule caught
+
+The vault doesn't store each borrower's debt as a fixed number. It stores borrow shares and multiplies them by an interest index that grows over time. Total debt is computed the same way, and the division rounds down.
+
+An earlier version of the repay function charged a borrower closing their position their own debt figure, `userDebt()`. But removing that borrower's shares could make the rounded-down total drop by one wei more than that figure. So the vault collected one wei less than its debt actually fell. Cash plus debt slipped below what lenders were owed.
+
+The fuzzer found this within a few hundred runs and shrank it to a short deposit, borrow and repay sequence. The fix charges a full close the actual drop in total debt, so cash rises by exactly what debt falls by.
+
+That fix has a cost, and the self-review records it too. A borrower repaying exactly `userDebt()` may now transfer one extra wei (finding GUA-06, Informational). The review calls that overshoot deliberate, since charging the real drop in debt is what keeps solvency exact.
+
+The self-review lists this bug as GUA-02, High, Resolved. One wei sounds harmless, but it broke the master safety rule, and the review credits the fuzz harness with finding it.
+
+## What the 10 exploit replays test
+
+The repo rebuilds 10 known DeFi exploit mechanisms, such as share-price inflation through a donation, a collateral reduction with no health check, and liquidation against a stale price. Each test runs the attack twice. It must drain a deliberately weakened copy of the vault, which proves the attack is real, and it must fail against the real `Vault.sol`.
+
+The result was 10 mechanism replays, 10 prevented, 0 missed. These are mechanisms rebuilt in Foundry, not replays of real mainnet transactions.
+
+![Dashboard panels showing an AMC score of 94 out of 100, grade A, 8 of 8 self-review findings traced to a re-runnable check, and 10 exploit replays prevented with 0 detected and 0 missed.](/images/projects/guardian-pipeline-12-invariants-from-ci-to-testnet/assurance-panels.webp)
+*The dashboard's assurance panels on October 21, 2026. The AMC score is self-graded and dates from June 10, 2026.*
+
+## What a score of 94 means
+
+The repo rolls its evidence into one number, the Assurance Methodology Coverage (AMC) score. It was 94/100, grade A, on 2026-06-10. The weights are 45% static verification (coverage and fuzz campaign size), 35% exploit resistance and 20% finding traceability. CI fails if the score drops below 80.
+
+It's easy to read 94 as "94% safe." That's wrong. The AMC score measures how fully the project ran its own verification method. The same author, me, writes the invariants, picks the exploit set, binds the findings to tests, picks the weights and grades the result. The repo's own docs say the right way to read it is that the codebase grades itself A against the rubric the codebase ships.
+
+So the 94 tells you the method is written down and reproducible. It doesn't tell you a motivated outside reviewer tried to break the vault and failed. The security review is also a self-review, not a third-party audit.
+
+## How it was checked
+
+The README records these results on 2026-10-21:
+
+- `forge test` passed all 92 Foundry tests: 39 unit and boundary, 8 parameterized fuzz, 13 invariant, 9 differential, 10 exploit replays and 13 mutation tests.
+- The assurance tool passed 50 of 50 tests, and the monitor passed 66 of 66.
+- The CI invariant campaign made 300,000 handler calls in 135 seconds, and all 13 invariant functions passed.
+- `Vault.sol` had 100% line coverage (130 of 130 lines, 28 of 31 branches).
+
+The 13 mutation tests break the vault on purpose for INV-07 to INV-12 and check that the matching invariant catches each break. That's the check on the checker. A rule that never fails can be a strong vault or a weak rule, and the mutants are how you tell the difference.
+
+## What's still open
+
+Fuzzing doesn't prove anything. It shows that none of the sequences it tried broke a rule. No Certora or Halmos proof exists, and the invariant docs name INV-01, INV-04 and INV-06 as the ones a future version could prove symbolically without rewriting the contract.
+
+The runtime half has also stopped. The scheduled monitor workflow last ran on 2026-08-23, and GitHub has since disabled it for inactivity. On 2026-10-21 the live dashboard showed "Guardian down" and no recent checks. The monitor was always a best-effort reference implementation, not a service with an uptime promise, and it has only ever watched a test-network vault.
+
+So the open test is the one the repo names: a symbolic proof of solvency, so that "none of 2,000 runs broke it" becomes "no sequence can."

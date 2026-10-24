@@ -84,7 +84,7 @@ Manual review in spreadsheets, one work at a time. It does not scale to a bulk f
 - SQLite for the persistent local operator application
 
 **Demo site:**
-- Next.js and React, deployed on Vercel, with 85 tests of its own
+- Next.js and React, deployed on Vercel, with its own test suite
 
 **On-chain proof:**
 - SHA-256 packet commitment prepared for Ethereum Attestation Service on Base Sepolia; submission is opt-in via an external `cast` call
@@ -228,7 +228,7 @@ State is written to a temp file in the same directory and swapped in with `os.re
 ## Results & Metrics
 
 - About 9,400 lines of standard-library Python in the `recovery` package, zero runtime dependencies
-- 431 Python unit tests; 85 demo-site tests; CI matrix Python 3.10, 3.11, 3.12, 3.13
+- 431 Python unit tests; CI matrix Python 3.10, 3.11, 3.12, 3.13
 - 20 CLI commands
 - Seven parser defects found and fixed against the official DDEX BWARM sample
 - Synthetic benchmark at threshold 0.85: 72 positives and 56 negatives, precision 1.000, recall 0.556, FPR 0.000 (typo-tolerance evidence only, not production accuracy)

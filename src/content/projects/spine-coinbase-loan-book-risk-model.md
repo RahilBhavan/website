@@ -253,7 +253,7 @@ Percentages are of the $1.58B USDC supplied to the market.
 
 ### Engineering
 
-- 110 commits, 2,648 lines of Python across the `spine/` package, 21 tests
+- 2,740 lines of Python across the `spine/` package and 21 tests, counted on October 24, 2026 at commit fe068dc
 - Every fetcher stdlib-only and resumable; `backtest.py` needs numpy
 - Hourly refresh and Pages deploy via GitHub Actions
 

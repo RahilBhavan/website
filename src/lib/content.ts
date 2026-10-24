@@ -65,5 +65,5 @@ export function groupWriting(posts: Post[], trackOf: (post: Post) => Track | und
     });
   }
 
-  return entries.sort((a, b) => b.date.valueOf() - a.date.valueOf());
+  return entries.sort((a, b) => b.date.valueOf() - a.date.valueOf() || a.href.localeCompare(b.href));
 }

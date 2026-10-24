@@ -15,7 +15,7 @@ figure:
 kind: "hardware"
 track: "hardware"
 featured: false
-demoUrl: "https://rahilbhavan.github.io/riscv/"
+demoUrl: "https://rahilbhavan.com/riscv/post"
 githubUrl: "https://github.com/RahilBhavan/riscv"
 completedDate: 2026-10-21
 ---
@@ -72,7 +72,7 @@ The board image, with block-RAM memories and a self-test, routes at 36.92 MHz po
 
 ## Links
 
-1. [Project page with interactive figures](https://rahilbhavan.github.io/riscv/)
+1. [Project page with interactive figures](https://rahilbhavan.com/riscv/post)
 2. [Repository](https://github.com/RahilBhavan/riscv)
 3. [Checked-in reports](https://github.com/RahilBhavan/riscv/tree/main/reports)
 

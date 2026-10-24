@@ -27,3 +27,7 @@ pnpm-debug.log*
 
 # Local consulting project (embedded repo, not part of site source)
 openEden\ Consulting\ Project/
+
+# playwright
+test-results/
+playwright-report/

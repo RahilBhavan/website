@@ -1,6 +1,6 @@
 # Personal site: Rahil Bhavan's projects and writing, each with how it was checked
 
-[![CI](https://github.com/RahilBhavan/website/actions/workflows/ci.yml/badge.svg)](https://github.com/RahilBhavan/website/actions/workflows/ci.yml)
+[![CI](https://github.com/RahilBhavan/website/actions/workflows/ci.yml/badge.svg)](https://github.com/RahilBhavan/website/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Live:** <https://rahilbhavan.com>
 
@@ -57,6 +57,6 @@ bun run check      # type-check, build, link and anchor check, cross-link check,
 
 ## License
 
-No license file yet. All rights reserved by default. The fonts keep their own SIL OFL licenses in `public/fonts/`.
+MIT, see [LICENSE](LICENSE). It covers this site's code and writing. The fonts keep their own SIL OFL licenses in `public/fonts/`.
 
 Part of [Rahil Bhavan's projects](https://github.com/RahilBhavan).

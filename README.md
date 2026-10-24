@@ -1,35 +1,62 @@
-# Blog
+# Personal site: Rahil Bhavan's projects and writing, each with how it was checked
 
-Personal site and project portfolio, built with Astro and MDX.
+[![CI](https://github.com/RahilBhavan/website/actions/workflows/ci.yml/badge.svg)](https://github.com/RahilBhavan/website/actions/workflows/ci.yml)
 
-## Quick start
+**Live:** <https://rahilbhavan.com>
+
+![Home page at 1440 px wide: name in large condensed type, the line "A student trynna learn", a short introduction and the latest project card.](docs/home-1440.png)
+
+This is the source of rahilbhavan.com, a static-first Astro site. It holds 25 project case pages and 28 written posts. Each case page states its result, its status (proposal, prototype or shipped), how it was checked and what comes next.
+
+## What it does
+
+- Lists projects and writing with topic filters, and links each post to its case page and back (`bun run check` fails if a case page does not link back).
+- Publishes `/rss.xml`, a sitemap, `public/llms.txt` and a `/work.json` feed of published work.
+- Hosts the RISC-V core figures as static pages under `public/riscv/` and an interactive datacenter calculator under `public/tools/datacenter-math/`.
+- Generates a social card per project into `public/og/` with `bun run og`.
+
+## How it works
+
+Content is Markdown and MDX in `src/content/projects/` and `src/content/blog/`. `src/content/config.ts` validates the frontmatter (`result`, `status`, `verification`, `next`, `figure`). Routes live in `src/pages/`, shared helpers in `src/lib/content.ts`, and `src/layouts/` and `src/components/` hold the page shell. The site builds with the `@astrojs/vercel` adapter. Fonts (Anton and IBM Plex Sans, SIL OFL) are self-hosted in `public/fonts/`. Visual rules are in [DESIGN.md](DESIGN.md).
+
+## Run it
+
+Prerequisites: [Bun](https://bun.sh) 1.x and Node 24.
 
 ```bash
-bun install
-bun run dev
+bun install --frozen-lockfile
+bun run dev        # http://localhost:4321
+bun run check      # type-check, build, link and anchor check, cross-link check, unit tests
 ```
 
-Open [http://localhost:4321](http://localhost:4321).
+`bun run check` ran clean on 2026-10-24: 0 type errors, 66 pages with no broken internal links, 28 post-to-project pairs linked back, 9 unit tests passing. The unit tests cover the datacenter calculator arithmetic in `tests/datacenter-math.test.mjs`. The pages themselves are checked by the two link scripts, not by unit tests. CI runs the same command on every push to `main` and every pull request. Building needs no keys or network.
 
-## Scripts
+`bun run preview` does not work with the Vercel adapter. To look at the build, serve `dist/client` with any static file server.
 
-| Command | Description |
-|--------|-------------|
-| `bun run dev` | Start dev server |
-| `bun run build` | Build for production |
-| `bun run check` | Build, check every internal link and anchor, and run `tests/` |
-| `bun run og` | Regenerate the social cards in `public/og/` after adding or editing a project |
-| `bun run preview` | Preview production build locally |
+## Repository layout
 
-## Stack
+- `src/`: pages, layouts, components, content and the content helpers
+- `public/`: fonts, images, social cards, `llms.txt`, and the static RISC-V and datacenter pages
+- `scripts/`: link checks and the social-card renderer
+- `tests/`: Node test runner tests
+- `docs/`: blog plan and archived drafts
 
-- [Astro](https://astro.build) 5 and [MDX](https://mdxjs.com), deployed on Vercel (Node 24)
-- Design: [DESIGN.md](DESIGN.md)
+## Documentation
 
-## Project structure
+- [DESIGN.md](DESIGN.md): the visual system (type, colour, components)
+- [docs/blog-plan.md](docs/blog-plan.md): the writing plan and the status of the private networking dashboard
+- [docs/archive/](docs/archive/): draft material that is not published
 
-- `src/pages/`: routes (index, about, projects, writing, crypto-finance)
-- `src/content/projects/`: one Markdown case per project. The frontmatter `result`, `status`, `verification`, `next` and `figure` fields feed the lists and the case summary, and `src/content/config.ts` validates them.
-- `src/content/blog/`: posts. Set `project` to a project slug to link the post and the case page both ways.
-- `src/lib/content.ts`: shared helpers, including the writing list that groups series.
-- `public/fonts/`: self-hosted Anton and IBM Plex Sans (SIL OFL, licenses alongside).
+## Scope and limits
+
+- Personal, independent work. Nothing here is affiliated with or endorsed by the companies it discusses.
+- Project pages describe other repositories. The numbers on them come from those repositories on the dates the pages give. This repository does not re-run them.
+- Case pages marked proposal or prototype are not shipped products. Several counts and live-site figures on project pages are dated snapshots and can drift.
+- No end-to-end or visual regression tests. Layout was checked by hand at 1440 px and 390 px.
+- Some external links (LinkedIn, one Zimbabwean news site) block automated requests and were not verifiable by script.
+
+## License
+
+No license file yet. All rights reserved by default. The fonts keep their own SIL OFL licenses in `public/fonts/`.
+
+Part of [Rahil Bhavan's projects](https://github.com/RahilBhavan).

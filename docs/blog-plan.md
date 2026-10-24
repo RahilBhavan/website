@@ -59,7 +59,7 @@ The dashboard at `/lmW1wFgrRCB5SbhO.html` now fetches `/work.json` after you unl
 - "Work to mention" in each contact's details. This shows the contact's tracker project first, then work that names their company.
 - On each tracker project card, the site's status and case page. It warns when the site says shipped but the tracker does not.
 
-The contact data stays encrypted. These additions live in the page's display code, outside the encrypted blob. The dashboard's generator (`build.js`) is not on this machine. Port the same changes into its template, or the next rebuild will drop them. `docs/networking-dashboard-work.patch` holds the exact diff.
+The contact data stays encrypted. These additions live in the page's display code, outside the encrypted blob. The dashboard's generator (`build.js`) is not on this machine. Port the same changes into its template, or the next rebuild will drop them. The exact diff was removed from this public repository and is kept privately.
 
 ## Measuring whether it works
 

@@ -6,7 +6,7 @@ problem: "Songwriters and labels leave royalties unclaimed because the registrie
 solution: "Built the matching engine, the DDEX BWARM ingester, and the recovery workflow for a three-person founding team: exact ISRC/ISWC matching with a fuzzy fallback and near-tie guard, a streaming parser validated against the official DDEX sample, a workspace with atomic writes, an append-only journal, and an exclusive lock, run-independent entry keys that make double payment or double invoicing impossible by construction, and a SHA-256 packet commitment for timestamping on Base."
 result: "Turns gaps between a partner catalog and MLC and SoundExchange registry data into explainable recovery leads, with a claim workflow that cannot pay or invoice the same row twice."
 status: "prototype"
-verification: "225 unit tests and a CI matrix on Python 3.10 to 3.13. Running the ingester on the official DDEX BWARM sample found seven parser defects, all fixed."
+verification: "431 unit tests and a CI matrix on Python 3.10 to 3.13. Running the ingester on the official DDEX BWARM sample found seven parser defects, all fixed."
 next: "No customers, recovered dollars or production accuracy yet, and the sample leaves every ISWC and IPI blank, so exact-identifier matching has not seen real data."
 demoUrl: "https://prestorecovery.com"
 kind: "co-founder"
@@ -22,7 +22,7 @@ completedDate: 2026-09-09
 
 **Who it's for:** Independent labels, publishers, and the operators who recover royalties on their behalf.
 
-**Impact:** About 5,400 lines of standard-library Python in the `recovery` package with 225 unit tests and a CI matrix across Python 3.10 to 3.13. Validating the ingester against the official DDEX BWARM sample found seven parser defects, one of which would have reported ten fully-claimed works as recovery candidates. As the README states, Presto does not move money, submit portal claims, store credentials, or operate wallets.
+**Impact:** About 9,400 lines of standard-library Python in the `recovery` package with 431 unit tests and a CI matrix across Python 3.10 to 3.13. Validating the ingester against the official DDEX BWARM sample found seven parser defects, one of which would have reported ten fully-claimed works as recovery candidates. As the README states, Presto does not move money, submit portal claims, store credentials, or operate wallets.
 
 **My role:** Software engineer on a three-person founding team, July to September 2026. I built the matcher, the DDEX BWARM ingester, the crash-recoverable workflow, the Base EAS proof, and the demo site.
 
@@ -75,7 +75,7 @@ Manual review in spreadsheets, one work at a time. It does not scale to a bulk f
 
 **Engine:**
 - Python 3.10+, standard library only (`csv`, `decimal`, `difflib`, `hashlib`, `fcntl`, `sqlite3`, `unittest`)
-- 225 unit tests, CI matrix on Python 3.10, 3.11, 3.12, and 3.13
+- 431 unit tests, CI matrix on Python 3.10, 3.11, 3.12, and 3.13
 
 **Workflow storage:**
 - JSON workspace state replaced atomically via `os.replace`
@@ -227,8 +227,8 @@ State is written to a temp file in the same directory and swapped in with `os.re
 
 ## Results & Metrics
 
-- About 5,400 lines of standard-library Python in the `recovery` package, zero runtime dependencies
-- 225 Python unit tests; 85 demo-site tests; CI matrix Python 3.10, 3.11, 3.12, 3.13
+- About 9,400 lines of standard-library Python in the `recovery` package, zero runtime dependencies
+- 431 Python unit tests; 85 demo-site tests; CI matrix Python 3.10, 3.11, 3.12, 3.13
 - 20 CLI commands
 - Seven parser defects found and fixed against the official DDEX BWARM sample
 - Synthetic benchmark at threshold 0.85: 72 positives and 56 negatives, precision 1.000, recall 0.556, FPR 0.000 (typo-tolerance evidence only, not production accuracy)

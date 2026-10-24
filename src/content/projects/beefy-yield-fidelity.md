@@ -1,7 +1,7 @@
 ---
 title: "Beefy Yield-Fidelity Monitor"
 tagline: "Proposal and demo for Net Realized APY transparency on Beefy vaults"
-description: "A proposal for real-time Net Realized APY transparency: break-even calculator, vault drift monitoring, and multi-chain yield health for the Beefy Cowmoonity."
+description: "A proposal for daily-updated Net Realized APY transparency: break-even calculator, vault drift monitoring, and multi-chain yield health for the Beefy Cowmoonity."
 problem: "The Gas Gap: users depositing small amounts often don't realize that L2 gas fees and Beefy's performance fees can make net return negative for the first 30+ days. Strategy Drift: realized APY depends on harvest frequency; if a vault is harvested less often due to low TVL, users earn less than the \"Target APY\" shown on the UI."
 solution: "A lightweight, high-performance monitoring layer that provides Yield Fidelity metrics: a user-facing break-even calculator, a DAO-facing vault drift dashboard, and multi-chain alerts so users and strategists see true net yield."
 result: "Proposes a break-even calculator, vault drift dashboard and multi-chain alerts so Beefy users see net realized APY, with a demo of the user-facing piece."
@@ -20,7 +20,7 @@ completedDate: 2026-03-03
 ---
 ## Overview
 
-**What it is:** A proposal and demo, not a shipped product. It describes a monitoring dashboard that gives real-time transparency into **Net Realized APY** for Beefy vaults, and the demo at [yield.rahilbhavan.com](https://yield.rahilbhavan.com) shows the intended experience. Proposed stack: Next.js, Supabase, the Beefy API, and Vercel.
+**What it is:** A proposal and demo, not a shipped product. It describes a monitoring dashboard that gives daily transparency into **Net Realized APY** for Beefy vaults, and the demo at [yield.rahilbhavan.com](https://yield.rahilbhavan.com) shows the intended experience. Proposed stack: Next.js, Supabase, the Beefy API, and Vercel.
 
 **Why it matters:** Users depositing small amounts often don't realize that L2 gas and Beefy's performance fees can make net return negative for the first 30+ days (the Gas Gap). Realized APY also depends on harvest frequency, so a vault harvested less often because of low TVL earns less than the Target APY shown in the UI (Strategy Drift).
 

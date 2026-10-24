@@ -27,9 +27,10 @@ Prerequisites: [Bun](https://bun.sh) 1.x and Node 24.
 bun install --frozen-lockfile
 bun run dev        # http://localhost:4321
 bun run check      # type-check, build, link and anchor check, cross-link check, unit tests
+bunx playwright install firefox && bun run test:e2e   # smoke test of the built site (run `bun run build` first)
 ```
 
-`bun run check` ran clean on 2026-10-24: 0 type errors, 66 pages with no broken internal links, 28 post-to-project pairs linked back, 9 unit tests passing. The unit tests cover the datacenter calculator arithmetic in `tests/datacenter-math.test.mjs`. The pages themselves are checked by the two link scripts, not by unit tests. CI runs the same command on every push to `main` and every pull request. Building needs no keys or network.
+`bun run check` ran clean on 2026-10-24: 0 type errors, 66 pages with no broken internal links, 28 post-to-project pairs linked back, 9 unit tests passing. The unit tests cover the datacenter calculator arithmetic in `tests/datacenter-math.test.mjs`. The pages themselves are checked by the two link scripts. `tests/e2e/smoke.spec.mjs` loads 11 key pages in Firefox at 1440 px and 390 px and fails on a non-200 response, a console error, a failed request or horizontal overflow (22 tests, passing on 2026-10-24). CI runs both on every push to `main` and every pull request. Building needs no keys or network.
 
 `bun run preview` does not work with the Vercel adapter. To look at the build, serve `dist/client` with any static file server.
 
@@ -37,8 +38,8 @@ bun run check      # type-check, build, link and anchor check, cross-link check,
 
 - `src/`: pages, layouts, components, content and the content helpers
 - `public/`: fonts, images, social cards, `llms.txt`, and the static RISC-V and datacenter pages
-- `scripts/`: link checks and the social-card renderer
-- `tests/`: Node test runner tests
+- `scripts/`: link checks, the static server for the smoke test and the social-card renderer
+- `tests/`: Node test runner unit tests and the Playwright smoke test in `tests/e2e/`
 - `docs/`: blog plan and archived drafts
 
 ## Documentation
@@ -52,7 +53,7 @@ bun run check      # type-check, build, link and anchor check, cross-link check,
 - Personal, independent work. Nothing here is affiliated with or endorsed by the companies it discusses.
 - Project pages describe other repositories. The numbers on them come from those repositories on the dates the pages give. This repository does not re-run them.
 - Case pages marked proposal or prototype are not shipped products. Several counts and live-site figures on project pages are dated snapshots and can drift.
-- No end-to-end or visual regression tests. Layout was checked by hand at 1440 px and 390 px.
+- The smoke test checks that pages load cleanly, not how they look. There is no visual regression test, and layout was checked by eye at 1440 px and 390 px.
 - Some external links (LinkedIn, one Zimbabwean news site) block automated requests and were not verifiable by script.
 
 ## License

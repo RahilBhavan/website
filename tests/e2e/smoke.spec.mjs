@@ -11,7 +11,6 @@ const pages = [
   ['/writing/can-a-filing-answer-be-forced-to-quote-or-abstain', 'quote or abstain'],
   ['/tools/datacenter-math', null],
   ['/riscv/post', null],
-  ['/lmW1wFgrRCB5SbhO.html', null],
 ];
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {

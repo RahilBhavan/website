@@ -6,7 +6,7 @@ import { monthYear, slug } from '../lib/content';
 export const prerender = true;
 
 const timeline = (await getCollection('projects')).sort(
-  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
+  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf() || a.id.localeCompare(b.id)
 );
 ---
 
@@ -58,8 +58,8 @@ const timeline = (await getCollection('projects')).sort(
     <section class="block">
       <h2>Elsewhere</h2>
       <p>
-        <a href="https://github.com/rahilbhavan">GitHub</a> ·
-        <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a> ·
+        <a href="https://github.com/rahilbhavan">GitHub</a> ·{' '}
+        <a href="https://www.linkedin.com/in/rahil-bhavan/">LinkedIn</a> ·{' '}
         <a href="/rss.xml">RSS</a>
       </p>
     </section>

@@ -17,7 +17,7 @@ This is the source of rahilbhavan.com, a static-first Astro site. It holds 25 pr
 
 ## How it works
 
-Content is Markdown and MDX in `src/content/projects/` and `src/content/blog/`. `src/content/config.ts` validates the frontmatter (`result`, `status`, `verification`, `next`, `figure`). Routes live in `src/pages/`, shared helpers in `src/lib/content.ts`, and `src/layouts/` and `src/components/` hold the page shell. The site builds with the `@astrojs/vercel` adapter. Fonts (Anton and IBM Plex Sans, SIL OFL) are self-hosted in `public/fonts/`. Visual rules are in [DESIGN.md](DESIGN.md).
+Content is Markdown and MDX in `src/content/projects/` and `src/content/blog/`. `src/content.config.ts` validates the frontmatter (`result`, `status`, `verification`, `next`, `figure`). Routes live in `src/pages/`, shared helpers in `src/lib/content.ts`, and `src/layouts/` and `src/components/` hold the page shell. The site builds with the `@astrojs/vercel` adapter. Fonts (Anton and IBM Plex Sans, SIL OFL) are self-hosted in `public/fonts/`. Visual rules are in [DESIGN.md](DESIGN.md).
 
 ## Run it
 

@@ -7,7 +7,7 @@ import { groupWriting, monthYear, slug, statusLabel } from '../lib/content';
 export const prerender = true;
 
 const allProjects = (await getCollection('projects')).sort(
-  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
+  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf() || a.id.localeCompare(b.id)
 );
 const featured = allProjects.filter((p) => p.data.featured);
 const latest = allProjects[0];

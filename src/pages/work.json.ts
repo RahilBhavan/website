@@ -22,10 +22,10 @@ const mentions = (text: string) =>
 export const GET: APIRoute = async ({ site }) => {
   const base = site!.toString().replace(/\/$/, '');
   const projects = (await getCollection('projects')).sort(
-    (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
+    (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf() || a.id.localeCompare(b.id)
   );
   const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
-    (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf()
+    (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf() || a.id.localeCompare(b.id)
   );
 
   const body = {

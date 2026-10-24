@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 import SeriesLinks from '../../components/SeriesLinks.astro';
 import ProjectEntry from '../../components/ProjectEntry.astro';
 import Toc from '../../components/Toc.astro';
@@ -18,7 +18,7 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content, headings } = await post.render();
+const { Content, headings } = await render(post);
 const { data } = post;
 
 const wordCount = post.body ? post.body.split(/\s+/g).length : 0;

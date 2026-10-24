@@ -1,7 +1,9 @@
-import { defineCollection, reference, z } from 'astro:content';
+import { defineCollection, reference } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
 
 const blog = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -19,7 +21,7 @@ const blog = defineCollection({
 });
 
 const projects = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
     // Short line for list views (home, /projects). Aim for under 80 characters.
@@ -44,15 +46,15 @@ const projects = defineCollection({
     kind: z.string().optional(),
     // Shown under Selected work on the homepage.
     featured: z.boolean().default(false),
-    demoUrl: z.string().url().optional(),
+    demoUrl: z.url().optional(),
     // Allow empty string; treat as undefined so optional URL validation passes
     githubUrl: z
-      .union([z.string().url(), z.literal('')])
+      .union([z.url(), z.literal('')])
       .optional()
       .transform((s) => (s === '' ? undefined : s)),
     completedDate: z.coerce.date(),
     // Absolute URL of a project-hosted 1280x640 social card; otherwise scripts/og/render.mjs makes one.
-    ogImage: z.string().url().optional(),
+    ogImage: z.url().optional(),
   }),
 });
 

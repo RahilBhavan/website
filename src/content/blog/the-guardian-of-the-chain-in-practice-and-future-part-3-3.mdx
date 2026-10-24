@@ -56,7 +56,7 @@ When the ratio drops below 1.0, the analyzer records a violation and the block n
 
 ### What the Replay Shows
 
-The analyzer replays a block range around the exploit (e.g. 100 blocks before, 10 after) and evaluates the invariant every block. From the [Quick Start guide](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md), a typical run reports something like:
+The analyzer replays a block range around the exploit (e.g. 100 blocks before, 10 after) and evaluates the invariant every block. From the project Quick Start guide, a typical run reports something like:
 
 - **First violation block:** When the invariant first fails (e.g. reserve ratio &lt; 1.0).
 - **Detection lead time:** ~**35 blocks** before the main exploit (~**7 minutes** at ~12s per block).
@@ -73,10 +73,12 @@ So the **same invariant logic** would have flagged the issue **7 minutes before*
 
 ## Step-by-Step: Run the Euler Analysis Yourself
 
+> The source repository for this tool is no longer public. The steps below are kept as a record of how it was run.
+
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-.git
+git clone <repository-url>
 cd "Smart Contract Invariant Monitor and Guardian "
 cd monitor
 cargo build --release
@@ -163,7 +165,7 @@ The project is open source and evolving. Possible directions (not commitments):
 5. **Performance:** Parallel block and invariant processing, horizontal scaling for large replays.
 6. **Invariant types:** Time-based, cross-protocol, or composite invariants; pluggable types.
 
-Check the [GitHub repo](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-) and docs for the latest roadmap and contribution guidelines.
+For newer work on invariants, see [Guardian Pipeline](/projects/guardian-pipeline-12-invariants-from-ci-to-testnet), my 2026 follow-up with public code.
 
 ## Common Pitfalls to Avoid
 
@@ -199,8 +201,7 @@ Check the [GitHub repo](https://github.com/RahilBhavan/Smart-Contract-Invariant-
 **Call to action:**
 
 - Read [Part 1: Sleep Soundly](/writing/the-guardian-of-the-chain-sleep-soundly-part-1-3/) and [Part 2: Under the Hood](/writing/the-guardian-of-the-chain-under-the-hood-part-2-3/) if you haven’t yet.
-- Run the [Quick Start](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) and try the Euler analysis.
-- Contribute or open issues on [GitHub](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-).
+- See [Guardian Pipeline](/projects/guardian-pipeline-12-invariants-from-ci-to-testnet) for my 2026 follow-up with public code.
 
 > **Tip:** Start with the built-in Euler case study and config; then duplicate and adapt the config for your own protocol and block ranges.
 
@@ -211,9 +212,7 @@ Check the [GitHub repo](https://github.com/RahilBhavan/Smart-Contract-Invariant-
 
 ## Additional Resources
 
-- [Smart Contract Invariant Monitor & Guardian](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-) — GitHub repository
-- [Quick Start Guide](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/QUICKSTART.md) — 5-minute setup and Euler run
-- [Architecture](https://github.com/RahilBhavan/Smart-Contract-Invariant-Monitor-and-Guardian-/blob/main/docs/architecture.md) — Components and data flow
+- [Guardian Pipeline](/projects/guardian-pipeline-12-invariants-from-ci-to-testnet) — the 2026 successor, a separate Solidity codebase with public code
 
 ---
 

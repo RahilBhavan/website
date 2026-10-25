@@ -22,6 +22,8 @@ ogImage: "https://rahilbhavan.github.io/spine/social-card.png"
 ---
 ## Overview
 
+**Try it:** [Drag the number](/drag-the-number/spine) moves liquidator capital and the liquidation LTV over the March 2020 replay, using results the backtest already ran.
+
 **What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase's app routes USDC loans against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
 
 **Why it matters:** As of September 2026, the book is about $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt falls on the Morpho vault suppliers who fund these markets, not on Coinbase's balance sheet. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.

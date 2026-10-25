@@ -1,0 +1,500 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import data from '../../data/spine-march-2020.json';
+import { buildGrid, usd } from '../../lib/spine-grid.ts';
+
+export const prerender = true;
+
+const grid = buildGrid(data);
+const start = { cap: 0, lltv: grid.lltv.length - 1 };
+const first = grid.cells[grid.capital[start.cap].id][grid.lltv[start.lltv].value];
+const { bookDate } = data.source;
+const bookLabel = new Date(`${bookDate}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const description = `Drag liquidator capital and the liquidation LTV to see how much of Coinbase's Morpho cbBTC book a March 2020 style crash leaves underwater and unserved. Precomputed from Spine's backtest on the ${bookLabel} book.`;
+
+const tables: { key: 'unserved' | 'loss'; title: string }[] = [
+  { key: 'unserved', title: 'Underwater and unserved at the trough' },
+  { key: 'loss', title: 'Realized loss by the end of the path' },
+];
+---
+
+<BaseLayout title="Drag the number: Spine" description={description} ogImage="https://rahilbhavan.github.io/spine/social-card.png">
+  <main id="main" class="page">
+    <header class="wrap-wide head">
+      <a href="/projects/spine-coinbase-loan-book-risk-model" class="back">← Spine case study</a>
+      <p class="meta">
+        <span class="status">Prototype</span>
+        <span>Drag the number</span>
+        <span>Book as of <time datetime={bookDate}>{bookLabel}</time></span>
+      </p>
+      <h1>Drag the number</h1>
+      <p class="lede">
+        How much of Coinbase's Morpho cbBTC book would a March 2020 style crash leave underwater with nobody able to
+        act, and what do liquidator capital and the liquidation LTV change?
+      </p>
+    </header>
+
+    <section class="wrap-wide tool" aria-labelledby="tool-title">
+      <h2 id="tool-title" class="sr-only">Sliders and results</h2>
+
+      <div class="controls" id="controls" hidden>
+        <div class="control">
+          <div class="control-head">
+            <label for="cap">Liquidator capital</label>
+            <output for="cap" id="cap-out">{grid.capital[start.cap].text}</output>
+          </div>
+          <input id="cap" type="range" min="0" max={grid.capital.length - 1} step="1" value={start.cap} />
+          <ol class="ticks" aria-hidden="true">
+            {grid.capital.map((c, i) => <li style={`--p:${i / (grid.capital.length - 1)}`}>{c.label}</li>)}
+          </ol>
+        </div>
+        <div class="control">
+          <div class="control-head">
+            <label for="lltv">Liquidation LTV</label>
+            <output for="lltv" id="lltv-out">{grid.lltv[start.lltv].label}{start.lltv === grid.lltv.length - 1 ? ' (today)' : ''}</output>
+          </div>
+          <input id="lltv" type="range" min="0" max={grid.lltv.length - 1} step="1" value={start.lltv} />
+          <ol class="ticks" aria-hidden="true">
+            {grid.lltv.map((l, i) => <li style={`--p:${i / (grid.lltv.length - 1)}`}>{l.label}{i === grid.lltv.length - 1 ? ' today' : ''}</li>)}
+          </ol>
+        </div>
+      </div>
+      <noscript><p class="muted">The sliders need JavaScript. Every result is in the two tables below.</p></noscript>
+
+      <div class="readout" aria-live="polite">
+        <p class="scenario" id="scenario">
+          {grid.lltv[start.lltv].label} LLTV, {grid.capital[start.cap].text}
+        </p>
+        <div class="stat">
+          <p class="stat-label">Underwater and unserved at the trough</p>
+          <p class="stat-value"><span id="unserved-usd">{first.unserved.usd}</span> <span class="stat-share" id="unserved-share">{first.unserved.share}</span> <span class="stat-of">of supply</span></p>
+          <div class="track"><div class="bar bar-unserved" id="unserved-bar" style={`width:${first.unserved.width}%`}></div></div>
+        </div>
+        <div class="stat">
+          <p class="stat-label">Realized loss by the end of the path</p>
+          <p class="stat-value"><span id="loss-usd">{first.loss.usd}</span> <span class="stat-share" id="loss-share">{first.loss.share}</span> <span class="stat-of">of supply</span></p>
+          <div class="track"><div class="bar bar-loss" id="loss-bar" style={`width:${first.loss.width}%`}></div></div>
+        </div>
+        <p class="axis" aria-hidden="true"><span>0%</span><span>{Math.round(grid.scale * 100)}% of supply, both bars</span></p>
+      </div>
+
+      <p class="muted caption">
+        Supply is the {usd(data.supplyUsd)} cbBTC/USDC market on the {bookLabel} book. The sliders snap to results the
+        backtest already ran; nothing between stops is estimated.
+      </p>
+    </section>
+
+    <section class="wrap-wide block" aria-labelledby="grid-title">
+      <h2 id="grid-title">Every result</h2>
+      <div class="tables">
+        {tables.map((t) => (
+          <div>
+            <h3>{t.title}</h3>
+            <div class="table-wrap">
+              <table>
+                <caption class="sr-only">{t.title}, dollars, by liquidator capital and liquidation LTV</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Capital</th>
+                    {grid.lltv.map((l) => <th scope="col">{l.label} LLTV</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {grid.capital.map((c) => (
+                    <tr>
+                      <th scope="row">{c.label}</th>
+                      {grid.lltv.map((l) => (
+                        <td data-cap={c.id} data-lltv={l.value}>{grid.cells[c.id][l.value][t.key].usd}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p class="muted caption">
+        Capital is a rolling 24 hour cap on liquidators who seize cbBTC and sell BTC on exchanges. 1× is the most
+        collateral the book has seen seized in one day, {usd(data.oneDayCapUsd)} on February 5, 2026. On-chain bots stay
+        limited by Base DEX depth in every row. Backstop means Coinbase itself redeems cbBTC 1:1; nothing public says
+        it does, so that row shows what a commitment would buy.
+      </p>
+    </section>
+
+    <section class="wrap-wide block" aria-labelledby="facts-title">
+      <h2 id="facts-title">Reading the numbers</h2>
+      <dl class="facts">
+        <div>
+          <dt>Unserved</dt>
+          <dd>
+            The loss already taken plus the shortfall on positions still open, marked at the lowest price in the
+            crash. It is what lenders are exposed to if the price does not bounce, and it becomes loss if it does not.
+          </dd>
+        </div>
+        <div>
+          <dt>Realized loss</dt>
+          <dd>The shortfall on liquidations plus whatever is still underwater when the replay ends.</dd>
+        </div>
+        <div>
+          <dt>The crash</dt>
+          <dd>
+            Today's {bookLabel} book dropped onto the March 2020 price path from its pre-crash peak at 5 minute steps.
+            Borrowers behave as fitted on three real events: {Math.round(data.behaviour.respondingShare * 100)}% respond,
+            after about {data.behaviour.reactionMinutes / 60} hours. March 2020 gave 25 minutes of warning, so most
+            cannot act in time.
+          </dd>
+        </div>
+        <div>
+          <dt>How it was checked</dt>
+          <dd>
+            Every number comes from {data.capital.length * data.lltv.length} runs that Spine's backtest already
+            produced, read from <code>{data.source.file}</code> at Spine commit{' '}
+            <code>{data.source.commit.slice(0, 7)}</code> by <code>scripts/export-spine-data.mjs</code>. The script picks
+            each run by exact parameters and stops if it finds zero or more than one, or if the supply implied by the
+            runs differs by more than 0.01%. A test compares the file with figures the Spine write-up printed
+            ($9.2M loss and $158.4M, 10.0% unserved at 86% and 1×; 8.4% at 77%; 6.2% at 3×; 0.8% with a backstop).
+            The page only rounds and looks up values. Spine's model reproduces the three real cbBTC liquidation events
+            at 0.85 to 0.99 times the observed volume, as the <a href="/projects/spine-coinbase-loan-book-risk-model">case study</a>{' '}
+            reports.
+          </dd>
+        </div>
+        <div>
+          <dt>Still open</dt>
+          <dd>
+            Liquidator capital in a crash has never been observed; the busiest real day did not bind. Depth is scaled
+            from today's order books, not bought from historical ones. The fit has two parameters on three events, so
+            read the results as a ranking of effects, not forecasts. The live dashboard refreshes hourly and may show
+            a newer book than {bookLabel}.
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="wrap-wide block links" aria-labelledby="links-title">
+      <h2 id="links-title">Go further</h2>
+      <p>
+        <a class="primary" href="https://spine.rahilbhavan.com" rel="noopener">Open the live dashboard</a>
+        <a href="https://github.com/RahilBhavan/spine" rel="noopener">Read the code</a>
+        <a href="/writing/what-haircut-should-coinbase-take-on-btc-and-eth-collateral">The write-up</a>
+      </p>
+      <p class="label note">Independent analysis from public data. Not affiliated with or endorsed by Coinbase or Morpho.</p>
+    </section>
+  </main>
+
+  <script type="application/json" id="grid-data" set:html={JSON.stringify({ cap: grid.capital.map((c) => ({ id: c.id, text: c.text })), lltv: grid.lltv, cells: grid.cells })} />
+
+  <script>
+    import '../../scripts/spine-sliders.ts';
+  </script>
+</BaseLayout>
+
+<style>
+  .head h1 {
+    margin-bottom: 1.25rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: var(--secondary);
+  }
+
+  .lede {
+    font-size: clamp(1.1875rem, 2vw, 1.375rem);
+    line-height: 1.5;
+    max-width: 44rem;
+    margin: 0;
+  }
+
+  .tool {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem 3rem;
+    align-items: start;
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .controls {
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  .controls[hidden] {
+    display: none;
+  }
+
+  .control-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+  }
+
+  .control-head label {
+    font-weight: 600;
+  }
+
+  .control-head output {
+    color: var(--secondary);
+  }
+
+  input[type='range'] {
+    width: 100%;
+    height: 44px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .ticks {
+    position: relative;
+    height: 1.5rem;
+    margin: 0 0.5rem;
+    list-style: none;
+    font-size: 0.8125rem;
+    color: var(--secondary);
+  }
+
+  /* Each label sits under its stop; the first and last stay inside the track edges */
+  .ticks li {
+    position: absolute;
+    left: calc(var(--p) * 100%);
+    transform: translateX(calc(var(--p) * -100%));
+    white-space: nowrap;
+  }
+
+  .readout {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    border-radius: 12px;
+  }
+
+  .scenario {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .stat-label {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary);
+  }
+
+  .stat-value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.75rem;
+    margin: 0.125rem 0 0.5rem;
+    font-size: clamp(2rem, 8vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .stat-share {
+    font-size: 1.25rem;
+  }
+
+  .stat-of {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--secondary);
+  }
+
+  .track {
+    height: 10px;
+    background: var(--canvas);
+    border-left: 1px solid var(--secondary);
+  }
+
+  .bar {
+    height: 100%;
+    min-width: 2px;
+  }
+
+  .bar-unserved {
+    background: var(--ink);
+  }
+
+  .bar-loss {
+    background: var(--secondary);
+  }
+
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    margin: -0.75rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--secondary);
+  }
+
+  .caption {
+    grid-column: 1 / -1;
+    margin: 0;
+    max-width: 48rem;
+    font-size: 0.9375rem;
+  }
+
+  .block {
+    margin-top: 3.5rem;
+  }
+
+  .block h2 {
+    margin-bottom: 1.5rem;
+  }
+
+  .tables {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .tables h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: 0.5rem 0.5rem 0.5rem 0;
+    border-top: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-size: 0.8125rem;
+    color: var(--secondary);
+  }
+
+  th:first-child {
+    text-align: left;
+  }
+
+  tbody th {
+    font-weight: 600;
+  }
+
+  td.sel {
+    font-weight: 600;
+    box-shadow: inset 0 0 0 2px var(--ink);
+    padding-right: 0.5rem;
+  }
+
+  .facts {
+    margin: 0;
+    max-width: 52rem;
+  }
+
+  .facts > div {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 1.25rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .facts dt {
+    padding-top: 0.15rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary);
+  }
+
+  .facts dd {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .links p:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin: 0;
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-weight: 600;
+  }
+
+  .note {
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .tool,
+    .tables {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Sliders and numbers fit one phone screen, so the result stays in view while dragging */
+    .readout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem 1rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .scenario,
+    .axis {
+      grid-column: 1 / -1;
+    }
+
+    .stat-value {
+      font-size: clamp(1.5rem, 7vw, 2.25rem);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-share {
+      font-size: 1rem;
+    }
+
+    .stat-of {
+      display: none;
+    }
+
+    .axis {
+      margin-top: 0;
+    }
+  }
+
+  @media (max-width: 540px) {
+    .facts > div {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.25rem;
+    }
+
+    .readout {
+      padding: 1rem;
+    }
+
+    table {
+      font-size: 0.875rem;
+    }
+  }
+</style>

@@ -16,3 +16,5 @@ jobs:
           node-version: 24
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - run: bunx playwright install --with-deps firefox
+      - run: bun run test:e2e

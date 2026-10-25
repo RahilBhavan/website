@@ -7,7 +7,7 @@ import { getCollection } from 'astro:content';
 export const prerender = true;
 
 const projects = (await getCollection('projects')).sort(
-  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf()
+  (a, b) => b.data.completedDate.valueOf() - a.data.completedDate.valueOf() || a.id.localeCompare(b.id)
 );
 
 const counts: Record<string, number> = {};

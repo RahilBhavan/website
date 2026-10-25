@@ -6,7 +6,7 @@ problem: "Coinbase's app routes USDC loans against cbBTC and ETH to Morpho marke
 solution: "Built a stdlib-only Python pipeline that fetches every position, liquidation, oracle update, and order book snapshot from public sources, calibrates liquidator latency and borrower response on the three lived events, and replays the book through seven historical crash paths under alternative LLTVs and liquidator capacity scenarios. The result is an hourly-refreshed dashboard on GitHub Pages and a written recommendation per asset."
 result: "Replays the cbBTC loans in Coinbase's Morpho book through a March 2020 crash at 86% LLTV: $9.2M realized loss, but $158.4M (10.0%) exposed at the trough."
 status: "shipped"
-verification: "The borrower-response fit reproduces the three lived cbBTC events within 15%. The repository has 18 tests, and every writeup number is printed by a script from generated data."
+verification: "The borrower-response fit reproduces the three lived cbBTC events at 0.85 to 0.99 times the observed volume. The repository has 21 tests, and every writeup number is printed by a script from generated data."
 next: "Liquidator capital in a crash is unobserved, and depth is scaled from today's books rather than bought from historical order books."
 figure:
   src: "/images/projects/spine/dashboard-now-2026-10-21.webp"
@@ -192,7 +192,7 @@ Positions are sorted by initial liquidation price so a calm bar costs one `searc
 
 **The Problem:** Replaying the exact cbBTC book from Feb 3 2026 ($1,075M debt) at the Feb 6 trough puts $515M of debt over 86%. Only $151M was actually liquidated. Without borrower response the model overstates the three events by 2.0x, 2.9x and 1.7x.
 
-**The Solution:** A responsive share of borrowers who repay to 74% LTV once they have spent a reaction time inside the 80-86% warning zone. Fitting on the three cbBTC events gives 70% responsive with a two-hour reaction, reproducing all three within 15% (Feb 0.99x, Jun 0.85x, Oct 0.95x). Held-out WETH comes in at 1.58x and 0.85x.
+**The Solution:** A responsive share of borrowers who repay to 74% LTV once they have spent a reaction time inside the 80-86% warning zone. Fitting on the three cbBTC events gives 70% responsive with a two-hour reaction, reproducing all three at 0.85 to 0.99 times observed volume (Feb 0.99x, Jun 0.85x, Oct 0.95x). Held-out WETH comes in at 1.58x and 0.85x.
 
 **What I learned:** The fit is a plateau (60-70% responsive, one to two hours all fit about equally), and two parameters on three events deserve modest confidence. The ranking of effects holds even where the point estimates do not.
 
@@ -253,7 +253,7 @@ Percentages are of the $1.58B USDC supplied to the market.
 
 ### Engineering
 
-- 110 commits, 2,648 lines of Python across the `spine/` package, 18 tests
+- 2,740 lines of Python across the `spine/` package and 21 tests, counted on October 24, 2026 at commit fe068dc
 - Every fetcher stdlib-only and resumable; `backtest.py` needs numpy
 - Hourly refresh and Pages deploy via GitHub Actions
 

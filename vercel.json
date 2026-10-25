@@ -18,6 +18,36 @@
       "source": "/riscv",
       "destination": "/riscv/post",
       "permanent": false
+    },
+    {
+      "source": "/spine",
+      "destination": "/projects/spine-coinbase-loan-book-risk-model",
+      "permanent": false
+    },
+    {
+      "source": "/mev",
+      "destination": "/projects/mev-sandwich-study-two-phase-clearing-on-uniswap",
+      "permanent": false
+    },
+    {
+      "source": "/presto",
+      "destination": "/projects/presto-royalty-recovery-engine",
+      "permanent": false
+    },
+    {
+      "source": "/drone",
+      "destination": "/projects/pothole-detection-drone-for-zimbabwe-roads",
+      "permanent": false
+    },
+    {
+      "source": "/strategy",
+      "destination": "/projects/dat-accretion-monitor",
+      "permanent": false
+    },
+    {
+      "source": "/agent",
+      "destination": "/projects/financial-metrics-analyst",
+      "permanent": false
     }
   ]
 }

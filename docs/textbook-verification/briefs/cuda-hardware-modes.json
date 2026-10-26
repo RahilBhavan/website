@@ -1,0 +1,46 @@
+{
+  "id": "cuda-hardware-modes",
+  "reader": "A visitor reading the CUDA textbook on a phone or desktop",
+  "decision": "Read the actual values and their units without hover or a mixed-unit bar scale.",
+  "point": "All six reported hardware modes retain their units; integer TOPS is separate from floating-point TFLOPS.",
+  "comparison": "All six reported hardware modes retain their units; integer TOPS is separate from floating-point TFLOPS.",
+  "title": "Hardware modes use different operation counts",
+  "form": "table",
+  "values_count": 6,
+  "encodings": [],
+  "accents": 1,
+  "accent_meaning": "title-value",
+  "estimates": {
+    "present": false
+  },
+  "illustration": false,
+  "illustration_labeled": true,
+  "sources": [
+    {
+      "title": "Archived CUDA textbook; values retained, benchmark not re-run",
+      "url": "src/textbooks/cuda",
+      "as_of": "2026-10-25"
+    }
+  ],
+  "alt": "Six reported modes: FP32 CUDA 35.6 TFLOPS; FP16 CUDA 71 TFLOPS; TF32 Tensor 71 TFLOPS; FP16 Tensor 142 TFLOPS; BF16 Tensor 142 TFLOPS; INT8 Tensor 284 TOPS. Archived specifications, not refreshed measurements.",
+  "sizes_checked": [
+    "390x900",
+    "1280x900"
+  ],
+  "feed_width_viewed": true,
+  "min_label_px": 14,
+  "point_px": 16,
+  "contrast_min": 6.916424911441444,
+  "five_second_test": {
+    "by": "agent",
+    "date": "2026-10-25",
+    "said": "All six reported hardware modes retain their units; integer TOPS is separate from floating-point TFLOPS.",
+    "result": "The units and comparison are visible in the table and its caption."
+  },
+  "warn_reasons": {
+    "title shares no number or quantifier with the point; does it state the point or name a topic?": "The mode table is a lookup of explicitly separated units, not a claim of comparable magnitudes.",
+    "smallest label renders at 14px; check it opened on a phone": "This is selectable browser text with 14px cells, horizontal scroll and browser zoom, inspected at 390px; it is not an unopened social raster.",
+    "the point renders at 16px; it may not read in the feed unopened": "The container is a live textbook, not an unopened social image. The caption remains selectable and zoomable.",
+    "five-second test was an agent self-test; a real reader is better": "The reviewer is explicitly the agent. Human comprehension was not measured."
+  }
+}

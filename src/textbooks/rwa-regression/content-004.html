@@ -1,0 +1,326 @@
+<h2>Why we can't just take log(V)</h2>
+
+    <p>
+      The textbook trick for skewed positive variables is $\log(V)$. But $\log(0)$ is
+      undefined, and 40% of our observations are exactly zero. A common ad-hoc fix is
+      $\log(V + 1)$ — but for small values of $V$, that shift is enormous in relative
+      terms ($\log(0+1) = 0$ vs. $\log(0.1+1) \approx 0.095$ — a tenfold difference in $V$
+      maps to almost nothing).
+    </p>
+
+    <p>
+      The cleaner alternative is the <strong>inverse hyperbolic sine</strong> transform:
+    </p>
+
+    <p>
+      $$\text{IHS}(V) = \log\left(V + \sqrt{V^2 + 1}\right)$$
+    </p>
+
+    <p>
+      It is defined at zero ($\text{IHS}(0) = 0$). It behaves approximately like $V$ for
+      small $V$ and like $\log(2V)$ for large $V$, so the marginal interpretation is
+      almost the same as a log transform for the values that matter, but the function
+      handles zeros smoothly. It is the standard transform in labor and household-finance
+      empirical work when an outcome is mostly positive with mass at zero (Pence 2006,
+      Burbidge-Magee-Robb 1988 are the canonical references).
+    </p>
+
+    <p>
+      The chart below compares the three options — raw $V$, $\log(V+1)$, and IHS($V$) —
+      across the realistic range of velocity values for our panel.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 5.1 — Comparing transforms of velocity</h3>
+        <span class="tag">interactive · pure math</span>
+      </div>
+      <div class="controls">
+        <label>
+          Velocity value (V)
+          <input type="range" id="vSlider" min="0" max="20" step="0.05" value="2" />
+          <span class="value" id="vValue">V = 2.00</span>
+        </label>
+      </div>
+      <svg id="transforms" width="720" height="340"></svg>
+      <div class="readout" id="transformReadout"></div>
+      <div class="interactive-caption">
+        Three transformations of the velocity variable. Notice IHS and log(V+1) nearly
+        coincide for $V > 1$ but diverge sharply near zero — log(V+1) is convex and pulls
+        zeros toward zero; IHS is also defined at zero but has the correct "log-like" slope
+        already at modest V.
+      </div>
+    </div>
+
+    <h2>The interpretation of IHS coefficients</h2>
+
+    <p>
+      The interpretation of an IHS coefficient depends critically on the regime of $V$
+      in which the change happens. For $V \gg 1$, IHS behaves like $\log(2V)$, so a
+      unit change in $\text{IHS}(V)$ corresponds approximately to a unit change in
+      $\log V$ — and one can read off semi-elasticities the same way as with a log
+      transform. For $V \ll 1$, IHS is approximately linear (IHS$(V) \approx V$), so a
+      unit change in IHS corresponds to a unit change in $V$ itself, and the
+      $e^\beta - 1$ semi-elasticity does <em>not</em> apply.
+    </p>
+
+    <p>
+      For our project this distinction matters because most observations live in the
+      $V \in [0, 0.5]$ regime where IHS is closer to linear than to log. So when we
+      report "the CS estimator finds an ATT of 0.42 on IHS$(V)$", the cleanest reading
+      is "AMM listing raises the IHS-transformed velocity by 0.42 units" — which, near
+      $V=1$, is roughly a 42% relative increase, but for tokens like BUIDL (with $\bar V
+      \approx 0.005$) it means an absolute velocity increase of roughly 0.4. We report
+      both readings in the paper's results section and avoid a single misleading "X%
+      increase" headline that does not apply uniformly across the sample.
+    </p>
+
+    <h2>Winsorization at the 99th percentile</h2>
+
+    <p>
+      Even after IHS, the top of the distribution has a few extreme observations — weeks
+      where USDY's velocity touched 50+, or where a single large arbitrage event spiked
+      OUSG temporarily. These observations matter, but they also have enormous influence
+      on regression coefficients. The blueprint specifies winsorizing at the 99th
+      percentile — i.e., replacing any value above the 99th percentile with the 99th
+      percentile value itself. We construct both <code>ihs_velocity</code> (unwinsorized)
+      and <code>ihs_velocity_w</code> (winsorized) and report the winsorized version as
+      the main spec, with the unwinsorized as a robustness check (Chapter 14).
+    </p>
+
+    <p>
+      Why winsorize at 99% and not 95%? Because at 95% we lose dozens of observations
+      across the panel, and several of those observations are exactly the kind of
+      high-velocity weeks the AMM-listing hypothesis predicts. The 99th percentile cuts
+      only the most extreme single-week spikes (mostly arbitrage events around macro
+      announcements) without truncating the bulk of treatment-relevant variation.
+    </p>
+
+    <h2>The zero-inflation problem</h2>
+
+    <p>
+      Even after IHS and winsorization, 40% of our observations are exactly zero. This
+      creates a particular kind of statistical problem: the data-generating process for
+      "any trade happens" may be quite different from the data-generating process for
+      "how much trades, conditional on at least one trade happening." The two processes
+      might respond to AMM listing differently.
+    </p>
+
+    <p>
+      A standard fix is a <strong>two-part (hurdle) model</strong>:
+    </p>
+
+    <ol>
+      <li>
+        Part 1: a Probit (or logit) for the binary indicator
+        $\mathbb{1}[V_{i,t} > 0]$ — "did any secondary trade happen this week?"
+      </li>
+      <li>
+        Part 2: an OLS (or PPML) for $\text{IHS}(V_{i,t})$ <em>conditional on</em>
+        $V_{i,t} > 0$ — "given that some trade happened, how much was it?"
+      </li>
+    </ol>
+
+    <p>
+      The full marginal effect of AMM listing is then the combination of the two pieces:
+      AMM listing might make trading happen at all in some weeks (extensive margin) and
+      also make existing trading weeks bigger (intensive margin). Reporting both separately
+      gives the reader a richer mechanism understanding than a single coefficient ever could.
+    </p>
+
+    <p>
+      We do not run two-part as the main spec, for two reasons. First, it complicates
+      the CS estimator (the CS framework is built around continuous outcomes; running it
+      separately on the Probit DV and then on the conditional OLS DV produces two separate
+      ATT objects that have to be combined carefully). Second, with only ~800 observations
+      and ~40% zeros, the Probit half has only ~480 "trade happened" observations
+      to estimate intensive-margin variation. Statistical power on the intensive-margin
+      CS estimate becomes uncomfortably low. We report two-part as a robustness check
+      in Chapter 14 and discuss the mechanism implications.
+    </p>
+
+    <h2>The covariates that go alongside velocity</h2>
+
+    <p>
+      For completeness, the full panel that ends up in the regression has 8 columns per
+      token-week:
+    </p>
+
+    <table class="data">
+      <thead>
+        <tr><th>Column</th><th>Source</th><th>Role</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ihs_velocity_w</code></td><td>built above</td><td>Dependent variable</td></tr>
+        <tr><td><code>amm_listed_10k</code></td><td>DefiLlama pools</td><td>Treatment (binary), main spec</td></tr>
+        <tr><td><code>log_amm_tvl</code></td><td>DefiLlama pools</td><td>Continuous treatment intensity (alt spec)</td></tr>
+        <tr><td><code>log_mcap</code></td><td>chain + NAV</td><td>Time-varying control: token size</td></tr>
+        <tr><td><code>log_holders</code></td><td>reconstructed</td><td>Time-varying control: holder base</td></tr>
+        <tr><td><code>token_age_weeks</code></td><td>known launch date</td><td>Time-varying control: maturity</td></tr>
+        <tr><td><code>ffr</code></td><td>FRED (DFF series)</td><td>Macro control: short-rate environment</td></tr>
+        <tr><td><code>log_defi_tvl</code></td><td>DefiLlama charts</td><td>Macro control: overall DeFi activity</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      Two implicit "controls" come for free: <strong>token fixed effects</strong> absorb
+      everything time-invariant about token $i$ (issuer, KYC regime, decimals, baseline
+      audience), and <strong>week fixed effects</strong> absorb everything that hits all
+      tokens equally in week $t$ (FOMC announcements, market-wide RWA-sector news,
+      seasonal patterns). These are the workhorses of any panel design.
+    </p>
+
+    <h2>Back-of-envelope rule for reading IHS coefficients</h2>
+
+    <p>
+      When you eventually read Table 3 of the paper and see "the ATT is 0.42 on IHS velocity",
+      use the right rule for the value regime you care about:
+    </p>
+
+    <p>
+      $$\Delta V / V \approx \Delta \text{IHS}(V) \quad \text{when } V \gg 1 \qquad \text{(semi-elasticity regime)}$$
+    </p>
+
+    <p>
+      $$\Delta V \approx \Delta \text{IHS}(V) \quad \text{when } V \ll 1 \qquad \text{(linear regime)}$$
+    </p>
+
+    <p>
+      For our project, most token-weeks sit in or near the linear regime, so the cleaner
+      reading of an ATT of 0.42 is "secondary velocity is roughly 0.4 units higher than
+      it would have been in the counterfactual" — not "velocity increased by 52%". Table
+      captions in the paper flag the regime they're translating from.
+    </p>
+
+    <p>
+      With the dependent variable carefully constructed, the next chapter steps away
+      from data plumbing to read the paper this project is in conversation with:
+      Mafrur's <em>RWA Liquidity</em> (arXiv 2508.11651). We need to know exactly what
+      it did, what it skipped, and what the gap is that this project fills.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="06-mafrur-paper" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 06 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">The Mafrur paper (arXiv 2508.11651)</h1>
+    <p class="chapter-subtitle">
+      A detailed read of the descriptive study this project extends — what it found,
+      what it skipped, and the precise gap a causal estimator can fill.
+    </p>
+
+    <h2>What Mafrur did</h2>
+
+    <p>
+      Rifqi Mafrur's working paper <em>RWA Liquidity: A Cross-Asset Empirical
+      Examination of Tokenized Real-World Assets on Public Blockchains</em>
+      (arXiv 2508.11651, August 2025) is the most-cited recent empirical descriptive
+      study of the RWA tokenization sector. It does three things:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Constructs a panel</strong> of roughly two dozen tokenized assets —
+        Treasury funds, tokenized real estate, tokenized private credit — across multiple
+        chains, sourcing on-chain transfer data from a mix of public APIs.
+      </li>
+      <li>
+        <strong>Reports summary statistics</strong> on holder concentration, transfer
+        frequency, average transaction size, and turnover ratios. Mafrur introduces a
+        clean "liquidity profile" classification — tokens are sorted into "dormant",
+        "intermittent", and "active" buckets based on the fraction of weeks with
+        non-zero secondary activity.
+      </li>
+      <li>
+        <strong>Documents qualitative correlations</strong> — for example, that tokens
+        with broader retail KYC tend to have higher turnover, and that tokens listed on
+        AMMs tend to fall in the "active" category. The paper is careful to call these
+        correlations, not causal claims.
+      </li>
+    </ol>
+
+    <h2>What's good about Mafrur</h2>
+
+    <p>
+      Three things deserve credit. First, the data work is genuinely careful — Mafrur
+      manually curates issuer wallet exclusion lists for every token in the sample, and
+      documents the methodology in a reproducible-looking appendix. Second, the
+      classification scheme is useful: "dormant / intermittent / active" maps nicely onto
+      the way DeFi practitioners describe RWA tokens informally, and it gives a clean
+      way to summarize 24 tokens worth of activity in one table. Third, the paper is
+      <em>aware</em> of its descriptive limits and explicitly punts the causal
+      question — "future work should consider quasi-experimental designs to isolate the
+      effect of AMM listing on secondary market activity" — as the closing line of the
+      conclusion.
+    </p>
+
+    <p>
+      That closing line is the explicit invitation this project responds to.
+    </p>
+
+    <h2>What's missing</h2>
+
+    <p>
+      Three gaps, in increasing order of how much they matter.
+    </p>
+
+    <p>
+      <strong>1. No regression of any kind.</strong> Mafrur's strongest statement about
+      AMM listing is a cross-tabulation: "of the 11 tokens with active AMM presence,
+      8 fall in the active liquidity bucket; of the 13 tokens without AMM presence,
+      only 2 do." This is a 2×2 table, not an inferential statement. There is no standard
+      error, no test of the cross-tabulation's significance, no control for token-level
+      heterogeneity. A reader cannot judge whether the difference reflects causal effect,
+      reverse causation (AMMs list tokens that are already active), or selection
+      (issuers who put their tokens on AMMs are systematically different from issuers
+      who don't).
+    </p>
+
+    <p>
+      <strong>2. No time dimension within token.</strong> Mafrur's classification
+      collapses each token's full history into a single category. This throws away the
+      single most useful piece of variation: <em>within-token, before-vs-after</em> AMM
+      listing. For OUSG, which was un-listed for 44 weeks and then listed for 126,
+      Mafrur reports one category ("active") covering both periods. The whole
+      identification opportunity — same token, same issuer, same institutional structure,
+      with a sharp treatment in the middle — is wasted.
+    </p>
+
+    <p>
+      <strong>3. No counterfactual.</strong> Even granting that AMM-listed tokens have
+      higher activity, the question Mafrur cannot answer is: <em>would this token have
+      been more active anyway?</em> The same Ondo growth trajectory that produced
+      OUSG's AMM listing in late 2023 might independently have produced higher velocity.
+      Mafrur's classification cannot distinguish this from a treatment effect. A panel
+      design with token fixed effects, time fixed effects, and a credible
+      parallel-trends assumption can. That is the project this textbook walks you through.
+    </p>
+
+    <h2>The gap our project fills, in one table</h2>
+
+    <table class="data">
+      <thead>
+        <tr><th>Dimension</th><th>Mafrur (2025)</th><th>This project</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Unit of analysis</td><td>token</td><td>token-week</td></tr>
+        <tr><td>Sample size</td><td>24 tokens</td><td>7 tokens × ~170 weeks (≈ 800–900 usable token-week obs after pre-launch and missing-covariate drops)</td></tr>
+        <tr><td>Dependent variable</td><td>liquidity bucket (3 levels)</td><td>IHS(velocity), continuous</td></tr>
+        <tr><td>Treatment</td><td>AMM presence (current)</td><td>AMM listing event (staggered, dated)</td></tr>
+        <tr><td>Identification</td><td>none (descriptive)</td><td>staggered DiD (Callaway-Sant'Anna)</td></tr>
+        <tr><td>Pre-trends?</td><td>not tested</td><td>event-study with pre-period coefficients</td></tr>
+        <tr><td>Controls</td><td>none</td><td>mcap, holders, age, FFR, DeFi TVL + FEs</td></tr>
+        <tr><td>Robustness</td><td>some sample alternatives</td><td>~8 specifications + placebo + Bacon decomp</td></tr>
+        <tr><td>Claim type</td><td>correlation</td><td>causal estimate of ATT (under assumptions)</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      The narrower sample (7 tokens vs. 24) is a tradeoff. We get richer per-token data
+      and a clean treatment definition, at the cost of statistical power. Chapter 11
+      discusses this tradeoff carefully; Chapter 15 explains why a follow-up paper with
+      ~20 tokens would be the natural extension.
+    </p>
+
+    

@@ -1,0 +1,140 @@
+<h3>1.3 What already exists, and what is new</h3>
+  <p>Most of SSRD's parts have been done before. Knowing the prior art keeps the claim honest:</p>
+  <ul>
+    <li><a href="https://github.com/x0rz/phishing_catcher">phishing_catcher</a> scores CT names by keywords. That is SSRD's first filter (chapter 3).</li>
+    <li><a href="https://github.com/elceef/dnstwist">dnstwist</a> compares pages with TLSH (<code>--lsh tlsh</code>), SSRD's content signal (chapter 5).</li>
+    <li><a href="https://arxiv.org/abs/2005.14440">Phillips &amp; Wilder 2020</a> clustered crypto-scam pages from urlscan snapshots with TF-IDF and DBSCAN, after normalizing the HTML. This is the published baseline. Read its method section on Oct 22.</li>
+    <li>Commercial tools (urlscan Pro "Similar Pages", Validin, DomainTools, Silent Push) already pivot on page structure and favicons.</li>
+  </ul>
+  <p>The likely new part is narrow: a <strong>respawn metric</strong> (time from a dated takedown to the first matching new domain), and an open, auditable precision number for one network that law enforcement cares about. Using the Bank of Russia (CBR) blacklist as a near-daily ground-truth stream may also be new. The research pass found no published use of it, but that is <em>unverified</em>.</p>
+
+  <h3>1.4 Three facts that shape every later chapter</h3>
+  <ol>
+    <li><strong>Cloaking is the default.</strong> Investment-scam sites often show a harmless "white page" to visitors who don't look like victims. Infoblox and Confiant counted about 15.5k investment-scam domains doing this through Keitaro. So "decoy" is its own outcome, reported next to precision (chapters 4 and 8).</li>
+    <li><strong>The takedown hit the backend.</strong> Live respawns from Oct 19 to Nov 15 may be rare. The CBR forward check and the seed backtest exist so a precision number can exist even if few new sites appear (chapter 8).</li>
+    <li><strong>The KCDA seed set is thin.</strong> Only 13 seeds, and the pre-seizure pages recovered from the Wayback Machine are generic WordPress + Elementor sites. Asset hashes can't separate them from ordinary Elementor sites. The page copy can, which is why the copy fingerprint exists (chapter 5.6).</li>
+  </ol>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>A site matches kit-01-KCDA. Can the memo say the same people run it as the seized sites?</summary><div>No. It can say the site matches that kit's software on specific signals, at a stated confidence. Kits are sold and copied. Attribution is the VCU's job, with evidence SSRD doesn't have.</div></details>
+    <details><summary>Name two funnel steps SSRD can never observe, and one consequence for the memo.</summary><div>The ads and the phone calls (and the payments). The memo must say SSRD sees only a CT-only slice of a funnel that starts with Facebook ads. A low count of new sites doesn't mean low activity.</div></details>
+    <details><summary>What is the one-sentence claim SSRD can honestly make if it works?</summary><div>The SPEC's pitch: "Over N days it flagged X sites at Y% precision (95% CI a–b)", plus time from the takedown to the first matching domain. It is not a new detection method.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://www.brooklynda.org/2026/10/14/brooklyn-das-virtual-currency-unit-dismantles-infrastructure-of-multinational-crypto-investment-scam-that-targeted-russian-speakers/">Brooklyn DA release, Oct 14 2026</a> (quote the release, not press paraphrases) · <a href="https://www.infoblox.com/blog/?p=13063">Infoblox/Confiant on Keitaro cloaking</a> · <a href="https://www.sophos.com/en-gb/press/press-releases/2022/03/crypto-trading-scam-demands-thousands-of-dollars-in-fake-profit-tax-to-unlock-victims-accounts">Sophos CryptoRom</a></div>
+</section>
+
+<section class="chapter" id="ch2" aria-labelledby="ch2-h">
+  <p class="issue-line">Chapter 2 · Mon Oct 19 · 45 minutes</p>
+  <h2 id="ch2-h">How a public log tells you a domain was born</h2>
+  <p class="lede">Before a browser trusts a certificate, the certificate has to appear in a public, append-only log. Scam operators need HTTPS for their platform to look real. So nearly every new scam domain announces itself in a certificate transparency (CT) log, usually minutes before the site goes live.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Merkle-tree logs, checkpoints, tiles, names tiles, precertificates and the tailer's algorithm.</dd></div>
+    <div><dt>Why it matters</dt><dd>Time to flag starts at the CT timestamp, and ingest bandwidth decides whether the box can keep up.</dd></div>
+    <div><dt>In the repo</dt><dd><code>src/ssrd/ct.py</code>: <code>Tailer.poll_log</code>, <code>tile_path</code>, <code>handle_entry</code>.</dd></div>
+  </dl>
+
+  <h3>2.1 Why the logs exist</h3>
+  <p>CT was built so that anyone can spot a certificate a CA should never have issued. Certificate authorities submit each certificate to several logs, and browsers require proof of logging (signed certificate timestamps, SCTs). To put those proofs inside the certificate itself, the CA first logs a <strong>precertificate</strong>, a copy marked unusable, and only then issues the real one. The precertificate is why the log entry arrives seconds after issuance, and often <em>before</em> the site is serving anything.</p>
+  <p>SSRD uses the logs for a job they weren't designed for: a near-real-time feed of newly certified names. Anyone can read them, and the CA logs certificates for every domain it issues to, so a scam domain on a CA that logs (all public CAs do) can't avoid appearing.</p>
+
+  <h3>2.2 Merkle trees, checkpoints and tiles</h3>
+  <p>A log is a Merkle tree. Each entry is a leaf. Each parent node is the hash of its two children, so the single root hash commits to every entry below it. Change one old entry and the root changes, so a log can't quietly rewrite history. The log publishes a signed <strong>checkpoint</strong>: its name, the tree size and the root hash.</p>
+  <p>Older logs answered queries through an API (<code>get-entries</code>), which was expensive to run. <strong>Static CT</strong> logs (Sunlight is the main implementation) publish the tree as plain files instead, cut into <strong>tiles</strong> of 256 entries. A full tile never changes, so it can be cached forever. Let's Encrypt now runs only these tiled logs, so an old-API reader misses every Let's Encrypt certificate.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 2.1</span><p class="fig-title">The tailer reads only full tiles. The partial one waits until it fills <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 310" role="img" aria-label="Toy log with 11 entries and 4-entry tiles. A Merkle tree joins entries into one root. Tile 0 is already read, tile 1 is full and read next, tile 2 is partial and waits.">
+      <g class="lnm">
+        <path d="M66 200L96 150M126 200L96 150M186 200L216 150M246 200L216 150"/>
+        <path d="M330 200L360 150M390 200L360 150M450 200L480 150M510 200L480 150"/>
+        <path d="M594 200L624 150M654 200L624 150"/>
+        <path d="M96 140L156 105M216 140L156 105M360 140L420 105M480 140L420 105M624 140L669 105M714 200L669 105"/>
+        <path d="M156 95L288 65M420 95L288 65M288 55L478 30M669 95L478 30"/>
+      </g>
+      <g class="faint" style="stroke:#52545A;stroke-width:1">
+        <circle cx="96" cy="145" r="6"/><circle cx="216" cy="145" r="6"/><circle cx="360" cy="145" r="6"/><circle cx="480" cy="145" r="6"/><circle cx="624" cy="145" r="6"/>
+        <circle cx="156" cy="100" r="6"/><circle cx="420" cy="100" r="6"/><circle cx="669" cy="100" r="6"/><circle cx="288" cy="60" r="6"/>
+      </g>
+      <circle cx="478" cy="26" r="8" class="ink"/>
+      <text x="494" y="30" class="tb">root hash</text>
+      <rect class="bxw" x="640" y="6" width="252" height="54" rx="6"/>
+      <text x="652" y="27" class="tb">checkpoint</text><text x="652" y="47" class="ts tm">origin · tree size 11 · root · signature</text>
+      <g>
+        <rect class="bx" x="40" y="200" width="52" height="40" rx="5"/><rect class="bx" x="100" y="200" width="52" height="40" rx="5"/><rect class="bx" x="160" y="200" width="52" height="40" rx="5"/><rect class="bx" x="220" y="200" width="52" height="40" rx="5"/>
+        <rect class="acc" x="304" y="200" width="52" height="40" rx="5"/><rect class="acc" x="364" y="200" width="52" height="40" rx="5"/><rect class="acc" x="424" y="200" width="52" height="40" rx="5"/><rect class="acc" x="484" y="200" width="52" height="40" rx="5"/>
+        <rect class="bxw" x="568" y="200" width="52" height="40" rx="5"/><rect class="bxw" x="628" y="200" width="52" height="40" rx="5"/><rect class="bxw" x="688" y="200" width="52" height="40" rx="5"/>
+        <rect x="748" y="200" width="52" height="40" rx="5" class="lnm dash" style="fill:none"/>
+      </g>
+      <g text-anchor="middle" class="ts">
+        <text x="66" y="225">0</text><text x="126" y="225">1</text><text x="186" y="225">2</text><text x="246" y="225">3</text>
+        <text x="330" y="225">4</text><text x="390" y="225">5</text><text x="450" y="225">6</text><text x="510" y="225">7</text>
+        <text x="594" y="225">8</text><text x="654" y="225">9</text><text x="714" y="225">10</text><text x="774" y="225" class="tm">empty</text>
+      </g>
+      <path class="ln" d="M40 256H272M40 250V262M272 250V262"/><path class="ln" d="M304 256H536M304 250V262M536 250V262"/><path class="lnm dash" d="M568 256H800"/>
+      <text x="156" y="282" text-anchor="middle">tile 0 · already read</text>
+      <text x="420" y="282" text-anchor="middle" class="tb">tile 1 · full · read next</text>
+      <text x="684" y="282" text-anchor="middle" class="tm">tile 2 · partial · waits</text>
+      <text x="420" y="302" text-anchor="middle" class="ts tm">saved position next_index = 4</text>
+    </svg>
+    </div>
+    <figcaption>Toy log with 4-entry tiles. Real tiles hold 256 entries. The checkpoint says the tree has 11 entries. Tile 1 is full, so the tailer fetches it, processes entries 4 to 7 and saves 8 as its new position. Tile 2 has only three entries, so the tailer waits. The cost is latency: at about 25 entries a second, a Let's Encrypt tile fills in about 10 seconds.</figcaption>
+  </div>
+
+  <h3>2.3 Names tiles: the reason this runs on home Wi-Fi</h3>
+  <p>A normal data tile carries whole certificates. Some static-CT logs also serve a compact <strong>names tile</strong>: one JSON line per entry, with just the DNS names, the subject common name and a timestamp. This is an extra endpoint, not part of the core spec. On Oct 17 the Let's Encrypt Sycamore and Willow logs and Geomys Tuscolo served it. Google's and IPng's logs did not.</p>
+  <div class="callout">
+    <p>Back-of-envelope: is the bandwidth affordable?</p>
+    <ul>
+      <li>Measured: about 76 KB per 256-entry names tile, about 6× smaller than a data tile. That is about 0.3 KB per entry.</li>
+      <li>Measured: about 25 entries a second per Let's Encrypt log.</li>
+      <li>25 × 0.3 KB ≈ 7.5 KB/s per log ≈ 650 MB/day per log. Two LE logs plus Tuscolo come to a few GB a day at most.</li>
+      <li>The alternative, certstream-server-go reading every log, was estimated at about 14.5 Mbit/s (≈ 4.7 TB/month; <em>likely</em>, not measured). That is why SSRD has its own tailer.</li>
+    </ul>
+  </div>
+
+  <h3>2.4 The tailer, step by step</h3>
+  <ol>
+    <li><code>GET &lt;log&gt;/checkpoint</code>. The second line is the tree size.</li>
+    <li>First run only: start at the current head, rounded down to a tile boundary. The tailer never backfills further back than where it first started.</li>
+    <li>While the next tile is full: fetch <code>/tile/names/&lt;path&gt;</code>. The path encodes the tile number in groups of three digits, so tile 1234067 is <code>x001/x234/067</code>.</li>
+    <li>For each entry, collect its names (SANs plus the common name), reduce each to its registrable domain (chapter 3), skip names already in the seen-set and run the filter.</li>
+    <li>Save the new position in <code>ct_state</code> after every tile, so a sleeping box resumes where it stopped.</li>
+    <li>On HTTP 429, back off 30 s and try the next log. Count bytes, entries, names and filter passes for <code>metrics.jsonl</code>.</li>
+  </ol>
+  <p>Two details are easy to miss. Wildcard names (<code>*.example.com</code>) lose the <code>*.</code>, so SSRD sees the registrable domain but not the subdomains the site will use. And about 1 in 1,000 registrable names is kept unfiltered as a <strong>background sample</strong>, picked by <code>crc32(name) % 1000 == 0</code>. These are the negatives that trained the name classifier. Because the choice is a hash and not a random draw, a given name is always in or always out of the sample, whichever log it came from and however often the tailer restarts.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 2.2</span><p class="fig-title">The first fetch waits 20 minutes after the log entry, because precertificates arrive before sites do</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 40 900 150" role="img" aria-label="Log-scale timeline from 1 second to 1 day after the CT entry. The tile fills around 10 seconds. The first fetch is at 20 minutes, retries at 2 hours and 24 hours.">
+      <path class="ln" d="M60 100H860"/>
+      <g class="lnm"><path d="M60 100V108M220 100V108M344 100V108M504 100V108M629 100V108M850 100V108"/></g>
+      <g class="ts tm" text-anchor="middle"><text x="60" y="126">1 s</text><text x="220" y="126">10 s</text><text x="344" y="126">1 min</text><text x="504" y="126">10 min</text><text x="629" y="126">1 h</text><text x="850" y="126">1 day</text></g>
+      <circle cx="221" cy="100" r="6" class="ink"/><text x="221" y="80" text-anchor="middle">tile fills ≈ 10 s</text>
+      <circle cx="553" cy="100" r="9" class="acc"/><text x="553" y="64" text-anchor="middle" class="tb">first fetch +20 min</text>
+      <circle cx="678" cy="100" r="6" class="ink"/><text x="678" y="80" text-anchor="middle">retry +2 h</text>
+      <circle cx="850" cy="100" r="6" class="ink"/><text x="850" y="80" text-anchor="middle">retry +24 h</text>
+      <text x="60" y="80" class="tm">CT entry</text>
+      <path class="lnm dash" d="M60 150H581"/><path class="lnm" d="M581 144V156"/>
+      <text x="60" y="174" class="ts tm">time-to-flag target: under 30 min, for sites live at the first fetch</text>
+    </svg>
+    </div>
+    <figcaption>Log scale, so equal gaps mean equal ratios. Retries happen only if the first visit found a parked page, a blank page or an error. A first visit still unrun 24 hours after it was due is marked <code>expired</code> and counted, never dropped silently. Because of the deliberate 20-minute delay, the time-to-flag floor is about 20 minutes.</figcaption>
+  </div>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>Why does a Merkle root stop a log from rewriting an old entry?</summary><div>The root hash depends on every leaf. A changed leaf changes its parent, and so on up to the root, so the signed checkpoints people already saw would no longer match.</div></details>
+    <details><summary>What would break if the tailer read the partial tile 2 in Fig 2.1 and moved on?</summary><div>It would save position 11 and never come back for entry 11 when it arrives. Or, if it re-read, it would process 8–10 twice. Reading only full tiles keeps the position simple, and the cost is about 10 s of latency.</div></details>
+    <details><summary>A scam site uses a wildcard certificate made months ago. Does SSRD see its new subdomain?</summary><div>No. No new certificate means no new log entry. This is one of the memo's stated limitations (wildcard certs, and the CT-only view).</div></details>
+    <details><summary>Why use a hash for the 1-in-1,000 background sample instead of <code>random()</code>?</summary><div>It is deterministic. The same name gets the same decision on every log and after every restart, so the sample doesn't drift or double-count.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://www.rfc-editor.org/rfc/rfc6962">RFC 6962, Certificate Transparency</a> · <a href="https://c2sp.org/static-ct-api">C2SP static-ct-api</a> · <a href="https://c2sp.org/tlog-tiles">C2SP tlog-tiles</a> (the <code>x001/x234/067</code> path encoding) · <a href="https://sunlight.dev/">Sunlight</a> · <a href="https://letsencrypt.org/docs/ct-logs/">Let's Encrypt CT logs</a></div>
+</section>
+
+<section class="chapter" id="ch3" aria-labelledby="ch3-h">
+  <p class="issue-line">Chapter 3 · Tue Oct 20 · 45 minutes</p>
+  

@@ -1,0 +1,148 @@
+
+<a class="skip" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#111214"/></marker>
+    <marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#52545A"/></marker>
+  </defs>
+</svg>
+<div class="page">
+  <header class="site-header">
+    <a class="brand" href="#top">SSRD textbook</a>
+    <nav class="nav" aria-label="Book">
+      <a href="#plan">Study plan</a>
+      <a href="#ch8">Measuring</a>
+      <a href="#appendix">Spec vs code</a>
+    </nav>
+  </header>
+
+  <section class="book-hero" id="top" aria-labelledby="book-title">
+    <div class="cover-meta"><span>Build Notes / SSRD</span><span>Learning edition · 02</span></div>
+    <div class="cover-grid">
+      <h1 id="book-title">UNDERSTAND<br>THE <span>DETECTOR.</span></h1>
+      <div class="cover-deck">
+        <p class="cover-label">A field guide to scam-site respawns</p>
+        <p>Follow a new domain from certificate log to alert. Learn what the detector sees, where it can fail, and how to defend its results.</p>
+        <a class="start-reading" href="#plan">Start with the study plan <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+    <div class="cover-index" aria-label="Learning paths">
+      <a href="#ch1"><span class="path-no">01—03</span><span>Find the signal<small>Logs, names &amp; filtering</small></span><span aria-hidden="true">↗</span></a>
+      <a href="#ch4"><span class="path-no">04—06</span><span>Recognize the rebuild<small>Safe fetching, fingerprints &amp; kits</small></span><span aria-hidden="true">↗</span></a>
+      <a href="#ch7"><span class="path-no">07—09</span><span>Defend the result<small>Sources, measurement &amp; the memo</small></span><span aria-hidden="true">↗</span></a>
+    </div>
+    <details class="edition-note"><summary>About this edition <span>Draft · evidence dated Oct 17, 2026</span></summary><p>Agent-written from the SSRD repository on Oct 17, 2026. Toy numbers are labeled <strong>Illustration</strong>. Real numbers come from <code>docs/research.md</code> and the README, measured Oct 17. Contains no flagged domains or seed data. The reading schedule reflects the original project dates.</p></details>
+  </section>
+
+  <div class="book">
+    <nav class="toc" aria-label="Chapters">
+      <p class="toc-title">The learning path</p>
+      <ol>
+        <li><a href="#plan">0 · Study plan</a></li>
+        <li><a href="#ch1">1 · The respawn problem</a></li>
+        <li><a href="#ch2">2 · Certificate transparency</a></li>
+        <li><a href="#ch3">3 · Names and the filter</a></li>
+        <li><a href="#ch4">4 · Fetching safely</a></li>
+        <li><a href="#ch5">5 · Fingerprints</a></li>
+        <li><a href="#ch6">6 · Kits and the alert rule</a></li>
+        <li><a href="#ch7">7 · Sources and the rules</a></li>
+        <li><a href="#ch8">8 · Measuring honestly</a></li>
+        <li><a href="#ch9">9 · Writing for the VCU</a></li>
+        <li><a href="#appendix">A · Spec vs code</a></li>
+        <li><a href="#glossary">B · Glossary</a></li>
+      </ol>
+    </nav>
+    <main id="main">
+      <div class="reader-toolbar"><label for="chapter-select">Reading</label><select id="chapter-select" aria-label="Choose chapter"></select><a href="#top" class="back-cover">Back to cover ↑</a></div>
+<section class="chapter" id="plan" aria-labelledby="plan-h">
+  <p class="issue-line">Chapter 0 · Read first · 10 minutes</p>
+  <h2 id="plan-h">The study plan</h2>
+  <p class="lede">SSRD runs from Oct 19 to Nov 15 at about 10 hours a week. Learning can't take a whole week of that, so this plan gives each idea one evening, just before the week that needs it.</p>
+  <p>The SPEC lists the week 1 "learning evenings": CT and static CT, favicon mmh3, TLSH, urlscan syntax, precision and base rates, and Phillips &amp; Wilder. Each one has a chapter here. Two more chapters (safe fetching and the VCU memo) cover things you are already doing or will do soon. Every chapter ends with questions. A chapter is done when you can answer them without looking.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <caption class="sr-only" style="position:absolute;left:-9999px">Reading schedule by date</caption>
+      <thead><tr><th>When</th><th>Read</th><th class="n">Time</th><th>Done when you can…</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Sun Oct 18</td><td><a href="#ch1">1 · The respawn problem</a> and <a href="#ch4">4 · Fetching safely</a></td><td class="n">75 min</td><td>Explain to a friend what the fetcher on your box does, what it refuses to do, and why. It is already running, so this goes first.</td></tr>
+        <tr><td>Mon Oct 19</td><td><a href="#ch2">2 · Certificate transparency</a></td><td class="n">45 min</td><td>Draw a checkpoint, a full tile and a partial tile, and say why the tailer waits for the tile to fill.</td></tr>
+        <tr><td>Tue Oct 20</td><td><a href="#ch3">3 · Names and the filter</a></td><td class="n">45 min</td><td>Turn a punycode name into its registrable label, and explain why recall and pass rate are the two numbers that matter.</td></tr>
+        <tr><td>Wed Oct 21</td><td><a href="#ch5">5 · Fingerprints</a>, sections 5.1 to 5.3</td><td class="n">45 min</td><td>Say why a SHA-256 of the page fails, what normalization removes, and what a TLSH distance of 70 means (and doesn't).</td></tr>
+        <tr><td>Thu Oct 22</td><td><a href="#ch5">5 · Fingerprints</a>, 5.4 to 5.7, plus Phillips &amp; Wilder</td><td class="n">60 min</td><td>Compute a Jaccard by hand, explain why MinHash estimates it, and recompute a favicon hash with the Shodan recipe.</td></tr>
+        <tr><td>Fri Oct 23</td><td><a href="#ch7">7 · Sources and the rules</a></td><td class="n">30 min</td><td>Write three urlscan searches from memory and say why SSRD never submits a scan.</td></tr>
+        <tr><td>Sat Oct 24</td><td><a href="#ch8">8 · Measuring honestly</a>, 8.1 to 8.3</td><td class="n">60 min</td><td>Show with numbers why a 1% false-positive rate can still mean poor precision, and compute a Wilson interval.</td></tr>
+        <tr><td>Week 2 · Oct 26</td><td><a href="#ch6">6 · Kits and the alert rule</a> and <a href="#appendix">Appendix A</a></td><td class="n">60 min</td><td>Decide whether the code's alert rule should match the SPEC exactly (Appendix A, item 1).</td></tr>
+        <tr><td>Week 3 · Nov 2</td><td><a href="#ch8">8 · Measuring honestly</a>, 8.4 to 8.7</td><td class="n">45 min</td><td>Brief the second labeler, keep the threshold sweep separate from the evaluation set, and compute kappa.</td></tr>
+        <tr><td>Week 4 · Nov 9</td><td><a href="#ch9">9 · Writing for the VCU</a></td><td class="n">30 min</td><td>Write a lead with a confidence label and "matches kit X" wording before you draft the memo.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="meta">About 7 hours in total, mostly in week 1. The times are estimates for a first read, not measurements. Skip any section you can already answer the questions for.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 0.1</span><p class="fig-title">The book follows the pipeline, one chapter per stage</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 250" role="img" aria-label="Pipeline: CT logs, then the name filter, a delayed queue, the fetcher container, fingerprints, scoring against the kit library, review and evaluation. Chapter numbers sit under each stage.">
+      <g>
+        <rect class="bx" x="8" y="40" width="104" height="56" rx="8"/><text x="60" y="64" text-anchor="middle" class="tb">CT logs</text><text x="60" y="82" text-anchor="middle" class="ts tm">names tiles</text>
+        <rect class="bx" x="146" y="40" width="104" height="56" rx="8"/><text x="198" y="64" text-anchor="middle" class="tb">Name filter</text><text x="198" y="82" text-anchor="middle" class="ts tm">0.71% pass</text>
+        <rect class="bx" x="276" y="40" width="120" height="56" rx="8"/><text x="336" y="64" text-anchor="middle" class="tb">Queue</text><text x="336" y="82" text-anchor="middle" class="ts tm">+20m, +2h, +24h</text>
+        <rect class="acc" x="422" y="40" width="104" height="56" rx="8"/><text x="474" y="64" text-anchor="middle" class="tb">Fetcher</text><text x="474" y="82" text-anchor="middle" class="ts">firewalled</text>
+        <rect class="bx" x="560" y="40" width="104" height="56" rx="8"/><text x="612" y="64" text-anchor="middle" class="tb">Fingerprint</text><text x="612" y="82" text-anchor="middle" class="ts tm">pure functions</text>
+        <rect class="bx" x="698" y="40" width="88" height="56" rx="8"/><text x="742" y="64" text-anchor="middle" class="tb">Score</text><text x="742" y="82" text-anchor="middle" class="ts tm">2 families</text>
+        <rect class="bx" x="808" y="40" width="84" height="56" rx="8"/><text x="850" y="64" text-anchor="middle" class="tb">Review</text><text x="850" y="82" text-anchor="middle" class="ts tm">labels</text>
+        <path class="ln" d="M112 68H144" marker-end="url(#ah)"/><path class="ln" d="M250 68H274" marker-end="url(#ah)"/><path class="ln" d="M396 68H420" marker-end="url(#ah)"/><path class="ln" d="M526 68H558" marker-end="url(#ah)"/><path class="ln" d="M664 68H696" marker-end="url(#ah)"/><path class="ln" d="M786 68H806" marker-end="url(#ah)"/>
+        <rect class="bx" x="560" y="160" width="226" height="50" rx="8"/><text x="673" y="182" text-anchor="middle" class="tb">Kit library</text><text x="673" y="199" text-anchor="middle" class="ts tm">CBR · KCDA · DFPI seeds via urlscan</text>
+        <path class="ln" d="M742 160V98" marker-end="url(#ah)"/>
+        <rect class="bx" x="808" y="160" width="84" height="50" rx="8"/><text x="850" y="182" text-anchor="middle" class="tb">Evaluate</text><text x="850" y="199" text-anchor="middle" class="ts tm">CI · kappa</text>
+        <path class="ln" d="M850 96V158" marker-end="url(#ah)"/>
+      </g>
+      <g class="ts tm">
+        <text x="60" y="122" text-anchor="middle">Ch 2</text><text x="198" y="122" text-anchor="middle">Ch 3</text><text x="336" y="122" text-anchor="middle">Ch 4</text><text x="474" y="122" text-anchor="middle">Ch 4</text><text x="612" y="122" text-anchor="middle">Ch 5</text><text x="752" y="122" text-anchor="start">Ch 6</text><text x="860" y="122" text-anchor="start">Ch 8</text>
+        <text x="673" y="230" text-anchor="middle">Ch 6 · Ch 7</text><text x="850" y="230" text-anchor="middle">Ch 8 · Ch 9</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Arrows show what each stage passes on. The fetcher is highlighted because it is the one stage that touches scam sites, so it carries the safety rules. Live pages are fingerprinted with the same functions as the seed pages. That is why a live page and a seed page can be compared at all.</figcaption>
+  </div>
+</section>
+
+<section class="chapter" id="ch1" aria-labelledby="ch1-h">
+  <p class="issue-line">Chapter 1 · Sun Oct 18 · 30 minutes</p>
+  <h2 id="ch1-h">If they rebuild, would anyone see it?</h2>
+  <p class="lede">On Oct 14 2026 the Brooklyn DA's Virtual Currency Unit said it had disrupted 241 domains and 112 cloud servers of a crypto investment scam aimed at Russian speakers. Its release also said "new scam websites popped up quickly." SSRD turns that sentence into a question you can measure: how fast do new sites that match the same kit appear, and can a passive observer see them?</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>The victim funnel, where SSRD can and can't see it, and what a "kit" is.</dd></div>
+    <div><dt>Why it matters</dt><dd>Every limitation in the memo traces back to this chapter: cloaking, the CT-only view, a thin seed set.</dd></div>
+    <div><dt>In the repo</dt><dd><code>SPEC.md</code> Goal, <code>docs/research.md</code> "The VCU case" and "Prior art".</dd></div>
+  </dl>
+
+  <h3>1.1 The funnel, and the one step SSRD can see</h3>
+  <p>The release describes a five-step funnel. Russian-language Facebook ads lead to a phone "advisor". The advisor steers the victim to a fake trading platform. When the victim tries to withdraw, they are charged "fees". Later comes a "recovery" scam that promises to get the money back. The sites referenced US agencies and Elon Musk to look legitimate.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 1.1</span><p class="fig-title">SSRD only sees the funnel where a new website gets a public certificate</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 200" role="img" aria-label="Five funnel steps: Facebook ad, phone advisor, fake platform website, withdrawal fees, recovery scam website. Only the two website steps are visible to SSRD through certificate logs.">
+      <rect class="bx" x="8" y="40" width="150" height="60" rx="8"/><text x="83" y="66" text-anchor="middle" class="tb">Facebook ad</text><text x="83" y="84" text-anchor="middle" class="ts tm">Russian-language</text>
+      <rect class="bx" x="190" y="40" width="150" height="60" rx="8"/><text x="265" y="66" text-anchor="middle" class="tb">Phone "advisor"</text><text x="265" y="84" text-anchor="middle" class="ts tm">calls the victim</text>
+      <rect class="acc" x="372" y="40" width="150" height="60" rx="8"/><text x="447" y="66" text-anchor="middle" class="tb">Fake platform</text><text x="447" y="84" text-anchor="middle" class="ts">site on a new domain</text>
+      <rect class="bx" x="554" y="40" width="150" height="60" rx="8"/><text x="629" y="66" text-anchor="middle" class="tb">Withdrawal "fees"</text><text x="629" y="84" text-anchor="middle" class="ts tm">more payments</text>
+      <rect class="bxw" x="736" y="40" width="156" height="60" rx="8" style="stroke:#111214;stroke-width:1.5"/><text x="814" y="66" text-anchor="middle" class="tb">Recovery scam</text><text x="814" y="84" text-anchor="middle" class="ts tm">often another website</text>
+      <path class="ln" d="M158 70H188" marker-end="url(#ah)"/><path class="ln" d="M340 70H370" marker-end="url(#ah)"/><path class="ln" d="M522 70H552" marker-end="url(#ah)"/><path class="ln" d="M704 70H734" marker-end="url(#ah)"/>
+      <path class="ln" d="M372 132H892"/><path class="ln" d="M372 126V138"/><path class="ln" d="M892 126V138"/>
+      <text x="632" y="158" text-anchor="middle" class="tb">Visible to SSRD: new domains that get a TLS certificate</text>
+      <path class="lnm dash" d="M8 132H340"/>
+      <text x="174" y="158" text-anchor="middle" class="tm">Invisible: ads, calls, payments</text>
+    </svg>
+    </div>
+    <figcaption>The platform site is SSRD's main target (highlighted). Recovery sites are often websites too, which is why the name filter has recovery terms. Ads and phone calls never touch a certificate log, so a kit match says nothing about who ran the ads.</figcaption>
+  </div>
+
+  <h3>1.2 A kit is software, not people</h3>
+  <p>Fake investment sites are rarely built one by one. Operators reuse a <strong>kit</strong>: the same templates, scripts, icons and copy, re-skinned with a new brand name for each domain. The brand changes, but much of the software underneath stays the same. That reuse is the whole bet. If the software survives a rename, a fingerprint of it can link a brand-new domain to sites already known to be scams.</p>
+  <p>This is also why SSRD's language rules exist. A shared kit shows the same software. Kits are sold and copied, so it doesn't show the same operator. That is why the project always says "matches kit X" and never "operated by". The memo calls its findings "investigative leads, not attribution".</p>
+
+  

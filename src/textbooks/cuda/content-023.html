@@ -1,0 +1,247 @@
+<h3>4. Newer / less-common precisions</h3>
+        <p>INT8 and FP8 cuBLAS paths are newer and less comprehensively tuned across shapes than the FP16 path. INT8 INT4 quantization for inference is a particularly active area where custom kernels routinely beat cuBLAS — see e.g. the techniques used by <code>tinygrad</code>, <code>llama.cpp</code>'s CUDA backend, and various INT4 inference papers.</p>
+
+        <h3>Recommended target for this project</h3>
+        <div class="callout">
+            <div class="callout-label">A concrete, defensible target</div>
+            <p style="margin: 6px 0"><strong>Shape:</strong> M = N = K = 4096, FP16 inputs with FP32 accumulate.<br>
+            <strong>Hardware:</strong> RTX 3090 (sm_86), GPU clocks locked.<br>
+            <strong>Baseline:</strong> cuBLAS via <code>cublasGemmEx</code>.<br>
+            <strong>Win condition:</strong> &gt; 100% of cuBLAS, sustained across &gt;500 iterations, verified by Nsight Compute and bit-identical (within fp16 tolerance) output.</p>
+            <p style="margin: 6px 0">This shape is large enough that the workload is firmly compute-bound (intensity ~1365 vs ridge ~152, see §1.6), small enough to fit in 24 GB, exactly square so cuBLAS picks a well-tuned kernel — and yet community results have repeatedly shown that hand-tuned <code>mma.sync</code> + <code>cp.async</code> kernels can edge past it by a few percent on Ampere consumer parts. A defensible, reproducible, satisfying target.</p>
+        </div>
+    </section>
+
+    <!-- 5.3 -->
+    <section class="section" id="sec-5-3">
+        <h2 class="section-title"><span class="sec-num">5.3</span>The Full Optimization Stack (Applied)</h2>
+        <div class="section-subtitle">Each kernel, what it adds, what it buys</div>
+
+        <p>The table below walks every kernel from naive to peak. Numbers are <em>plausible community-class results</em> for the target shape (M = N = K = 4096, FP16 → FP32, RTX 3090). They are not from a single source; they are the kind of progression you should expect to see in your own measurements. The cuBLAS baseline is ~125 TFLOPS (≈ 88% of the 142 TFLOPS FP16-TC peak); the "% cuBLAS" column is the kernel's measured TFLOPS divided by that baseline.</p>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr>
+                <th>Version</th><th>Key technique</th><th>TFLOPS</th><th>% peak (142)</th><th>% cuBLAS</th>
+            </tr></thead>
+            <tbody>
+                <tr><td>K1 Naive</td><td>One thread / output, global loads in inner loop</td><td class="num">~0.5</td><td class="num">0.4%</td><td class="num">0.4%</td></tr>
+                <tr><td>K2 Coalesced</td><td>Index swap so thread.x → fast memory axis</td><td class="num">~3</td><td class="num">2.1%</td><td class="num">2.4%</td></tr>
+                <tr><td>K3 SMEM tile 32×32</td><td>Shared-memory tiling, double <code>__syncthreads</code></td><td class="num">~15</td><td class="num">10.6%</td><td class="num">12%</td></tr>
+                <tr><td>K4 Reg tile 128×128, TM=TN=8</td><td>Each thread owns 8×8 accumulator tile</td><td class="num">~45</td><td class="num">31.7%</td><td class="num">36%</td></tr>
+                <tr><td>K5 Vector loads (<code>float4</code>)</td><td>128-bit global &amp; SMEM loads</td><td class="num">~65</td><td class="num">45.8%</td><td class="num">52%</td></tr>
+                <tr><td>K6 WMMA Tensor Cores</td><td>16×16×16 fragment GEMM</td><td class="num">~100</td><td class="num">70.4%</td><td class="num">80%</td></tr>
+                <tr><td>K7 <code>mma.sync</code> + <code>ldmatrix</code></td><td>Raw PTX, controlled fragment layout</td><td class="num">~118</td><td class="num">83.1%</td><td class="num">94%</td></tr>
+                <tr><td>K8 + <code>cp.async</code> pipelined (2-stage)</td><td>Overlap next load with current mma</td><td class="num">~130</td><td class="num">91.5%</td><td class="num">104%</td></tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="font-size:12px; color:var(--text-tertiary); margin-top:-8px">Two columns appear because they answer different questions. <strong>% of peak</strong> tells you how close you are to the hardware ceiling — the absolute scoreboard. <strong>% of cuBLAS</strong> tells you whether you have crossed the line you set out to cross — the win condition. cuBLAS itself sits at 88% of peak in this estimate, so passing 88% of peak is roughly the threshold for beating cuBLAS.</p>
+
+        <div class="figure" id="opt-progress-fig">
+            <div class="figure-label">Figure 5.3 — Chart</div>
+            <div class="figure-title">Optimization progression vs cuBLAS</div>
+            <div class="chart-container" style="height: 420px"><canvas id="opt-progress-canvas"></canvas></div>
+            <div class="figure-caption">The vertical dashed line is the cuBLAS baseline (~125 TFLOPS). Bars to the left are orange (not yet winning); the bar crossing it is green. The shape of the curve is typical: long ramp through algorithmic optimizations (K1→K5), big jump on first Tensor-Core use (K6), final 10–20% from PTX-level loading and pipelining (K7→K8).</div>
+        </div>
+
+        <h3>What each step actually changed in Nsight Compute</h3>
+        <ul>
+            <li><strong>K1 → K2 (Coalescing).</strong> <em>Sectors / Request</em> drops from ~16 to 1. DRAM bandwidth utilization roughly doubles.</li>
+            <li><strong>K2 → K3 (SMEM tiling).</strong> DRAM bytes per kernel drop by ~32×; L1 hit rate skyrockets; SM throughput begins to be a meaningful share of time.</li>
+            <li><strong>K3 → K4 (Register tiling).</strong> SMEM Wavefronts / Request drops; the <code>short_scoreboard</code> stall reason — caused by SMEM dependency wait — shrinks.</li>
+            <li><strong>K4 → K5 (Vectorization).</strong> Total instructions issued drops by ~3×. The "Issue Active" SOL metric goes up.</li>
+            <li><strong>K5 → K6 (Tensor Cores).</strong> <code>HMMA</code> SASS instructions appear; the TENSOR pipe shows up in Compute Workload Analysis at 30&ndash;50%. The FFMA / HFMA2 pipes go quiet.</li>
+            <li><strong>K6 → K7 (mma.sync).</strong> The mix of <code>LDS</code> / <code>HMMA</code> shifts: <code>LDS</code> becomes <code>LDSM</code> (ldmatrix); the lanes-per-MMA arithmetic is now optimal.</li>
+            <li><strong>K7 → K8 (cp.async).</strong> The barrier (<code>BAR</code>) count per inner loop drops; <code>long_scoreboard</code> stalls fall; "Issue Active" climbs into the high 80s.</li>
+        </ul>
+
+        <p>For a complete walkthrough of an FP32 SGEMM optimization path on the same architecture (RTX A6000, the workstation sibling of the 3090), Simon Boehm's worklog is the closest public companion and walks through analogous percentage gains kernel-by-kernel.<sup>[1]</sup> Maharshi Pandya's "Outperforming cuBLAS on H100" worklog covers the same arc on Hopper with <code>wgmma</code>.<sup>[2]</sup></p>
+    </section>
+
+    <!-- 5.4 -->
+    <section class="section" id="sec-5-4">
+        <h2 class="section-title"><span class="sec-num">5.4</span>Proving the Win: The Benchmark Protocol</h2>
+        <div class="section-subtitle">If a stranger cannot reproduce your number, it does not exist</div>
+
+        <p>The credibility of a "I beat cuBLAS" claim is determined entirely by the protocol you used to measure it. The following is the minimum bar for a reproducible result.</p>
+
+        <h3>1. Lock the GPU clocks</h3>
+        <p>Without locking, the boost clock varies with temperature and silicon lottery. Two runs five minutes apart can differ by 8%. Lock to a stable value:</p>
+        <pre class="cb" data-lang="bash" data-title="Listing 5.4-A: Lock GPU clocks (Linux, RTX 3090)"># Need: sudo, NVIDIA driver with persistence mode on.
+sudo nvidia-smi -pm 1                       # persistence mode
+
+# Query clock ranges:
+nvidia-smi -q -d SUPPORTED_CLOCKS | head -40
+
+# Lock SM clock to a value within the supported range.
+# 1695 MHz is the RTX 3090 boost-clock spec; 1395 MHz is base.
+# Pick a value the silicon can hold under sustained load.
+sudo nvidia-smi -lgc 1695                   # lock graphics (SM) clock
+
+# Optional: lock memory clock.
+sudo nvidia-smi -lmc 9501                   # GDDR6X mem clock
+
+# After benchmarking, reset:
+sudo nvidia-smi -rgc                        # reset graphics clock
+sudo nvidia-smi -rmc                        # reset memory clock
+</pre>
+        <p>State the locked clock in your published report. <em>"RTX 3090, SM clock locked to 1695 MHz, memory clock locked to 9501 MHz"</em> is the level of precision required.</p>
+
+        <h3>2. Warm up and timing protocol</h3>
+        <ul>
+            <li><strong>10 warmup iterations</strong>, results discarded.</li>
+            <li><strong>500 timed iterations</strong>, report mean and stddev in milliseconds.</li>
+            <li>Variance &lt; 1% of the mean. If not, raise iteration count or fix a clock instability.</li>
+            <li>Each iteration must be <em>independent</em>: the same input, the same output buffer, no result carried between iterations.</li>
+        </ul>
+
+        <h3>3. FLOP counting</h3>
+        <p>Use the standard convention: a GEMM of (M, N, K) does <strong>2·M·N·K</strong> FLOPs — one multiply and one add per inner-loop iteration. Do not count fused biases or activations in the headline FLOP number unless you are honest about it.</p>
+        <div class="formula"><span class="var">TFLOPS</span> <span class="op">=</span> 2 <span class="op">·</span> M <span class="op">·</span> N <span class="op">·</span> K <span class="op">/</span> (mean_ms <span class="op">·</span> 10⁹)</div>
+
+        <h3>4. Correctness</h3>
+        <p>Compare the kernel's output against a trusted reference (cuBLAS or a CPU implementation) within a precision-appropriate tolerance. FP16 GEMM accumulating to FP32 typically agrees to <code>~1e-3</code> relative error on most elements; outliers up to <code>~1e-2</code> on long reductions are normal. Use the <code>verify()</code> helper from §2.7. If correctness fails, the benchmark is meaningless.</p>
+
+        <h3>5. cuBLAS baseline — the apples-to-apples call</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 5.4-B: cuBLAS baseline using cublasGemmEx (FP16 in, FP32 acc)">#include &lt;cublas_v2.h&gt;
+
+cublasHandle_t handle;
+cublasCreate(&amp;handle);
+
+// IMPORTANT: cuBLAS treats matrices as COLUMN-MAJOR. To compute the
+// row-major product C = A * B, call as gemm(B^T, A^T) -&gt; C^T,
+// or pass transA = T and transB = T appropriately. The shape M,N,K
+// stays the same; the leading dims differ.
+// IMPORTANT: cublasGemmEx with CUBLAS_COMPUTE_32F expects the alpha/beta
+// scalars to be in the COMPUTE precision (FP32), not the input precision.
+const float alpha = 1.0f;
+const float beta  = 0.0f;
+
+cublasGemmEx(
+    handle,
+    CUBLAS_OP_N, CUBLAS_OP_N,         // no transpose
+    N, M, K,                          // shapes (note swap for row-major view)
+    &amp;alpha,
+    d_B, CUDA_R_16F, N,               // B and its leading dim
+    d_A, CUDA_R_16F, K,               // A and its leading dim
+    &amp;beta,
+    d_C, CUDA_R_16F, N,               // C and its leading dim
+    CUBLAS_COMPUTE_32F,               // FP32 accumulate
+    CUBLAS_GEMM_DEFAULT_TENSOR_OP);   // tensor cores allowed
+
+// Time the same way as your custom kernel (Listing 2.7-A).
+</pre>
+
+        <h3>6. Report format</h3>
+        <p>The published table should look like this — and nothing else, because anything more invites cherry-picking:</p>
+        <pre class="cb" data-lang="bash" data-title="Listing 5.4-C: Sample report (the form, not the truth)">Shape:       M=4096  N=4096  K=4096  dtype=FP16(in) / FP32(acc)
+GPU:         NVIDIA GeForce RTX 3090 (Ampere, sm_86)
+GPU clocks:  SM 1695 MHz (locked), MEM 9501 MHz (locked)
+Driver:      535.x   CUDA: 12.2   cuBLAS: 12.2
+Iterations:  10 warmup + 500 timed   Variance: &lt; 0.4%
+
+Kernel               | Time (ms)        | TFLOPS  | % cuBLAS  | Notes
+---------------------|------------------|---------|-----------|--------------------
+cuBLAS (baseline)    | 1.074 ± 0.003    | 124.8   | 100.0 %   | cublasGemmEx
+gemmTiled (K3)       | 8.918 ± 0.012    |  15.4   |  12.3 %   | SMEM tile 32x32
+gemmReg (K4)         | 3.054 ± 0.008    |  45.0   |  36.0 %   | TM=TN=8 reg tile
+gemmVec (K5)         | 2.114 ± 0.006    |  65.0   |  52.1 %   | float4 SMEM loads
+gemmWmma (K6)        | 1.374 ± 0.005    | 100.0   |  80.1 %   | wmma 16x16x16
+gemmMma (K7)         | 1.165 ± 0.004    | 117.9   |  94.5 %   | mma.sync m16n8k16
+gemmMmaCpAsync (K8)  | 1.057 ± 0.004    | 130.0   | 104.2 %   |  ← WIN
+</pre>
+
+        <h3>7. The benchmark harness, end to end</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 5.4-D: Single-binary harness that produces the table">// Pseudocode shape — wire to your existing kernels.
+struct KernelEntry {
+    const char* name;
+    std::function&lt;void(half* dA, half* dB, half* dC, int, int, int)&gt; launch;
+};
+
+void run_suite(int M, int N, int K) {
+    // Allocate device buffers, fill with random data, allocate result.
+    // Allocate a reference buffer and compute cuBLAS once for verification.
+
+    std::vector&lt;KernelEntry&gt; kernels = {
+        {"cuBLAS",             [&amp;](auto a, auto b, auto c, int m, int n, int k){ cublasLaunch(a, b, c, m, n, k); }},
+        {"gemmNaive",          [&amp;](auto a, auto b, auto c, int m, int n, int k){ gemmNaive&lt;&lt;&lt;...&gt;&gt;&gt;(...); }},
+        {"gemmCoalesced",      ... },
+        {"gemmTiled",          ... },
+        {"gemmReg",            ... },
+        {"gemmVec",            ... },
+        {"gemmWmma",           ... },
+        {"gemmMma",            ... },
+        {"gemmMmaCpAsync",     ... },
+    };
+
+    long long flops = 2LL * M * N * K;
+
+    printf("Shape: M=%d N=%d K=%d  FP16-&gt;FP32\n", M, N, K);
+    printf("%-22s | %-16s | %8s | %9s\n", "Kernel", "Time (ms)", "TFLOPS", "% cuBLAS");
+    printf("---------------------- | ---------------- | -------- | ---------\n");
+
+    double cublas_tflops = 0.0;
+    for (auto&amp; k : kernels) {
+        // Verify correctness ONCE (skip naive if you're impatient — it's slow).
+        k.launch(d_A, d_B, d_C, M, N, K);
+        cudaDeviceSynchronize();
+        bool ok = verifyAgainst(d_C, d_ref, M*N, /*rtol=*/1e-2f);
+        if (!ok) { printf("%-22s | INCORRECT — skipping\n", k.name); continue; }
+
+        auto r = benchmarkKernel([&amp;]() {
+            k.launch(d_A, d_B, d_C, M, N, K);
+        }, flops);
+
+        if (strcmp(k.name, "cuBLAS") == 0) cublas_tflops = r.gflops / 1000.0;
+        double pct = (r.gflops / 1000.0) / cublas_tflops * 100.0;
+        printf("%-22s | %7.3f ± %5.3f | %8.1f | %8.1f %%\n",
+               k.name, r.mean_ms, r.stddev_ms, r.gflops / 1000.0, pct);
+    }
+}
+</pre>
+    </section>
+
+    <!-- 5.5 -->
+    <section class="section" id="sec-5-5">
+        <h2 class="section-title"><span class="sec-num">5.5</span>Publishing Your Result</h2>
+        <div class="section-subtitle">A repo that strangers can audit, in one evening</div>
+
+        <h3>Repository layout</h3>
+        <pre class="cb" data-lang="bash" data-title="Listing 5.5-A: Suggested repo layout">my-cuda-gemm/
+├── README.md                # benchmark table + roofline chart + reproduction steps
+├── LICENSE
+├── kernels/
+│   ├── k1_naive.cu
+│   ├── k2_coalesced.cu
+│   ├── k3_tiled.cu
+│   ├── k4_regtile.cu
+│   ├── k5_vec.cu
+│   ├── k6_wmma.cu
+│   ├── k7_mma_sync.cu
+│   └── k8_cp_async.cu
+├── benchmarks/
+│   ├── bench.cu             # harness from §5.4
+│   ├── run_all.sh           # nvidia-smi clock-lock + bench + collect
+│   └── results/             # CSV outputs per run
+├── profiling/
+│   ├── ncu_naive.ncu-rep
+│   ├── ncu_tiled.ncu-rep
+│   ├── ncu_mma_cpasync.ncu-rep
+│   └── notes.md
+└── writeup/
+    ├── roofline.svg
+    └── post.md              # 800-1200 word technical writeup
+</pre>
+
+        <h3>What the README needs to contain</h3>
+        <ul>
+            <li>The exact benchmark table from §5.4.</li>
+            <li>The roofline plot with all 8 kernels positioned (export from your profiler or generate from the CSV).</li>
+            <li>Hardware: model, driver, CUDA toolkit, locked clocks.</li>
+            <li>Reproduction: <code>git clone</code> → <code>make</code> → <code>./bench</code> in three lines.</li>
+            <li>The headline Nsight Compute screenshots showing SOL throughput &gt; cuBLAS.</li>
+            <li>A one-paragraph "why this works" — the key insight that let your kernel win.</li>
+        </ul>
+
+        

@@ -1,0 +1,166 @@
+<h3>End-to-end: a warp-level <code>mma.sync</code> tile</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 3.4-B: A warp-level mma.sync skeleton (Ampere, fp16-&gt;fp32, m16n8k16)">// One warp computes a 16x8 output tile of C using mma.sync.
+// In practice, you call this inside a loop over the K dimension and
+// inside a larger block-level tiling scheme (see Chapter 5).
+__device__ inline void mma_m16n8k16_fp16_fp32(
+    float       d[4],   // output accumulator
+    const uint32_t a[4],  // 4 × b32 from ldmatrix
+    const uint32_t b[2],  // 2 × b32 from ldmatrix
+    const float   c[4])   // input accumulator
+{
+    asm volatile(
+        "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+        "{%0, %1, %2, %3}, "    // D
+        "{%4, %5, %6, %7}, "    // A
+        "{%8, %9}, "            // B
+        "{%10, %11, %12, %13};\n"
+        : "=f"(d[0]), "=f"(d[1]), "=f"(d[2]), "=f"(d[3])
+        : "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]),
+          "r"(b[0]), "r"(b[1]),
+          "f"(c[0]), "f"(c[1]), "f"(c[2]), "f"(c[3]));
+}
+
+// Typical inner-loop usage inside a larger kernel:
+//
+//   load A_tile and B_tile into shared memory (see §3.5 for cp.async)
+//   __syncthreads();
+//
+//   for each k-slab in the SMEM tile:
+//       uint32_t a[4], b[2];
+//       ldmatrix into a[] from As
+//       ldmatrix into b[] from Bs
+//       mma_m16n8k16_fp16_fp32(acc, a, b, acc);
+//
+//   write acc back to global C
+</pre>
+
+        <div class="figure">
+            <div class="figure-label">Figure 3.4 — Interactive</div>
+            <div class="figure-title">m16n8k16 fragments: which thread holds which element</div>
+            <svg viewBox="0 0 720 320" role="img" aria-label="mma.sync fragment layout" preserveAspectRatio="xMidYMid meet">
+                <g font-family="JetBrains Mono" font-size="9">
+                    <!-- A fragment 16x16 -->
+                    <text x="10" y="14" fill="#111214" font-weight="700">A fragment — 16 × 16 (FP16)</text>
+                    <text x="10" y="28" fill="#52545a">each thread owns 8 fp16 elements (= 4 × b32 regs)</text>
+                    <g transform="translate(10,38)" data-tip="**A fragment (16×16 FP16)** — distributed across 32 lanes: each lane owns 8 fp16 values (4 × 32-bit registers). `ldmatrix.sync` loads the right shape directly from SMEM in one instruction.">
+                        <rect width="240" height="240" fill="#f5f5ef" stroke="#52545a"/>
+                        <!-- color blocks: 8 lane groups of 4 threads each across rows -->
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="0" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="120" y="0" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="60" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="120" y="60" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="120" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="120" y="120" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="180" width="120" height="60"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="120" y="180" width="120" height="60"/></g>
+                        <text x="60" y="34" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 0–3</text>
+                        <text x="180" y="34" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 4–7</text>
+                        <text x="60" y="94" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 8–11</text>
+                        <text x="180" y="94" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 12–15</text>
+                        <text x="60" y="154" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 16–19</text>
+                        <text x="180" y="154" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 20–23</text>
+                        <text x="60" y="214" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 24–27</text>
+                        <text x="180" y="214" text-anchor="middle" fill="#f5f5ef" font-weight="700">lanes 28–31</text>
+                    </g>
+
+                    <!-- B fragment 16x8 -->
+                    <text x="280" y="14" fill="#111214" font-weight="700">B fragment — 16 × 8 (FP16)</text>
+                    <text x="280" y="28" fill="#52545a">each thread owns 4 fp16 (= 2 × b32 regs)</text>
+                    <g transform="translate(280,38)" data-tip="**B fragment (16×8 FP16)** — half the columns of A's fragment. Each lane owns 4 fp16 values (2 × 32-bit registers). Loaded with `ldmatrix.sync.trans` so the K axis runs fast across the warp.">
+                        <rect width="120" height="240" fill="#f5f5ef" stroke="#52545a"/>
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="0" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="30" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="60" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.55"><rect x="0" y="90" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="120" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="150" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="180" width="120" height="30"/></g>
+                        <g fill="#111214" opacity="0.35"><rect x="0" y="210" width="120" height="30"/></g>
+                    </g>
+
+                    <!-- C/D fragment 16x8 fp32 -->
+                    <text x="430" y="14" fill="#111214" font-weight="700">C / D fragment — 16 × 8 (FP32)</text>
+                    <text x="430" y="28" fill="#52545a">each thread owns 4 fp32 (= 4 × .f32 regs)</text>
+                    <g transform="translate(430,38)" data-tip="**C/D fragment (16×8 FP32 accumulator)** — the output. Each lane owns 4 fp32 values held in registers across the entire K-axis reduction. The accumulator stays in registers; only the final tile is written to global memory.">
+                        <rect width="120" height="240" fill="#f5f5ef" stroke="#52545a"/>
+                        <g fill="#111214" opacity="0.5"><rect x="0" y="0" width="60" height="120"/></g>
+                        <g fill="#111214" opacity="0.5"><rect x="60" y="0" width="60" height="120"/></g>
+                        <g fill="#111214" opacity="0.3"><rect x="0" y="120" width="60" height="120"/></g>
+                        <g fill="#111214" opacity="0.3"><rect x="60" y="120" width="60" height="120"/></g>
+                        <text x="60" y="124" text-anchor="middle" fill="#52545a">half by half</text>
+                        <text x="60" y="135" text-anchor="middle" fill="#52545a">distribution per</text>
+                        <text x="60" y="146" text-anchor="middle" fill="#52545a">PTX ISA §9.7.13</text>
+                    </g>
+
+                    <text x="580" y="38" fill="#52545a" font-weight="700">Why this matters</text>
+                    <text x="580" y="58" fill="#52545a">• WMMA hides this layout.</text>
+                    <text x="580" y="72" fill="#52545a">• mma.sync exposes it.</text>
+                    <text x="580" y="86" fill="#52545a">• ldmatrix.sync loads</text>
+                    <text x="580" y="100" fill="#52545a">  shared memory</text>
+                    <text x="580" y="114" fill="#52545a">  directly into the</text>
+                    <text x="580" y="128" fill="#52545a">  required layout.</text>
+                    <text x="580" y="148" fill="#111214">→ overlap loads with</text>
+                    <text x="580" y="162" fill="#111214">  mma issue (§3.5).</text>
+                </g>
+            </svg>
+            <div class="figure-caption">The exact (lane, register slot) → matrix element mapping is normative and lives in the PTX ISA, §"Warp Level Matrix Multiply-Accumulate Instructions."<sup>[3]</sup> The high-level idea — that the warp distributes a small matrix across 32 lanes — is the part you need to internalize; the exact map is what <code>ldmatrix.sync</code> exists to handle for you.</div>
+        </div>
+
+        <h3>When to choose each abstraction level</h3>
+        <ul>
+            <li><strong>WMMA.</strong> Prototyping; portability across Volta/Turing/Ampere/Hopper; learning. ~70&ndash;80% of peak.</li>
+            <li><strong><code>mma.sync</code> + <code>ldmatrix</code>.</strong> Production-grade hand-written kernels; competitive with cuBLAS. ~85&ndash;95% of peak.</li>
+            <li><strong>CUTLASS templates.</strong> When you want production-grade <em>and</em> portability and don't want to maintain it yourself. Often within 1&ndash;3% of cuBLAS, sometimes ahead on awkward shapes.</li>
+            <li><strong>Hopper <code>wgmma</code> + TMA.</strong> H100-only. Async, much larger tiles, dramatically different programming model. Out of scope here but the same architectural ideas.</li>
+        </ul>
+    </section>
+
+    <!-- 3.5 -->
+    <section class="section" id="sec-3-5">
+        <h2 class="section-title"><span class="sec-num">3.5</span><code>cp.async</code> and Software Pipelining</h2>
+        <div class="section-subtitle">Overlap load with compute, by hand</div>
+
+        <p>Without async loads, the inner loop of a tiled GEMM looks like: <em>load tile → barrier → compute → barrier → load next tile → barrier → compute → ...</em>. Each barrier idles the entire block. The compute and load phases never overlap. The Tensor Cores sit silent while DRAM loads finish.</p>
+
+        <p>Ampere added <code>cp.async</code> — an asynchronous memory copy from global memory directly into shared memory, bypassing the register file. The thread issues the copy and continues executing. The copy completes in the background. The thread synchronizes only when it actually needs the data.<sup>[4]</sup></p>
+
+        <p>With <code>cp.async</code> you can <strong>double-buffer</strong>: while the Tensor Cores compute on buffer A, fire off the load for buffer B. When the compute is done, swap roles. The compute and the load are now happening at the same time. If the compute time and the load time are similar, you double throughput.</p>
+
+        <h3>The control-flow primitives</h3>
+        <p>Three PTX instructions form the loop primitives:</p>
+        <ul>
+            <li><code>cp.async.&lt;size&gt;.shared.global [dst], [src], size;</code> — issue a copy. The thread does not block.</li>
+            <li><code>cp.async.commit_group;</code> — close out the most recent batch of <code>cp.async</code> requests; they form a "group."</li>
+            <li><code>cp.async.wait_group N;</code> — block until at most <code>N</code> outstanding groups remain. <code>wait_group 0</code> = wait for everything.</li>
+        </ul>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 3.5-A: Async copy 16 bytes from global to shared (Ampere intrinsic)">// Convenience CUDA intrinsic (since CUDA 11):
+__device__ inline void cp_async_16B(void* smem_dst,
+                                    const void* global_src)
+{
+    // Convert the generic shared-memory pointer to a 32-bit shared address.
+    uint32_t smem_int = __cvta_generic_to_shared(smem_dst);
+    // 16-byte cp.async — the canonical width for FP16 tile loads.
+    asm volatile(
+        "cp.async.ca.shared.global [%0], [%1], %2;\n"
+        :: "r"(smem_int), "l"(global_src), "n"(16)
+    );
+}
+
+__device__ inline void cp_async_commit() {
+    asm volatile("cp.async.commit_group;\n" ::);
+}
+
+__device__ inline void cp_async_wait_all() {
+    asm volatile("cp.async.wait_group 0;\n" ::);
+}
+
+// Wait until at most N groups remain in flight (lets earlier groups
+// finish while later ones keep going — basis for multi-stage pipelines).
+template &lt;int N&gt;
+__device__ inline void cp_async_wait_group() {
+    asm volatile("cp.async.wait_group %0;\n" :: "n"(N));
+}
+</pre>
+
+        

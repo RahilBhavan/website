@@ -1,0 +1,97 @@
+<section class="section" id="sec-0-3">
+        <h2 class="section-title"><span class="sec-num">0.3</span>Linear Algebra You Cannot Skip</h2>
+        <p class="section-subtitle">The objects, the operations, the BLAS hierarchy</p>
+
+        <div class="cluster">
+            <strong>Reading order.</strong> Vectors → matrices → matrix-vector → matrix-matrix → BLAS levels. Each step adds one dimension's worth of structure and roughly an order of magnitude of arithmetic intensity. The whole textbook is about why level-3 BLAS is where GPUs win.
+        </div>
+
+        <div class="atomic" id="A0.3.1-vector">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.3.1]]</span>
+                <h4 class="atomic-title">Vector — a 1-D array of numbers, with a contract</h4>
+                <span class="atomic-tag">linalg</span>
+            </div>
+            <div class="atomic-body">
+                <p>A vector of length <em>n</em> is an <em>n</em>-tuple of numbers, stored contiguously. The contract that makes it a "vector" rather than just an array is that <em>only certain operations preserve meaning</em>: addition componentwise, scalar multiplication, dot product, norm. A "vector" in CUDA code is usually a pointer plus a length plus a stride. The stride is not the same as the length: two vectors that share a stride but are offset can be views into different rows of the same matrix without copying.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.3.2-matrix">[[A0.3.2]]</a> <a class="rel-chip rel-usedby" href="#A0.3.5-blas">[[A0.3.5]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.3.2-matrix">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.3.2]]</span>
+                <h4 class="atomic-title">Matrix layout — row-major vs column-major and leading dimension</h4>
+                <span class="atomic-tag">linalg</span>
+            </div>
+            <div class="atomic-body">
+                <p>An <em>M</em>×<em>N</em> matrix flattened to memory needs an ordering convention. <strong>Row-major</strong> (C, NumPy default): row 0 contiguous, then row 1, etc.; element <code>(i,j)</code> sits at offset <code>i·N + j</code>. <strong>Column-major</strong> (Fortran, BLAS, cuBLAS): column 0 contiguous; offset is <code>i + j·M</code>. Most working CUDA kernels actually carry a <em>leading dimension</em> (often called <code>lda</code>): the stride in memory between successive rows or columns, which can be larger than the logical dimension to satisfy alignment constraints. Bug class: confusing <code>lda</code> with the matrix dimension, getting addresses right for the first few elements, and producing silently wrong results far from the corner.</p>
+                <p>cuBLAS inherited Fortran column-major from netlib BLAS. To call it from row-major C code you typically <em>swap</em> the operands and the transpose flags: <code>cublasSgemm(...A, B...) on row-major</code> is equivalent to <code>cublasSgemm(...Bᵀ, Aᵀ...) on column-major</code>. This is the single most common cuBLAS bug for newcomers.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.1-vector">[[A0.3.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.3.4-gemm">[[A0.3.4]]</a> <a class="rel-chip rel-usedby" href="#sec-1-4">[[§1.4 Memory]]</a> <a class="rel-chip rel-usedby" href="#sec-2-3">[[§2.3 Coalescing]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.3.3-gemv">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.3.3]]</span>
+                <h4 class="atomic-title">GEMV — matrix-vector multiply, the "memory-bound" canary</h4>
+                <span class="atomic-tag">linalg</span>
+            </div>
+            <div class="atomic-body">
+                <p><em>y = αAx + βy</em>. For an <em>M</em>×<em>K</em> matrix and a length-<em>K</em> vector, the FLOP count is <em>2·M·K</em> and the memory traffic is <em>M·K + K + M</em> reads/writes. Arithmetic intensity is therefore ≈ 2 FLOPs / element of <em>A</em> read — almost identical to a streaming copy. On any modern accelerator GEMV is dead memory-bound; it is the lower bound on a GEMM's intensity if you fail to reuse <em>A</em>. The decode step of an autoregressive LLM is just a stack of GEMVs and that's why those decode tokens are slow.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.3.2-matrix">[[A0.3.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.3.4-gemm">[[A0.3.4-gemm]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-2">[[§5.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.3.4-gemm">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.3.4]]</span>
+                <h4 class="atomic-title">GEMM — the operation this entire book is about</h4>
+                <span class="atomic-tag">linalg</span>
+            </div>
+            <div class="atomic-body">
+                <p><em>C = αA·B + βC</em>, with <em>A</em> being <em>M</em>×<em>K</em>, <em>B</em> being <em>K</em>×<em>N</em>, <em>C</em> being <em>M</em>×<em>N</em>. FLOP count: <em>2·M·N·K</em>. Memory traffic if <em>nothing is reused</em>: <em>M·K + K·N + 2·M·N</em>. Arithmetic intensity if nothing is reused: ≈ 2·K elements of work per element of memory loaded, which for K=4096 is ~8 KFLOPs/byte (FP16) — well into compute-bound territory. <strong>That intensity is the entire reason GPUs and tensor cores exist for matmul.</strong></p>
+                <p>The catch: <em>nothing is reused</em> only holds if you actually <em>do</em> the reuse. A naive triply-nested loop has the <em>same</em> intensity as GEMV because each thread reloads <em>A</em> and <em>B</em> from global memory <em>K</em> times. The job of every kernel in <a href="#chapter-2" class="note-ref">Ch 2</a>, every tile transformation in <a href="#chapter-3" class="note-ref">Ch 3</a>, and every cuBLAS trick in <a href="#chapter-5" class="note-ref">Ch 5</a> is to <em>capture</em> the intensity that the algebra promises.</p>
+                <div class="tldr">GEMM offers ~K FLOPs per byte of A or B, but only if your kernel reuses each loaded element ~K times before evicting it. Reuse is the whole game.</div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.2-matrix">[[A0.3.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.3.5-blas">[[A0.3.5-blas]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-1">[[§1.1]]</a> <a class="rel-chip rel-usedby" href="#chapter-2">[[Ch2]]</a> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3]]</a> <a class="rel-chip rel-usedby" href="#chapter-5">[[Ch5]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.3.3-gemv">[[A0.3.3-gemv]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.3.5-blas">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.3.5]]</span>
+                <h4 class="atomic-title">BLAS levels 1 / 2 / 3 — a hierarchy of arithmetic intensity</h4>
+                <span class="atomic-tag">interface</span>
+            </div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">Level 1</span> Vector-vector ops: <code>axpy</code>, dot, norm. <em>O(n)</em> work, <em>O(n)</em> memory. Intensity ~1. Always memory-bound.</li>
+                    <li><span class="def-term">Level 2</span> Matrix-vector ops: <code>gemv</code>, <code>trsv</code>, <code>ger</code>. <em>O(n²)</em> work, <em>O(n²)</em> memory. Intensity ~2. Memory-bound on any modern accelerator.</li>
+                    <li><span class="def-term">Level 3</span> Matrix-matrix ops: <code>gemm</code>, <code>syrk</code>, <code>trsm</code>. <em>O(n³)</em> work, <em>O(n²)</em> memory. Intensity scales with the tile dimension. The only level where the GPU can saturate its FLOP rate.</li>
+                </ul>
+                <p>BLAS originated as a Fortran linear-algebra library standard in the 1970s–80s. cuBLAS, MKL, OpenBLAS all implement the same interface. The library taxonomy maps to the roofline (<a href="#sec-1-6" class="note-ref">§1.6</a>) <em>exactly</em>: Levels 1 and 2 live on the memory-bound slope; Level 3 lives on the compute-bound ceiling — if you tile it right.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.1-vector">[[A0.3.1]]</a> <a class="rel-chip rel-prereq" href="#A0.3.2-matrix">[[A0.3.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.3.4-gemm">[[A0.3.4]]</a> <a class="rel-chip rel-usedby" href="#sec-1-6">[[§1.6-roofline]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 0.4 Computer Architecture Primer ============== -->
+    <section class="section" id="sec-0-4">
+        

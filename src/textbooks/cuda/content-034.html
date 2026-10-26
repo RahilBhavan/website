@@ -1,0 +1,251 @@
+<h2 class="section-title"><span class="sec-num">12.4</span>Conditioning &amp; Stability</h2>
+        <p class="section-subtitle">When the algorithm is the problem, not the precision</p>
+
+        <div class="atomic" id="A12.4.1-condition">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.4.1]</span>
+                <h3 class="atomic-title">Condition Number</h3>
+                <span class="atomic-tag">linear algebra</span>
+            </div>
+            <div class="atomic-body">
+                <p>For a problem <code>y = f(x)</code>, the <strong>condition number</strong> measures how much a small change in <code>x</code> can move <code>y</code>. For matrix multiply <code>y = Ax</code>, it is <code>κ(A) = σ_max(A) / σ_min(A)</code>. If <code>κ ≈ 10⁶</code>, you lose ~6 decimal digits when solving with <code>A</code>. FP32 has ~7 digits — you have 1 left. Reducing to FP16 (3 digits) on an ill-conditioned matrix produces nonsense.</p>
+                <p>Practical guideline:</p>
+                <ul>
+                    <li><code>κ &lt; 10²</code> → FP16/BF16 fine.</li>
+                    <li><code>10² ≤ κ &lt; 10⁵</code> → mixed precision with FP32 accumulator.</li>
+                    <li><code>κ ≥ 10⁵</code> → keep FP32 throughout, or rescale the problem.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="atomic" id="A12.4.2-catastrophic">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.4.2]</span>
+                <h3 class="atomic-title">Catastrophic Cancellation</h3>
+                <span class="atomic-tag">subtraction</span>
+            </div>
+            <div class="atomic-body">
+                <p>Subtracting two nearly equal numbers leaves only their (small) difference, with the precision of the difference. Example: <code>(1 + 1e-8) - 1</code> in FP32 returns <code>0</code> because <code>1e-8</code> is below the FP32 ULP at magnitude 1. Common offenders:</p>
+                <ul>
+                    <li>Mean-centering large tensors (<code>x - mean(x)</code>) before computing variance.</li>
+                    <li>Softmax numerator/denominator with poorly chosen max-subtraction.</li>
+                    <li>Naive variance formula <code>E[X²] − E[X]²</code> instead of Welford.</li>
+                </ul>
+                <p>Fix by algebraic rearrangement or higher precision intermediates.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-12-5">
+        <h2 class="section-title"><span class="sec-num">12.5</span>Mixed Precision &amp; Loss Scaling</h2>
+        <p class="section-subtitle">Half the bits, twice the throughput, none of the divergence — if you do it right</p>
+
+        <div class="atomic" id="A12.5.1-amp">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.5.1]</span>
+                <h3 class="atomic-title">Automatic Mixed Precision (AMP) Recipe</h3>
+                <span class="atomic-tag">training</span>
+            </div>
+            <div class="atomic-body">
+                <p>Standard AMP for training:</p>
+                <ol>
+                    <li>Store weights as <strong>FP32 master copies</strong>, cast to FP16/BF16 for forward and backward passes.</li>
+                    <li>Compute matmuls and convolutions in FP16/BF16 with FP32 accumulators (Tensor Cores).</li>
+                    <li>Keep softmax, layernorm, loss, and optimizer steps in FP32.</li>
+                    <li><strong>Loss scaling</strong> (only for FP16, not BF16): multiply loss by <code>S</code> (typically 2¹⁰–2¹⁶) before backward so gradient magnitudes stay above FP16's subnormal threshold; unscale before applying to optimizer.</li>
+                </ol>
+                <p>BF16 has the FP32 exponent range, so loss scaling is unnecessary — at the cost of fewer mantissa bits.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#chapter-13">Ch 13 quantization</a></div>
+            </div>
+        </div>
+
+        <div class="figure">
+            <div class="figure-label">Figure 12.5 — Interactive</div>
+            <div class="figure-title">Dynamic range of major GPU number formats</div>
+            <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="10" preserveAspectRatio="xMidYMid meet">
+                <g stroke="#52545a" stroke-width="0.5">
+                    <line x1="60" y1="200" x2="780" y2="200"/>
+                    <g fill="#52545a" text-anchor="middle">
+                        <text x="60" y="220">2⁻¹²⁶</text>
+                        <text x="200" y="220">2⁻⁶⁰</text>
+                        <text x="340" y="220">2⁻³⁰</text>
+                        <text x="480" y="220">1</text>
+                        <text x="620" y="220">2³⁰</text>
+                        <text x="760" y="220">2¹²⁷</text>
+                    </g>
+                </g>
+                <g font-size="10" fill="#111214">
+                    <g data-tip="**FP32 &amp; BF16** — both span 2⁻¹²⁶ to 2¹²⁷ (8-bit exponent). FP32 has 23 mantissa bits; BF16 has 7. Same range, very different precision. BF16 trades mantissa for the no-loss-scaling property.">
+                    <rect x="60"  y="40"  width="720" height="14" fill="#111214" opacity="0.4"/>
+                    <text x="64"  y="51" fill="#f5f5ef">FP32 &amp; BF16 — 2⁻¹²⁶ to 2¹²⁷</text>
+                    </g>
+
+                    <g data-tip="**FP16** — 5-bit exponent (2⁻¹⁴ to 2¹⁵), 10-bit mantissa. Tiny gradients underflow to subnormal/zero; this is why loss scaling exists for FP16 training.">
+                    <rect x="220" y="64"  width="400" height="14" fill="#111214" opacity="0.5"/>
+                    <text x="224" y="75" fill="#f5f5ef">FP16 — 2⁻¹⁴ to 2¹⁵</text>
+                    </g>
+
+                    <g data-tip="**FP8 E4M3** (Hopper, sm_90+) — 4-bit exponent, 3-bit mantissa. Narrow range, used primarily for forward activations &amp; weights where range is small but precision matters.">
+                    <rect x="320" y="88"  width="280" height="14" fill="#111214" opacity="0.5"/>
+                    <text x="324" y="99" fill="#f5f5ef">FP8 E4M3 — 2⁻⁶ to 2⁸</text>
+                    </g>
+
+                    <g data-tip="**FP8 E5M2** (Hopper, sm_90+) — 5-bit exponent, 2-bit mantissa. Same range as FP16 with 8 fewer bits of mantissa. Used for gradients in FP8 mixed-precision training.">
+                    <rect x="260" y="112" width="340" height="14" fill="#111214" opacity="0.5"/>
+                    <text x="264" y="123" fill="#f5f5ef">FP8 E5M2 — 2⁻¹⁴ to 2¹⁵</text>
+                    </g>
+
+                    <g data-tip="**INT8** — symmetric integer ±127. Linear quantization with per-tensor or per-channel scale. The bedrock of post-training quantization for inference.">
+                    <rect x="370" y="136" width="180" height="14" fill="#111214" opacity="0.5"/>
+                    <text x="374" y="147" fill="#f5f5ef">INT8 — −128..127</text>
+                    </g>
+
+                    <g data-tip="**INT4** — ±7. Used in weight-only quantization (GPTQ, AWQ) for LLM inference. Tensor Cores support INT4×INT4 mma since Turing (sm_75).">
+                    <rect x="410" y="160" width="100" height="14" fill="#111214" opacity="0.5"/>
+                    <text x="414" y="171" fill="#f5f5ef">INT4 — −8..7</text>
+                    </g>
+                </g>
+            </svg>
+            <div class="figure-caption">Loss scaling exists to push small gradients into the visible range of FP16 (the labeled FP16 interval). BF16 covers the same range as FP32, so the trick is unnecessary.</div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-12-6">
+        <h2 class="section-title"><span class="sec-num">12.6</span>Determinism on the GPU</h2>
+        <p class="section-subtitle">Same input, same kernel, same hardware — different answer</p>
+
+        <div class="atomic" id="A12.6.1-determinism">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.6.1]</span>
+                <h3 class="atomic-title">Sources of Non-Determinism</h3>
+                <span class="atomic-tag">determinism</span>
+            </div>
+            <div class="atomic-body">
+                <p>The same GEMM kernel can return bit-different results across runs because of three independent sources:</p>
+                <ol>
+                    <li><strong>Atomic operations</strong> — order of <code>atomicAdd</code> across blocks depends on scheduler. Solution: use deterministic reduction (segmented or tree).</li>
+                    <li><strong>Algorithm selection</strong> — cuBLAS and cuDNN heuristically pick different kernels based on cache state. Disable with <code>CUBLAS_PEDANTIC_MATH_MODE</code>, <code>CUBLASLT_ALGO_CONFIG</code> pinning, or <code>torch.use_deterministic_algorithms(True)</code>.</li>
+                    <li><strong>Reduction order</strong> — split-K and stream-K change the order of K-axis additions; FP non-associativity makes the result bit-different.</li>
+                </ol>
+                <p>If you need byte-identical reproducibility, accept the typical 10–30% performance cost and lock all three.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span><a class="rel-chip rel-related" href="#sec-2-9">§2.9 Sync &amp; ordering</a></div>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 12</div>
+            <div class="checkpoint-sub">Numerical literacy gates</div>
+            <ul>
+                <li>State the max ULP error of <code>__sinf</code> vs <code>sinf</code> and decide which one your kernel needs.</li>
+                <li>Compute the worst-case forward error of a naive vs pairwise vs Kahan sum of 10⁶ FP32 values.</li>
+                <li>Explain when BF16 is preferable to FP16 in 30 seconds.</li>
+                <li>Identify the three sources of non-determinism in a multi-block reduction.</li>
+                <li>Estimate the condition number of a near-singular matrix and pick a precision strategy.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-11"><span class="label">← Previous</span>Advanced Memory</a>
+            <a href="#chapter-13" class="next"><span class="label">Next →</span>Quantization &amp; Sparsity</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 13 — QUANTIZATION & SPARSITY
+     ===================================================================== -->
+<article class="chapter" id="chapter-13">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">13</div>
+        <div class="chapter-eyebrow">Chapter 13</div>
+        <h1 class="chapter-title">Quantization &amp; Sparsity:<br>Shrinking the Operands Without Breaking the Math</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Tensor Cores double their throughput every time you halve the operand width. INT8 is 2× FP16; INT4 is 4×; sparse-INT8 is 8×. But each step trades precision for speed. This chapter teaches you the four quantization schemes you'll meet (per-tensor, per-channel, per-token, group-wise), the FP8 formats and when each one is right, how 2:4 structured sparsity is enforced at the hardware level, and how to fuse dequant + GEMM + bias + activation into a single kernel.</p>
+    </header>
+
+    <section class="section" id="sec-13-1">
+        <h2 class="section-title"><span class="sec-num">13.1</span>The Quantization Spectrum</h2>
+        <p class="section-subtitle">From FP32 down to 1-bit, what each tier actually costs</p>
+
+        <div class="atomic" id="A13.1.1-spectrum">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.1.1]</span>
+                <h3 class="atomic-title">Five Quantization Granularities</h3>
+                <span class="atomic-tag">quantization</span>
+            </div>
+            <div class="atomic-body">
+                <ul>
+                    <li><strong>Per-tensor</strong> — one <code>(scale, zero_point)</code> for the whole tensor. Cheapest, lowest accuracy.</li>
+                    <li><strong>Per-channel</strong> — one per output channel. Standard for weights.</li>
+                    <li><strong>Per-token / per-row</strong> — one per activation row. Standard for transformers.</li>
+                    <li><strong>Group-wise</strong> — split a tensor into groups of e.g. 64 consecutive values, one scale per group. AWQ, GPTQ use 128-group.</li>
+                    <li><strong>Sub-channel</strong> — multiple scales per channel, used by FP4 schemes (NVFP4 has two-level scale).</li>
+                </ul>
+                <p>The finer the granularity, the more accuracy you preserve, but the more metadata bandwidth you spend.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A13.1.2-symmetric">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.1.2]</span>
+                <h3 class="atomic-title">Symmetric vs Affine Quantization</h3>
+                <span class="atomic-tag">scheme</span>
+            </div>
+            <div class="atomic-body">
+                <p><strong>Symmetric:</strong> <code>q = round(x / scale)</code>. Zero in the float domain maps to 0 in the int domain. Cheaper kernels (no zero-point arithmetic), but wastes the bottom half of the int range when <code>x</code> is non-negative (e.g. after ReLU).</p>
+                <p><strong>Affine:</strong> <code>q = round(x / scale + zero_point)</code>. Uses the full int range, at the cost of one extra add per multiply (which can be folded into the bias).</p>
+                <p>Modern LLM inference is largely <em>weight-only symmetric</em> (W4A16, W8A16) with affine activations only where necessary.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-13-2">
+        <h2 class="section-title"><span class="sec-num">13.2</span>INT8 GEMM Kernels</h2>
+        <p class="section-subtitle">The first Tensor-Core integer pipeline</p>
+
+        <div class="atomic" id="A13.2.1-imma">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.2.1]</span>
+                <h3 class="atomic-title">IMMA — Integer Matrix-Multiply-Accumulate</h3>
+                <span class="atomic-tag">tensor cores</span>
+            </div>
+            <div class="atomic-body">
+                <p>Available since Turing. Sample shape on Ampere: <code>m16n8k32 s8s8s32</code> — A and B are INT8 tiles, accumulator is INT32. Throughput: 2× the FP16 Tensor-Core rate. PTX form:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:8px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+mma.sync.aligned.m16n8k32.row.col.s32.s8.s8.s32 {d0,d1,d2,d3}, {a0,a1}, {b0}, {c0,c1,c2,c3};
+                </pre>
+                <p>The s8.s8.s32 means: A is signed INT8, B is signed INT8, accumulator is signed INT32. The INT32 accumulator never overflows for K ≤ 2³¹/256² ≈ 32K.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 13.2-A: INT8 quantize + GEMM dispatch (host)">// Per-channel symmetric quant for weights, per-token affine for activations.
+struct Quant {
+    int8_t*  q_data;    // quantized values
+    float*   scale;     // scale per channel or per row
+    int32_t* zero;      // zero point (0 if symmetric)
+};
+
+void gemm_int8(const Quant&amp; A, const Quant&amp; B, float* C,
+               int M, int N, int K, cudaStream_t s) {
+    // 1) Call the IMMA kernel that produces an INT32 partial sum.
+    int32_t* C_int;
+    cudaMallocAsync(&amp;C_int, M * N * sizeof(int32_t), s);
+    imma_gemm_kernel&lt;&lt;&lt;grid, block, 0, s&gt;&gt;&gt;(A.q_data, B.q_data, C_int, M, N, K);
+    // 2) Dequant + bias + activation in a fused epilogue:
+    dequant_epilogue&lt;&lt;&lt;..., s&gt;&gt;&gt;(C_int, A.scale, B.scale, C, M, N);
+    cudaFreeAsync(C_int, s);
+}
+</pre>
+    </section>
+
+    <section class="section" id="sec-13-3">
+        <h2 class="section-title"><span class="sec-num">13.3</span>FP8 — E4M3 vs E5M2</h2>
+        <p class="section-subtitle">Two competing 8-bit floats — when to use each</p>
+
+        <div class="atomic" id="A13.3.1-fp8">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.3.1]</span>
+                

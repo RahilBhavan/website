@@ -1,0 +1,28 @@
+{
+  "design": "rahil-design@3.3.1",
+  "assets": {
+    "public/textbooks/book-compat.css": "c4ef907c6c5b57dda56f398af4fbafbaed839630320967fb08e08dfeb0c7e4c8",
+    "public/textbooks/reader.css": "bf41682f2eb0ac60c6aa7f01ae04a26f05594cbbc6b9bfa59b3c491ac2f338d8",
+    "public/textbooks/reader.js": "9141270bc7f4891b3ae3f0ffc309eb51f9034988e9f768d705cb29113de05de0"
+  },
+  "book_manifest": "docs/textbook-build.json",
+  "browser": "Firefox via Playwright; native T3 browser failed with tab-capacity error, HTML preview Chrome timed out",
+  "checks": {
+    "astro_check_build_internal_links": true,
+    "unit_tests": 14,
+    "existing_e2e_tests": 22,
+    "textbook_behavior_checks": 13,
+    "readers": 12,
+    "layout_viewports": [
+      1280,
+      390,
+      320
+    ],
+    "no_js_and_print": true,
+    "d3_keyboard_activation": true,
+    "clean_checkout_generation": true
+  },
+  "text_contrast_scope": "Solid-color leaf HTML text only; SVG and compositing reviewed separately. No full WCAG conformance claim.",
+  "sources_refreshed": false,
+  "safari_windows_tested": false
+}

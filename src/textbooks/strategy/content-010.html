@@ -1,0 +1,96 @@
+<h2>Interview prep: twelve questions</h2>
+<div class="prose"><p>Answer each one out loud in under a minute before opening it. The answers use this book's numbers. Refresh them after Q3.</p></div>
+<div class="check">
+<p>Company and products</p>
+<details><summary>Explain Strategy in two sentences.</summary><p>Strategy raises money by selling common stock, preferred stock and convertible notes, and uses it to buy bitcoin, aiming to raise bitcoin per share over time. It sells the preferreds as "digital credit": dollar or euro income backed by about $70B of bitcoin, paid from a cash reserve and ongoing stock sales.</p></details>
+<details><summary>Walk me through the five preferreds.</summary><p>From most senior: STRF (10%, penalty step-up if skipped), STRC (variable, 12% now, steered to trade near $100, the biggest at ≈ $8.8B), STRE (10% in euros, listed in Luxembourg), STRK (8%, converts into 0.1 MSTR, can pay in shares) and STRD (10%, non-cumulative, most junior). Each targets a different buyer.</p></details>
+<details><summary>Why is STRC different from the others?</summary><p>Its rate is reset monthly to keep its price near $100, and it pays twice a month (daily if the Oct 28 vote passes). That makes it feel like a cash product, but the rate rises under stress: it went from 9% to 12% in a year.</p></details>
+<p>Capital markets</p>
+<details><summary>When does issuing MSTR to acquire bitcoin add net bitcoin per share?</summary><p>Above 1x net mNAV, under unchanged prices and the issuer’s dilution assumptions. This is an effect on one metric, not a conclusion about shareholder value. Management retains issuance discretion near 1x.</p></details>
+<details><summary>Why did Strategy sell MSTR to buy back STRC in 2026?</summary><p>MSTR traded at about 1.19x net mNAV while STRC traded just under $100. Retiring a $100 claim for $99.65 with stock sold at a premium adds net bitcoin per share while m &gt; q, and it supports STRC's price. It stops adding if STRC trades above $100 × m.</p></details>
+<details><summary>Which mNAV do you use, and why does it matter?</summary><p>The workbook uses reconstructed net mNAV, about 1.175x at Oct 15 prices. Legacy EV mNAV is about 1.131x and basic mNAV is 0.916x at those inputs. The 1.191x dat-accretion observation is from the week ending Oct 11. Always match dates and definitions.</p></details>
+<p>Liability management</p>
+<details><summary>How long can Strategy pay its preferred dividends?</summary><p>Annual dividends plus interest are about $1.56B. The $4.88B Reserve covers about 37 months alone, comfortably above the 12-month policy floor. If demand permits full use of the $18.8B common ATM, static coverage is about 15 years before principal. The model’s 1x gate can stop issuance; puts can require financing earlier. Read the dated path rather than treating the static ratio as a forecast.</p></details>
+<details><summary>What's the biggest single lever on the dividend bill?</summary><p>STRC's rate. It's two-thirds of the bill, and each point costs about $88M a year. Paying STRK in shares saves about $112M a year.</p></details>
+<details><summary>What liability would you watch in 2027–28?</summary><p>$5.9B of convertible principal that holders can put between Sep 2027 and Sep 2028. If MSTR trades below the conversion prices, Strategy must refinance or repay. The Reserve isn't designated for principal.</p></details>
+<p>Judgement</p>
+<details><summary>What's the bear case in one line?</summary><p>If bitcoin falls and the premium disappears, the main funding tool switches off while STRC's rate rises. The company is then spending a finite reserve on a growing bill and has to decide whether to sell the bitcoin it exists to hold.</p></details>
+<details><summary>What supports coverage in the model’s favorable case?</summary><p>A cash Reserve, higher bitcoin value and continued demand for common issuance support coverage under the case assumptions. Preferreds are perpetual, but convertible puts still create dated cash needs. An mNAV above 1x alone does not establish self-funding.</p></details>
+<details><summary>What would you build next for the team?</summary><p>A weekly refresh of the coverage model wired to the 8-K parser from dat-accretion. That would give a one-page "credit dashboard" that updates every Monday: reserve months, STRC vs par, net mNAV vs 1.0x, BTC cover and days to the next put.</p></details>
+</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="x1">
+<span class="ch-num">Appendix A</span>
+<h2>Formula sheet</h2>
+<div class="prose"><p>Every calculation in this book, in one place. $ figures in millions unless noted. Example values are the Oct 2026 snapshot.</p></div>
+<figure class="figure">
+<div class="tbl"><table>
+<thead><tr><th>Measure</th><th>Formula</th><th class="r">Example</th></tr></thead>
+<tbody>
+<tr><td>Annual dividend on a preferred</td><td>stated amount × shares × rate</td><td class="r">STRC: 8,792 × 12% = 1,055</td></tr>
+<tr><td>Current yield</td><td>annual dividend ÷ market price</td><td class="r">$10 ÷ $80 = 12.5%</td></tr>
+<tr><td>Annual cash charges</td><td>Σ cash dividends + debt interest</td><td class="r">1,560</td></tr>
+<tr><td>Reserve coverage (months)</td><td>USD Reserve ÷ annual charges × 12</td><td class="r">4,880 ÷ 1,560 × 12 = 37.5</td></tr>
+<tr><td>Headroom over policy</td><td>Reserve − charges × (policy months ÷ 12)</td><td class="r">4,880 − 1,560 = 3,320</td></tr>
+<tr><td>Net assets</td><td>bitcoin + cash − debt − preferred</td><td class="r">69,668 + 5,521 − 20,503 = 54,686</td></tr>
+<tr><td>Basic mNAV</td><td>market cap ÷ bitcoin value</td><td class="r">63,808 ÷ 69,668 = 0.92x</td></tr>
+<tr><td>Enterprise-value mNAV</td><td>(market cap + debt + preferred − cash) ÷ bitcoin value</td><td class="r">1.13x</td></tr>
+<tr><td>Net mNAV</td><td>share price ÷ (net bitcoin per diluted share × BTC price)</td><td class="r">≈ 1.17–1.19x</td></tr>
+<tr><td>Leverage of common at NAV</td><td>bitcoin value ÷ net assets</td><td class="r">69,668 ÷ 54,686 = 1.27x</td></tr>
+<tr><td>BTC cover through a rank</td><td>bitcoin value ÷ cumulative claims through that rank</td><td class="r">STRD: 3.4x</td></tr>
+<tr><td>BTC price where cover = 1.0x</td><td>cumulative claims ÷ BTC held</td><td class="r">20,503 ÷ 848,250 = $24,171</td></tr>
+<tr><td>Carry as % of bitcoin</td><td>annual charges ÷ bitcoin value</td><td class="r">1,560 ÷ 69,668 = 2.2%</td></tr>
+<tr><td>Dilution to fund a year</td><td>annual charges ÷ market cap</td><td class="r">≈ 2.4%</td></tr>
+<tr><td>Change in net bitcoin per share from selling common</td><td>k × (1 − 1/m), with k = $ raised ÷ (BTC price × shares)</td><td class="r">adds when m &gt; 1</td></tr>
+<tr><td>Rotation break-even (sell common, retire preferred)</td><td>adds while m &gt; preferred price ÷ $100</td><td class="r">STRC below $100 × m</td></tr>
+<tr><td>Years covered by Reserve + stock sales</td><td>if s &lt; C and the ATM lasts: R ÷ (C − s); else (R + ATM) ÷ C</td><td class="r">15.2 yrs (capacity, not a forecast)</td></tr>
+</tbody></table></div>
+<figcaption>R = Reserve, C = annual charges, s = stock sales per year, m = net mNAV. Sources and dates for every input: <a class="xref" href="#sources">Appendix C</a>.</figcaption>
+</figure>
+</section>
+
+<section class="chapter" id="glossary">
+<span class="ch-num">Appendix B</span>
+<h2>Glossary</h2>
+<dl class="gloss">
+<dt>Amplification</dt><dd>Strategy's word for leverage: using debt and preferreds so common holders get more than 1x bitcoin exposure.</dd>
+<dt>ATM program</dt><dd>At-the-market offering: selling shares into the market gradually through brokers. Capacity is a ceiling, not guaranteed demand.</dd>
+<dt>BTC cover</dt><dd>This book's term: bitcoin value ÷ (debt principal + preferred notional).</dd>
+<dt>BTC Gain / BTC $ Gain</dt><dd>BTC Yield expressed in coins, or in dollars.</dd>
+<dt>BTC Monetization Program</dt><dd>Board-approved rules for selling bitcoin: up to $1.25B into the Reserve, for dividends or interest when better than issuing stock, or to fund buybacks.</dd>
+<dt>BTC Yield</dt><dd>% change in bitcoin per diluted share over a period. A company-defined measure, not GAAP.</dd>
+<dt>CAMT</dt><dd>The US 15% corporate alternative minimum tax. Strategy said in Oct 2025 it no longer expects to owe it on unrealized bitcoin gains, after IRS interim guidance.</dd>
+<dt>Capital stack</dt><dd>All claims on a company, ordered from first-paid (senior) to last-paid (common).</dd>
+<dt>Carry</dt><dd>The yearly cost of the claims ahead of common, here about $1.56B, or 2.2% of the bitcoin's value.</dd>
+<dt>Certificate of designation</dt><dd>The legal document that sets a preferred stock's terms: rate, ranking, what happens if dividends are skipped.</dd>
+<dt>Convertible arbitrage</dt><dd>A hedge-fund strategy: buy a convertible, short the stock, profit from volatility. The main buyers of Strategy's converts.</dd>
+<dt>Convertible note</dt><dd>Debt the holder can swap into shares at a set conversion price. Usually low coupon.</dd>
+<dt>Cost of capital</dt><dd>What a company gives up to get money: interest, dividends, or a slice of future value for new shares.</dd>
+<dt>Cumulative / non-cumulative</dt><dd>Cumulative: a skipped dividend is still owed (and may compound). Non-cumulative (STRD): it's simply gone.</dd>
+<dt>Current yield</dt><dd>Annual dividend ÷ market price. Differs from the stated rate whenever the price isn't $100.</dd>
+<dt>Digital credit</dt><dd>Strategy's name for its preferreds: fixed-income securities backed by its bitcoin.</dd>
+<dt>Fair-value accounting</dt><dd>Marking bitcoin to market every quarter (ASU 2023-08, adopted 2025). Moves reported profit; produces no cash.</dd>
+<dt>Fundamental-change put</dt><dd>A preferred holder's right to sell back at the stated amount after events such as a takeover.</dd>
+<dt>Issuer call</dt><dd>Strategy's right to redeem a series: if under 25% remains, after a tax event, or for STRC at $101 any time.</dd>
+<dt>Leverage</dt><dd>Using fixed claims to own more of an asset. Strategy's common owns about 1.27x bitcoin at net asset value.</dd>
+<dt>Liquidation preference / stated amount / notional</dt><dd>The face value of a preferred, usually $100 a share (€100 for STRE). Dividends are a percentage of it.</dd>
+<dt>LTV (loan-to-value)</dt><dd>Claims ÷ asset value. Used here for the bitcoin cushion beneath each preferred.</dd>
+<dt>mNAV</dt><dd>Multiple of net asset value: how the market values the company relative to its bitcoin. Three versions: basic, enterprise value and net (Chapter 8).</dd>
+<dt>NAV (net asset value)</dt><dd>Assets minus all claims ahead of common. For Strategy: bitcoin + cash − debt − preferred.</dd>
+<dt>Net bitcoin per share</dt><dd>(Bitcoin + cash − debt − preferred, in bitcoin) ÷ fully diluted shares. The basis of net mNAV.</dd>
+<dt>Pari passu</dt><dd>Ranking equally. None of Strategy's five preferreds are pari passu with each other.</dd>
+<dt>Perpetual</dt><dd>Never matures. The issuer never has to repay principal but pays dividends indefinitely.</dd>
+<dt>Put (holder put)</dt><dd>A convertible holder's right to demand repayment on a set date.</dd>
+<dt>Reflexivity</dt><dd>When a price affects the thing it values. MSTR's premium enables the growth that justifies the premium.</dd>
+<dt>Rotation</dt><dd>Selling one security to buy back another, e.g. selling MSTR to retire STRC.</dd>
+<dt>Senior / junior</dt><dd>Who gets paid first. Debt is senior to all preferreds; STRF is senior to STRC, and so on down to STRD.</dd>
+<dt>Shelf registration</dt><dd>An SEC filing that lets a company sell securities over time, e.g. through an ATM.</dd>
+<dt>Stated amount</dt><dd>A preferred's face value ($100; €100 for STRE). Dividends are a percentage of it.</dd>
+<dt>Step-up</dt><dd>STRF and STRE's penalty: if dividends go unpaid, the rate rises 1% per period up to 18%.</dd>
+<dt>USD Reserve</dt><dd>Cash ring-fenced for dividends and interest. Policy: at least 12 months of charges.</dd>
+</dl>
+</section>
+
+<section class="chapter" id="sources">
+<span class="ch-num">Appendix C</span>

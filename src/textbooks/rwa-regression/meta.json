@@ -1,0 +1,7 @@
+{
+  "title": "RWA Velocity & Causal Inference \u2014 Complete Textbook",
+  "source_sha256": "14a6b19c0ecd4cf06a0ff858543b9f05042cc7c63335ff1052e89b0b976a669c",
+  "source_name": "complete-textbook.html",
+  "edition": "Website reading edition",
+  "extra_head": "<link rel=\"stylesheet\" href=\"/textbooks/vendor/katex/katex.min.css\"><script src=\"/textbooks/vendor/katex/katex.min.js\"></script><script src=\"/textbooks/vendor/katex/contrib/auto-render.min.js\"></script><script src=\"/textbooks/vendor/d3.min.js\"></script>"
+}

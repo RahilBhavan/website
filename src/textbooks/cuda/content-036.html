@@ -1,0 +1,246 @@
+<h3 class="atomic-title">Five Rules for Any Memory-Bound Algorithm</h3>
+                <span class="atomic-tag">design pattern</span>
+            </div>
+            <div class="atomic-body">
+                <ol>
+                    <li><strong>Block to fit shared memory</strong> — any intermediate larger than SMEM should be regenerated, not stored.</li>
+                    <li><strong>Stream-update dependent statistics</strong> — running max, running sum, running mean/variance (Welford). These let you avoid the multi-pass version.</li>
+                    <li><strong>Recompute &lt; store</strong> on backward pass. The FA backward recomputes the attention matrix from saved (max, sum) statistics instead of storing it.</li>
+                    <li><strong>Producer/consumer specialization</strong> on Hopper — partition warps by role so load and math overlap without scheduler luck.</li>
+                    <li><strong>Pick block sizes so the next block fits in L2</strong> — by the time a Q-block finishes its K-loop, the next K-block is already there.</li>
+                </ol>
+                <p>Apply these to softmax, layer norm, RMSNorm, cross-entropy with logit shifts, RoPE, and any "compute a big intermediate, immediately reduce it" pattern.</p>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 14</div>
+            <div class="checkpoint-sub">Apply the pattern, not the formula</div>
+            <ul>
+                <li>State the arithmetic intensity of standard attention and explain why it's memory-bound.</li>
+                <li>Derive the online softmax update formula on a whiteboard.</li>
+                <li>Identify one operator in your own code that would benefit from the FA design pattern.</li>
+                <li>Compare FA-1, FA-2, FA-3 in one sentence each.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-13"><span class="label">← Previous</span>Quantization &amp; Sparsity</a>
+            <a href="#chapter-15" class="next"><span class="label">Next →</span>Convolution Kernels</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 15 — CONVOLUTION KERNELS
+     ===================================================================== -->
+<article class="chapter" id="chapter-15">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">15</div>
+        <div class="chapter-eyebrow">Chapter 15</div>
+        <h1 class="chapter-title">Convolution Kernels:<br>From im2col to Winograd</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Convolution is the second pillar of deep-learning compute. It looks like a different problem from GEMM, but every fast GPU implementation either reduces it to a GEMM or trades multiplies for additions via Winograd transforms. By the end you can implement each strategy, predict when each one wins, and read a cuDNN log to know which algorithm the heuristic picked.</p>
+    </header>
+
+    <section class="section" id="sec-15-1">
+        <h2 class="section-title"><span class="sec-num">15.1</span>What Convolution Is — One More Time</h2>
+        <p class="section-subtitle">2-D, batched, multi-channel — the shape that matters</p>
+
+        <div class="atomic" id="A15.1.1-conv">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.1.1]</span>
+                <h3 class="atomic-title">The 7-D Convolution</h3>
+                <span class="atomic-tag">convolution</span>
+            </div>
+            <div class="atomic-body">
+                <p>An ML 2-D convolution has shape parameters <code>(N, C, H, W, K, R, S, U, V, pad)</code>:</p>
+                <ul>
+                    <li><strong>N</strong> — batch.</li>
+                    <li><strong>C</strong> — input channels.</li>
+                    <li><strong>H, W</strong> — input spatial.</li>
+                    <li><strong>K</strong> — output channels.</li>
+                    <li><strong>R, S</strong> — filter spatial.</li>
+                    <li><strong>U, V</strong> — stride.</li>
+                    <li><strong>P, Q</strong> — output spatial = <code>((H + 2·pad − R)/U) + 1</code>.</li>
+                </ul>
+                <p>FLOPs: <code>2 · N · K · C · R · S · P · Q</code>. For ResNet-50's 3×3 layer at 28×28 with 256 channels and batch 64, that's ~6 GFLOP — small individually, but a network has hundreds of such ops.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-15-2">
+        <h2 class="section-title"><span class="sec-num">15.2</span>im2col + GEMM</h2>
+        <p class="section-subtitle">The straightforward, memory-hungry reduction to matrix multiply</p>
+
+        <div class="atomic" id="A15.2.1-im2col">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.2.1]</span>
+                <h3 class="atomic-title">The Unfolding Trick</h3>
+                <span class="atomic-tag">im2col</span>
+            </div>
+            <div class="atomic-body">
+                <p>For each output pixel, list the <code>C·R·S</code> input values that contribute to it as a column of a giant matrix <code>X_unf</code> of shape <code>(C·R·S) × (N·P·Q)</code>. Then convolution is just</p>
+                <div class="formula">Y = W_flat · X_unf</div>
+                <p>where <code>W_flat</code> is the filter reshaped to <code>K × (C·R·S)</code>. This turns convolution into one giant GEMM. Caltech's Caffe popularized the technique; every modern stack still keeps it as a fallback. Downside: <code>X_unf</code> uses <code>R·S</code>× more memory than <code>X</code>. For 3×3 that's 9× — manageable. For 7×7 it is 49×.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-15-3">§15.3 Implicit GEMM</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-15-3">
+        <h2 class="section-title"><span class="sec-num">15.3</span>Implicit GEMM</h2>
+        <p class="section-subtitle">The same GEMM, without ever materializing <code>X_unf</code></p>
+
+        <div class="atomic" id="A15.3.1-implicit">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.3.1]</span>
+                <h3 class="atomic-title">Compute the Indexing on the Fly</h3>
+                <span class="atomic-tag">implicit gemm</span>
+            </div>
+            <div class="atomic-body">
+                <p>Implicit GEMM is the standard cuDNN algorithm. The kernel acts as if it is doing the GEMM <code>Y = W_flat · X_unf</code>, but each GEMM tile load does the im2col index calculation inline, reading directly from the original <code>X</code> tensor. The result: same arithmetic and bandwidth as a dense GEMM of the same logical size, no <code>R·S</code> memory overhead. Trade-off: more address-generation pressure, which Hopper's TMA largely mitigates.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-15-4">
+        <h2 class="section-title"><span class="sec-num">15.4</span>Winograd Minimal Filtering</h2>
+        <p class="section-subtitle">Trade multiplies for additions in 3×3 kernels</p>
+
+        <div class="atomic" id="A15.4.1-winograd">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.4.1]</span>
+                <h3 class="atomic-title">F(2,3) — 2-output Winograd</h3>
+                <span class="atomic-tag">winograd</span>
+            </div>
+            <div class="atomic-body">
+                <p>The "minimal filtering" form due to Winograd computes a 2×2 output tile from a 4×4 input tile using only 16 element-wise multiplies after a fixed linear transform — versus 36 for the direct 3×3 conv. The 2.25× reduction in multiplies maps directly to a 2.25× peak speedup on FP32, but in practice you get 1.4–1.7× because:</p>
+                <ul>
+                    <li>The four transform matrices (<code>A</code>, <code>B</code>, <code>G</code>) add memory traffic.</li>
+                    <li>Precision degrades — Winograd has higher rounding error than direct conv, so FP16 with Winograd can break.</li>
+                </ul>
+                <p>F(4,3) (4-output Winograd) is even more aggressive but loses accuracy faster. Most production stacks default to F(2,3) for FP32 and skip Winograd entirely for FP16/BF16, using implicit GEMM there instead.</p>
+            </div>
+        </div>
+
+        <div class="formula">// F(2,3) algorithm:
+G·g·Gᵀ  ⊙  Bᵀ·d·B   →   Aᵀ · (·) · A   =   2×2 output
+
+where g is 3×3 filter, d is 4×4 input tile.</div>
+    </section>
+
+    <section class="section" id="sec-15-5">
+        <h2 class="section-title"><span class="sec-num">15.5</span>FFT and Direct Convolution</h2>
+        <p class="section-subtitle">The other two paths, and when each wins</p>
+
+        <div class="atomic" id="A15.5.1-fft">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.5.1]</span>
+                <h3 class="atomic-title">FFT Convolution</h3>
+                <span class="atomic-tag">fft</span>
+            </div>
+            <div class="atomic-body">
+                <p>For large filter sizes (R, S ≥ 11), FFT-based conv (<code>cuFFT</code> + element-wise multiply + inverse FFT) is asymptotically O((H·W)·log(H·W)) versus direct O(H·W·R·S). Wins decisively for non-strided conv with very large kernels. ML rarely has those, so FFT-conv is uncommon in deep nets but standard in scientific/image processing.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A15.5.2-direct">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.5.2]</span>
+                <h3 class="atomic-title">Direct Convolution</h3>
+                <span class="atomic-tag">direct</span>
+            </div>
+            <div class="atomic-body">
+                <p>Skip the GEMM mapping entirely; have each thread block compute a small output tile by sliding the filter directly. Wins when: tiny channels (C, K &lt; 16, so GEMM tiles waste rows), tiny H/W (mobile), or depthwise convs where each output channel reads only one input channel.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-15-6">
+        <h2 class="section-title"><span class="sec-num">15.6</span>Depthwise &amp; Group Convolution</h2>
+        <p class="section-subtitle">The shape that breaks every GEMM-based plan</p>
+
+        <div class="atomic" id="A15.6.1-depthwise">
+            <div class="atomic-head">
+                <span class="atomic-id">[A15.6.1]</span>
+                <h3 class="atomic-title">Why Depthwise Doesn't im2col</h3>
+                <span class="atomic-tag">depthwise</span>
+            </div>
+            <div class="atomic-body">
+                <p>Depthwise conv applies one filter <em>per input channel</em>. The "GEMM" you'd build is K=1 wide — degenerate. cuDNN's depthwise kernels are direct: each thread block owns one channel, slides the filter through the output. MobileNet's bottleneck is depthwise conv precisely because the GEMM trick stops paying. Same story for grouped conv with small group size.</p>
+            </div>
+        </div>
+
+        <div class="table-wrap"><table>
+            <thead><tr><th>Filter / Layer Shape</th><th>Best Algorithm</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>3×3, FP16/BF16, batched</td><td>Implicit GEMM (HMMA)</td><td>Tensor Cores dominate.</td></tr>
+                <tr><td>3×3, FP32, batched</td><td>Winograd F(2,3)</td><td>Saves 2.25× multiplies, FP32 has room.</td></tr>
+                <tr><td>1×1</td><td>Plain GEMM</td><td>No im2col needed; pure matmul.</td></tr>
+                <tr><td>7×7 first layer</td><td>Implicit GEMM</td><td>Large filter but only a few channels.</td></tr>
+                <tr><td>Depthwise 3×3</td><td>Direct kernel</td><td>K=1 — GEMM degenerate.</td></tr>
+                <tr><td>Large kernel image processing (15+)</td><td>FFT</td><td>O(log N) per pixel wins.</td></tr>
+                <tr><td>Stride &gt; 1</td><td>Implicit GEMM (no Winograd)</td><td>Winograd designed for stride-1.</td></tr>
+            </tbody>
+        </table></div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 15</div>
+            <div class="checkpoint-sub">Pick the right algorithm without thinking</div>
+            <ul>
+                <li>Derive the FLOP count of a 2-D conv given (N, C, H, W, K, R, S).</li>
+                <li>Compute the memory blow-up of im2col for a 5×5 conv.</li>
+                <li>Explain why depthwise conv breaks the GEMM mapping.</li>
+                <li>Decide between Winograd F(2,3) and implicit GEMM for FP32 vs FP16 inputs.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-14"><span class="label">← Previous</span>Flash Attention</a>
+            <a href="#chapter-16" class="next"><span class="label">Next →</span>Triton &amp; CUTLASS</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 16 — TRITON & CUTLASS DEEP DIVE
+     ===================================================================== -->
+<article class="chapter" id="chapter-16">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">16</div>
+        <div class="chapter-eyebrow">Chapter 16</div>
+        <h1 class="chapter-title">Triton &amp; CUTLASS:<br>The Two Abstractions Above Raw CUDA</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Most production kernels are no longer written in raw CUDA C++. Triton (Python-embedded tile-IR JIT) and CUTLASS (header-only C++ template library with CuTe layouts) cover ~90% of the kernel design space at a fraction of the engineering cost. By the end you can read a Triton kernel, walk a CUTLASS GEMM template, and decide which abstraction to reach for given a new problem.</p>
+    </header>
+
+    <section class="section" id="sec-16-1">
+        <h2 class="section-title"><span class="sec-num">16.1</span>The Kernel-DSL Landscape</h2>
+        <p class="section-subtitle">Why "raw CUDA" is rarely the answer in 2026</p>
+
+        <div class="atomic" id="A16.1.1-landscape">
+            <div class="atomic-head">
+                <span class="atomic-id">[A16.1.1]</span>
+                <h3 class="atomic-title">Where Each Abstraction Lives</h3>
+                <span class="atomic-tag">DSL</span>
+            </div>
+            <div class="atomic-body">
+                <div class="table-wrap"><table>
+                    <thead><tr><th>Layer</th><th>Examples</th><th>Best for</th><th>Tax</th></tr></thead>
+                    <tbody>
+                        <tr><td>SASS (machine code)</td><td>hand-tuned ASM</td><td>Final 5% on a single hot kernel</td><td>Weeks per kernel, brittle</td></tr>
+                        <tr><td>PTX (virtual ISA)</td><td>inline asm in CUDA</td><td>Specific instructions you can't get otherwise</td><td>Manual register management</td></tr>
+                        <tr><td>CUDA C++</td><td>this book's Ch 2–5</td><td>Full control, mature tooling</td><td>~1000s LOC per kernel family</td></tr>
+                        <tr><td>CUTLASS templates</td><td>cutlass::gemm::device</td><td>GEMM variants, full perf</td><td>Steep template syntax</td></tr>
+                        <tr><td>CuTe layouts</td><td>cute::Layout</td><td>New algorithms with non-standard tiles</td><td>Layout algebra is its own language</td></tr>
+                        <tr><td>Triton</td><td>@triton.jit</td><td>~80% of perf for ~20% of effort</td><td>Less control over scheduling</td></tr>
+                        <tr><td>torch.compile / Inductor</td><td>auto-generated Triton</td><td>Fusing many small ops</td><td>You don't write the kernel</td></tr>
+                    </tbody>
+                </table></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-16-2">
+        

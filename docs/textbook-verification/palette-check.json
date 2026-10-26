@@ -1,0 +1,39 @@
+{
+  "scope": "solid-color Rahil role matrix; not full CSS/CVD audit",
+  "pairs": [
+    {
+      "foreground": "ink",
+      "background": "canvas",
+      "ratio": 17.126797713365804
+    },
+    {
+      "foreground": "figure-ink",
+      "background": "figure-surface",
+      "ratio": 17.126797713365804
+    },
+    {
+      "foreground": "figure-secondary",
+      "background": "figure-surface",
+      "ratio": 6.916424911441444
+    },
+    {
+      "foreground": "figure-ink",
+      "background": "accent",
+      "ratio": 14.69017535304755
+    }
+  ],
+  "cards": [
+    {
+      "path": "docs/textbook-verification/palette-roles.html",
+      "sha256": "9ee16889a9252062e96e28def40424b0304f5c625fa18646161f77b65f6df2eb",
+      "colors": [
+        "#111214",
+        "#52545A",
+        "#F5F5EF",
+        "#FFE500"
+      ]
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

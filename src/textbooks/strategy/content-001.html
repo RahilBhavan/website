@@ -1,0 +1,151 @@
+<h3>Fact 3: it is very volatile</h3>
+<div class="prose">
+<p>Bitcoin has fallen by more than 70% from a peak several times, and has more than doubled in a year several times. For a company, that means the value of its main asset can halve while its dollar obligations stay the same. Volatility also has an upside: it makes options on MSTR valuable, which is why convertible buyers accepted 0% interest (<a class="xref" href="#f1">Chapter 1</a>, idea 7).</p>
+</div>
+<figure class="figure">
+<h4>Holding bitcoin vs holding cash, from a treasurer's chair</h4>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Cash / Treasury bills</th><th>Bitcoin</th></tr></thead>
+<tbody>
+<tr><td><b>Income</b></td><td>Interest (near zero in 2020, higher since)</td><td>None</td></tr>
+<tr><td><b>Price risk</b></td><td>Very low in dollars; loses value to inflation</td><td>Very high</td></tr>
+<tr><td><b>Pays a dollar bill?</b></td><td>Yes, directly</td><td>Only by selling</td></tr>
+<tr><td><b>Long-run argument</b></td><td>Safety and liquidity</td><td>Scarcity; a hedge against currency debasement</td></tr>
+<tr><td><b>Accounting (since 2025)</b></td><td>Face value</td><td>Fair value: every price move hits reported profit</td></tr>
+</tbody></table></div>
+<figcaption>Strategy's 2020 decision was to swap the left column for the right one (<a class="xref" href="#d1">Chapter 5</a>). Everything since has been about scaling that swap and managing its consequences.</figcaption>
+</figure>
+
+<h3>Why a company, not just an ETF?</h3>
+<div class="prose">
+<p>Since January 2024, anyone can buy bitcoin through US spot ETFs for a small fee. So why would an investor hold MSTR instead? Strategy's answer has three parts:</p>
+<ol>
+<li><b>Leverage without margin calls.</b> MSTR holders get more than 1x bitcoin exposure through Strategy's debt and preferreds, and nobody can force them to sell in a crash.</li>
+<li><b>Growth in bitcoin per share.</b> An ETF share always holds the same amount of bitcoin. A Strategy share can hold more over time if the company sells stock at a premium (<a class="xref" href="#ch3">Chapter 6</a>).</li>
+<li><b>Products ETFs can't offer.</b> Income securities (the preferreds) and volatility (MSTR options, converts) carved out of the same bitcoin.</li>
+</ol>
+<p>The counter-argument is just as simple. The ETF has no debt, no dividends to fund, no management discretion, and trades at its asset value. If Strategy's premium disappears, the main reason to prefer it weakens (<a class="xref" href="#v1">Chapter 20</a>).</p>
+</div>
+
+<h3>Custody and control</h3>
+<div class="prose">
+<p>Strategy holds its bitcoin through institutional custodians. Its convertible notes are unsecured, and its filings describe the preferreds as not collateralized by the bitcoin. That's a choice with history. In 2021–22 it did borrow against bitcoin, and the 2022 crash made that debt a liability (<a class="xref" href="#d1">Chapter 5</a>). Unpledged coins can't be seized in a margin call. They also give preferred holders no direct claim on the bitcoin. Their cushion is the company's overall balance sheet.</p>
+</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Why can't Strategy pay dividends "out of" its bitcoin without selling it?</summary><p>Bitcoin produces no income. Dividends are dollars (or euros), so they must come from cash on hand, new securities sold, the small software business, or selling bitcoin.</p></details>
+<details><summary>Give one reason to own MSTR rather than a bitcoin ETF, and one reason not to.</summary><p>For: leveraged bitcoin exposure that can't be margin-called, plus potential growth in bitcoin per share. Against: you pay a premium, take on dividend and debt obligations, and depend on management's decisions.</p></details>
+</div>
+</section>
+
+<section class="chapter" id="ch1">
+<span class="ch-num">Chapter 3</span>
+<h2>Strategy in one page</h2>
+<div class="prose">
+<p class="lede-big">Strategy is a company that turns money raised in the capital markets into bitcoin, then sells new kinds of securities whose value rests on that bitcoin.</p>
+<p>It used to be MicroStrategy, an enterprise software company. It still runs that software business, but the software is now a rounding error next to the balance sheet. In October 2026 Strategy held <b>848,250 BTC</b>, worth about <b>$69.7B</b> at $82,131. That is more than any other company.</p>
+<p>To understand it, think of three jobs it does at once:</p>
+<ol>
+<li><b>Bitcoin treasury.</b> It owns the bitcoin and wants more of it for every share of common stock.</li>
+<li><b>Issuer of "digital credit."</b> It sells five preferred stocks (STRF, STRC, STRE, STRK, STRD) and convertible notes. Those pay fixed or variable income, and the bitcoin is the cushion behind them.</li>
+<li><b>Treasurer.</b> It has to keep enough US dollars on hand to pay about <b>$1.56B a year</b> in dividends and interest, because bitcoin pays nothing.</li>
+</ol>
+</div>
+<figure class="figure">
+<h4>The whole machine on one page</h4>
+<p class="fl">Money comes in on the left, sits in the middle and goes out on the right. Every later chapter zooms into one box.</p>
+<div class="cols3">
+  <div class="stackv">
+    <span class="col-h">1 · Investors buy</span>
+    <div class="node"><b>MSTR common stock</b><small>Sold through at-the-market (ATM) programs, a little every day</small></div>
+    <div class="node"><b>Five preferred stocks</b><small>STRF · STRC · STRE · STRK · STRD. Income for investors who want yield, not volatility</small></div>
+    <div class="node"><b>Convertible notes</b><small>Low or zero coupon debt that can turn into MSTR shares</small></div>
+  </div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="stackv">
+    <span class="col-h">2 · Strategy holds</span>
+    <div class="node hot"><b>Bitcoin</b><span class="v">848,250 BTC</span><small>The asset everything rests on. Pays no income</small></div>
+    <div class="node"><b>USD Reserve</b><span class="v">$4.88B</span><small>Cash ring-fenced for dividends and interest</small></div>
+    <div class="node"><b>USD Cash</b><span class="v">$0.64B</span><small>Flexible cash pool</small></div>
+  </div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="stackv">
+    <span class="col-h">3 · Strategy pays</span>
+    <div class="node dark"><b>Dividends + interest</b><span class="v">≈ $1.56B / yr</span><small>Every year, whatever bitcoin does</small></div>
+    <div class="node"><b>Buybacks</b><small>Of STRC (and potentially MSTR) when they trade cheap</small></div>
+    <div class="node"><b>More bitcoin</b><small>Whatever is left after the above</small></div>
+  </div>
+</div>
+<figcaption>Holdings and cash as of Oct 11, 2026 (weekly 8-K). Annual charges are this book's estimate from the filings (<a class="xref" href="#ch11">Chapter 27</a>), which tie to management's own $1.703B figure once recent buybacks are taken out.</figcaption>
+</figure>
+<div class="key"><b>The one idea</b>Strategy is a bet that bitcoin will rise faster than the cost of the money used to buy it. Common stock holders own the upside. Preferred and note holders get paid first, in dollars, from a company whose main asset pays no dollars. Nearly every question about Strategy is a version of "is that still working?"</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Why does Strategy need a USD Reserve at all?</summary><p>Bitcoin produces no cash flow and the software business is small, so dividends and interest have to come from cash raised earlier, new securities sold now, or selling bitcoin. The Reserve is the first of those, kept separate so investors can see it.</p></details>
+<details><summary>Who owns the upside if bitcoin doubles?</summary><p>Mostly MSTR common holders. Preferred holders get their fixed dividends either way (STRK also has a conversion option into MSTR).</p></details>
+</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="ch2">
+<span class="ch-num">Chapter 4</span>
+<h2>How it got here</h2>
+<div class="prose">
+<p>The story has three phases. From 2020 to 2024 Strategy bought bitcoin with common stock and cheap convertible debt. In 2025 it launched a preferred stock almost every few months. In 2026 the focus shifted to defending those preferreds: a cash reserve, a higher STRC rate, buybacks and new rules for when it will sell stock.</p>
+</div>
+<figure class="figure">
+<h4>Timeline</h4>
+<p class="fl">Yellow marks the events that created a product or a rule this book explains.</p>
+<ol class="tl">
+<li><span class="d">1989</span><span class="m"></span><span class="t"><b>MicroStrategy founded</b><small>Michael Saylor and Sanju Bansal; enterprise analytics software</small></span></li>
+<li><span class="d">Aug 2020</span><span class="m hot"></span><span class="t"><b>First bitcoin purchase</b><small>21,454 BTC for $250M, framed as a better treasury reserve than cash</small></span></li>
+<li><span class="d">Dec 2020</span><span class="m hot"></span><span class="t"><b>First convertible notes</b><small>Borrowing to buy bitcoin begins; years of low and zero coupon converts follow</small></span></li>
+<li><span class="d">Aug 2022</span><span class="m"></span><span class="t"><b>Saylor becomes Executive Chairman</b><small>Phong Le becomes CEO</small></span></li>
+<li><span class="d">Aug 2024</span><span class="m"></span><span class="t"><b>10-for-1 stock split</b></span></li>
+<li><span class="d">Oct 2024</span><span class="m"></span><span class="t"><b>"21/21 Plan"</b><small>$21B of equity plus $21B of fixed income over three years</small></span></li>
+<li><span class="d">Jan 2025</span><span class="m hot"></span><span class="t"><b>STRK launched</b><small>8% preferred that converts into MSTR. First "digital credit"</small></span></li>
+<li><span class="d">Feb 2025</span><span class="m"></span><span class="t"><b>Rebrand to Strategy</b><small>Fair-value accounting for bitcoin also starts in 2025</small></span></li>
+<li><span class="d">Mar 2025</span><span class="m hot"></span><span class="t"><b>STRF launched</b><small>10% senior preferred with penalty step-ups if unpaid</small></span></li>
+<li><span class="d">May 2025</span><span class="m"></span><span class="t"><b>"42/42 Plan"</b><small>Target doubled: $42B equity + $42B fixed income through 2027</small></span></li>
+<li><span class="d">Jun 2025</span><span class="m hot"></span><span class="t"><b>STRD launched</b><small>10% junior preferred; dividends can be skipped and are never owed</small></span></li>
+<li><span class="d">Jul 2025</span><span class="m hot"></span><span class="t"><b>STRC launched</b><small>Variable-rate preferred meant to trade near $100. Starts at 9%</small></span></li>
+<li><span class="d">Oct 2025</span><span class="m"></span><span class="t"><b>S&amp;P rates Strategy B-</b><small>First major-agency rating of a bitcoin treasury company. Cites bitcoin concentration and thin dollar liquidity</small></span></li>
+<li><span class="d">Nov 2025</span><span class="m hot"></span><span class="t"><b>STRE launched in euros</b><small>7.75m shares at €80, €620M raised (upsized from €350M); listed in Luxembourg</small></span></li>
+<li><span class="d">Dec 2025</span><span class="m hot"></span><span class="t"><b>USD Reserve created</b><small>$1.44B at launch, to pay dividends and interest</small></span></li>
+<li><span class="d">Jan 2026</span><span class="m"></span><span class="t"><b>MSCI drops plan to exclude bitcoin treasury firms</b><small>But freezes their index share counts while it reviews "non-operating" companies</small></span></li>
+<li><span class="d">Mar 2026</span><span class="m"></span><span class="t"><b>$44.1B of new ATM capacity</b><small>$21B MSTR, $21B STRC, $2.1B STRK. Holdings pass 762,000 BTC</small></span></li>
+<li><span class="d">Jun 2026</span><span class="m hot"></span><span class="t"><b>Digital Credit Capital Framework</b><small>Reserve policy (≥ 12 months), STRC to 12%, buyback programs, BTC Monetization Program. STRC moves to twice-monthly dividends</small></span></li>
+<li><span class="d">Jul 2026</span><span class="m hot"></span><span class="t"><b>mNAV redefined to a "net" measure</b><small>The issuer changes the metric; common issuance remains discretionary near 1x</small></span></li>
+<li><span class="d">Jul–Oct 2026</span><span class="m"></span><span class="t"><b>STRC buybacks</b><small>About 17m shares ($1.65B) retired, funded by MSTR sales. Bitcoin buying slows</small></span></li>
+<li><span class="d">Oct 28, 2026</span><span class="m hot"></span><span class="t"><b>Vote on daily dividends</b><small>STRC from Nov 1; STRF, STRK, STRD from Jan 1, 2027</small></span></li>
+</ol>
+<figcaption>Sources: SEC filings and press coverage listed in Appendix B. Launch-month dates; exact pricing dates are in each prospectus.</figcaption>
+</figure>
+<div class="key"><b>The pattern</b>Each new product answered a problem the last one created. Converts needed MSTR to keep rising; preferreds reached investors who wanted income; STRC's variable rate let Strategy adjust the price of money monthly; the Reserve answered "where do the dividends come from?"; buybacks and issuance discipline near 1x answered "what if the stock trades below its bitcoin?"</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="d1">
+<span class="ch-num">Chapter 5</span>
+<h2>Every big decision, and why</h2>
+<div class="prose">
+<p class="lede-big">Strategy didn't arrive at five preferreds and a cash reserve by design. Each step solved a problem the previous step created. This chapter walks through fourteen decisions in order: the problem, the options, the reason given, and what it cost.</p>
+<p>Each decision separates two kinds of reason. <b>Stated</b> means Strategy said it in a filing or press release, linked in Appendix B. <b>Analysis</b> means my reading of the economics. Strategy didn't necessarily say it.</p>
+<p>This chapter tells the story. The economics part that follows puts numbers on every decision: what it cost, what it gained and what the alternative was (<a class="xref" href="#n1">Chapter 12</a> to <a class="xref" href="#n5">Chapter 16</a>).</p>
+</div>
+
+<h3>Era 1 · 2020–2021: swapping cash for bitcoin</h3>
+<div class="cards">
+<article class="card"><span class="tk">2020</span><span class="nm">Turn the treasury into bitcoin</span>
+<p class="one">Problem: more than $500M of cash in a slow-growing software company, earning little.</p>
+<dl>
+<div><dt>Options</dt><dd>Keep the cash; buy back shares; invest in "stocks, bonds, commodities such as gold, digital assets such as bitcoin" (Jul 28, 2020 release)</dd></div>
+<div><dt>What it did</dt><dd>Both. A Dutch-auction buyback of up to $250M attracted only $60.5M of shares. On Aug 11 it bought 21,454 BTC for $250M. In Sep 2020 the board adopted bitcoin as its primary treasury reserve asset</dd></div>
+<div><dt>Stated</dt><dd>Assets with "potentially higher returns than holding cash" (then-CFO Phong Le). On Aug 11, Saylor cited COVID, quantitative easing and the "depreciating effect on the long-term real value of fiat currencies"</dd></div>
+<div><dt>Cost</dt><dd>A volatile, no-income asset replaced a safe one. The company's value became tied to one price</dd></div>
+</dl></article>
+
+<article class="card"><span class="tk">2020–21</span><span class="nm">Borrow with convertibles</span>
+<p class="one">Problem: the cash was spent, but the bet needed scale.</p>
+<dl>
+<div><dt>What it did</dt><dd>$650M of 0.75% convertibles due 2025 (Dec 2020), then $1.05B at 0% due 2027 (Feb 2021)</dd></div>
+<div><dt>Analysis</dt><dd>MSTR's volatility made the conversion option valuable, so buyers accepted almost no interest (<a class="xref" href="#f1">Chapter 1</a>, idea 7)</dd></div>
+<div><dt>Cost</dt><dd>Dilution if the notes convert; repayment if they don't</dd></div>
+</dl></article>
+

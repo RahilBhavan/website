@@ -1,0 +1,75 @@
+<h2>The preferred coverage model</h2><div class="status-row"><span>Excel formulas and two native What-If Data Tables</span><span>Revised Oct 16, 2026</span><span>Mac Excel verification pending</span></div>
+<div class="prose"><p>The question is how long cash and common issuance can fund preferred dividends and debt interest, and how convertible puts change that answer. The workbook includes STRF, STRC, STRE, STRK and STRD.</p><p><a href="https://github.com/RahilBhavan/strategy-preferred-coverage-model">Download the Excel workbook</a>. The full model calculates inside Excel. The web calculator below reproduces its snapshot coverage formulas.</p></div>
+<figure class="figure"><h4>Cash charges and cash available, before principal repayments</h4><div class="tbl"><table><thead><tr><th>Measure</th><th>Oct 15 snapshot</th><th>Basis</th></tr></thead><tbody>
+<tr><td>Annual cash charges</td><td>$1,559.7M</td><td>Preferred dividends plus debt interest, all cash</td></tr><tr><td>Reserve</td><td>$4,880M</td><td>Weekly filing through Oct 11</td></tr><tr><td>Reserve coverage</td><td>37.5 months</td><td>Flat charges; principal excluded</td></tr><tr><td>Reconstructed net mNAV</td><td>1.175x</td><td>Dated shares and awards; observed conversion classification</td></tr><tr><td>Remaining common ATM</td><td>$18,807.6M</td><td>Registered authorization, not committed funding</td></tr><tr><td>Convertible puts through Sep 2028</td><td>$5,913.7M</td><td>Holder rights; actual elections are unknown</td></tr></tbody></table></div><figcaption><a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">Weekly liquidity</a>, <a href="https://www.sec.gov/Archives/edgar/data/1050446/000105044626000044/mstr-20260630.htm">Q2 terms and counts</a>, <a href="https://www.strategy.com/notes">net-mNAV definition</a>. STRC and basic common shares are roll-forward estimates.</figcaption></figure>
+<div class="prose"><h3>What changed in the model</h3><p>The original 15.2-year figure divides a finite Reserve and ATM authorization by flat annual charges. It assumes enough demand to use that authorization and excludes principal. It is a conditional capacity calculation, not a funding forecast.</p><p>The new Quarterly path spans 20 quarters, beginning with an Oct 16 stub. It rolls cash, remaining ATM and shares; stresses BTC and the premium together; charges issuance fees; and includes each put date. It shows unmet financing needs explicitly. After a shortfall, the schedule measures required funding rather than predicting continued solvency.</p><p>Net mNAV uses price divided by net bitcoin value per fully diluted share. The bridge moves in-money notes into dilution, deducts out-of-money notes, and deducts preferred claims while adding USD Assets. Snapshot grids hold observed moneyness fixed. The path uses the previous quarter’s price for classification, a disclosed approximation that avoids circular formulas.</p><p>Demand scales down with the premium and BTC drawdown. Its coefficients are editable assumptions without historical calibration. A 1x issuance gate is also an assumption. The capital framework describes discretion near 1x, not an unconditional prohibition.</p><h3>STRC’s optional rate rule</h3><p>The board’s declared 12% rate is the default. An optional illustration applies February’s monthly VWAP bands using minimum indicated changes. June’s policy subsequently held the rate near par, so enabling the old bands is a stress choice. It is not a forecast of the board’s next action.</p><h3>Convertible puts</h3><p>Each note has a conversion price, date and principal. The path defaults to full cash payment at every put, including in-money notes. Moneyness identifies economic pressure; it does not establish conversion eligibility or predict a holder’s election. Partial election assumptions do not refinance the remainder, and all maturities fall beyond this path.</p></div>
+<figure class="figure" id="calculator"><h4>Stress the dividend coverage snapshot</h4><p class="fl">Change BTC price, net mNAV and STRC rate. All other inputs stay at the October 15 snapshot.</p><div class="calc-grid"><label for="btc-input">Bitcoin price<output id="btc-label">$82,131</output><input id="btc-input" type="range" min="10000" max="200000" step="1" value="82131"></label><label for="mnav-input">Net mNAV<output id="mnav-label">1.175x</output><input id="mnav-input" type="range" min="0.5" max="2.5" step="0.001" value="1.1745671782680673"></label><label for="rate-input">STRC annual rate<output id="rate-label">12.0%</output><input id="rate-input" type="range" min="0.08" max="0.20" step="0.001" value="0.12"></label></div><div class="calc-result" aria-live="polite" aria-atomic="true" id="calc-result">Reserve covers 37.5 months. Reserve plus common capacity covers 15.2 years.</div><p id="calc-detail"></p><button id="calc-reset" type="button">Reset snapshot</button><figcaption class="calc-source">Snapshot only. Principal excluded; observed moneyness fixed. A 1x issuance gate and 2% share of ADV are model assumptions. ATM authorization is not committed demand. For puts, fees, dilution and declining market access, open Quarterly path in Excel. <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">Liquidity source</a>; <a href="https://www.strategy.com/notes">metric definition</a>.</figcaption><noscript><p>The static snapshot is shown above. Enable JavaScript to change assumptions, or use the Excel workbook.</p></noscript></figure>
+<div class="warn"><b>Review still required</b>The native Data Tables are authored; their behavior, charts, dropdowns and formatting still need Microsoft Excel on the Mac. Excel review contains an exact Goal Seek exercise and blank receipt fields. Q3 counts cannot be refreshed before the Q3 filing is available.</div>
+<div class="check"><p>Check yourself</p><details><summary>Why can 15.2 years of static coverage coexist with a financing problem?</summary><p>The static measure treats the ATM as usable and omits principal. A dated path can lose market access before a put or cash payment is due.</p></details></div><p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+<section class="chapter" id="ch12">
+<span class="ch-num">Chapter 28 · Project</span>
+<h2>dat-accretion: one ruler for every capital action</h2>
+<div class="status-row"><span>Python + public page</span><span>v1 built; weekly refresh</span><span>rahilbhavan.github.io/dat-accretion</span></div>
+<div class="prose">
+<p><b>The question.</b> Strategy, BitMine and SharpLink each sell stock, buy it back and trade preferreds every week. Using Strategy's own net-coins-per-share definition for all three: what did each action do per dollar, and at what price does it change sign?</p>
+<p>The key move is that Strategy's 2026 rotation (sell MSTR, retire STRC) and BitMine's opposite rotation (sell its BMNP preferred, buy back common) share <b>one break-even line: m = q</b>. Strategy's adds while m &gt; q; BitMine's adds while m &lt; q.</p>
+</div>
+<figure class="figure">
+<h4>Where each firm sat, week ending Oct 11, 2026</h4>
+<p class="fl">Across: preferred price ÷ $100 (q). Up: net mNAV (m). On the diagonal, a rotation neither adds nor subtracts.</p>
+<div class="chartwrap"><svg class="chart" viewBox="0 0 540 380" role="img" aria-labelledby="dT" style="max-width:560px">
+<title id="dT">Strategy at q 0.997, m 1.191, well above the diagonal, so its rotation adds. BitMine at q 0.995, m 0.998, almost exactly on the line.</title>
+<line class="ax" x1="60" y1="330" x2="480" y2="330"/><line class="ax" x1="60" y1="30" x2="60" y2="330"/>
+<g text-anchor="middle"><text x="60" y="350">0.95</text><text x="130" y="350">1.00</text><text x="270" y="350">1.10</text><text x="410" y="350">1.20</text><text x="270" y="372" class="ink">q = preferred price ÷ $100</text></g>
+<g text-anchor="end"><text x="54" y="334">0.95</text><text x="54" y="284">1.00</text><text x="54" y="184">1.10</text><text x="54" y="84">1.20</text></g>
+<line class="ref" x1="60" y1="330" x2="480" y2="30"/>
+<text x="300" y="178" class="ink">m = q: break-even line</text>
+<circle class="dot" cx="125.1" cy="89" r="7"/>
+<text x="138" y="84" class="strong">Strategy (STRC $99.65, m 1.191)</text>
+<text x="138" y="102">Rotation adds; stops if STRC &gt; $119.07</text>
+<circle cx="123.4" cy="282" r="7" fill="#F5F5EF" stroke="#111214" stroke-width="2"/>
+<text x="138" y="300" class="strong">BitMine (BMNP $99.53, m 0.998)</text>
+<text x="138" y="318">On the line: within estimation error</text>
+<text x="66" y="22">m = net mNAV</text>
+</svg></div>
+<figcaption>From the dat-accretion memo. STRC closed below its break-even in 22 of 22 filed weeks; BMNP in 18 of 18.</figcaption>
+</figure>
+<div class="prose">
+<h4>How it's built</h4>
+<p>Each weekly 8-K is parsed into actions (one row each, linked to its filing). Balances are rolled forward from 10-Q anchors, and each week's change in net coins per share is split into price, convert flips, each action, carry and a residual. A done check compares the rebuild against live sources before the page updates. There's also a 24-lesson course in the repo that teaches it from scratch.</p>
+<h4>What it taught me for this book</h4>
+<ul><li>The rules table in <a class="xref" href="#ch3">Chapter 6</a>.</li><li>Why net mNAV, not basic mNAV, is the number to watch.</li><li>That Strategy's 2026 buybacks were accretive on its own definition every week.</li></ul>
+</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="ch13">
+<span class="ch-num">Chapter 29 · Project</span>
+<h2>MARA credit case: the lender's view</h2>
+<div class="status-row"><span>Credit memo + decision engine + workbook</span><span>mara.rahilbhavan.com</span><span>Hypothetical facility, public filings</span></div>
+<div class="prose">
+<p><b>The question.</b> A bitcoin miner, MARA, asks for a $5.0M 12-month revolver secured by its bitcoin. How much should a lender approve, and on what conditions?</p>
+<p>Strategy sells credit backed by bitcoin; this case is about buying it. It's the same skill from the other side of the table: how much is bitcoin worth as cover after a stress haircut, and what must be true before any money moves?</p>
+</div>
+<figure class="figure">
+<h4>The limit is the lowest of four caps ($M)</h4>
+<p class="fl">One scale from zero. The collateral cap binds.</p>
+<div class="hbar"><span>Obligor</span><div><div class="b" style="width:100%"></div></div><span class="a">7.50</span></div>
+<div class="hbar"><span>Single-name</span><div><div class="b" style="width:80%"></div></div><span class="a">6.00</span></div>
+<div class="hbar"><span>Concentration</span><div><div class="b" style="width:53.3%"></div></div><span class="a">4.00</span></div>
+<div class="hbar"><span><b>Collateral</b></span><div><div class="b hot" style="width:40.6%"></div></div><span class="a">3.05</span></div>
+<figcaption>Collateral cap = $3.87M stressed proceeds ÷ 1.25x coverage − $50k accrued. Approved: <b>$3.0M conditional</b>, rounded down, against the $5.0M asked. Funding is blocked until nine conditions clear (ownership, first-priority lien, control of the coins, a tested route to cash, …). If any stays unknown, the answer is decline.</figcaption>
+</figure>
+<div class="prose">
+<h4>Facts from MARA's Jun 30, 2026 filing</h4>
+<ul>
+<li>35,577 BTC, but 4,742 lent out and 4,528 pledged, leaving 26,307 free.</li>
+<li>$421M of cash, about 30% held in a subsidiary for its own use.</li>
+<li>About $2.4B of debt, including $291.6M that holders can put in June 2027. A static screen leaves −$194.8M if they do.</li>
+</ul>
+<h4>The link back to Strategy</h4>
+<p>Two lessons carry straight over. First, count only the coins and cash that are actually free: that's why the coverage model separates the ring-fenced Reserve from USD Cash. Second, watch put dates: MARA's June 2027 put is the same kind of risk as Strategy's $5.9B of puts in 2027–28.</p>
+</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000119312526419726/mstr-ex99_1.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="ch14">
+<span class="ch-num">Chapter 30</span>

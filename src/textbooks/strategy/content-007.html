@@ -1,0 +1,151 @@
+<h2>Keeping score: Strategy's numbers</h2>
+<div class="prose">
+<p>Strategy doesn't judge itself on earnings. It reports its own set of bitcoin measures, and it has changed some of them as the balance sheet changed. Know the definitions cold. The biggest trap is that "mNAV" has three different meanings.</p>
+</div>
+<figure class="figure">
+<h4>Three mNAVs, same company, same week</h4>
+<p class="fl">Each divides some value of the company by some value of its bitcoin. The answer swings from below 1.0x to above it depending on which you pick.</p>
+<div class="tbl"><table>
+<thead><tr><th>Version</th><th>Formula</th><th class="r">About</th><th>Used by</th></tr></thead>
+<tbody>
+<tr><td><b>Basic</b></td><td>Market cap ÷ bitcoin value</td><td class="r">0.92x</td><td>Older trackers. Ignores debt, preferreds and cash</td></tr>
+<tr><td><b>Enterprise value</b></td><td>(Market cap + debt + preferred − cash) ÷ bitcoin value</td><td class="r">1.13x</td><td>Legacy comparison only; the coverage model now uses net mNAV</td></tr>
+<tr class="hl"><td><b>Net</b> (current)</td><td>Share price ÷ (net bitcoin per diluted share × BTC price)</td><td class="r">1.175x</td><td>Estimated workbook reconstruction at Oct 15 prices. Strategy’s current definition; 1.0x issuance gate is a model assumption</td></tr>
+</tbody></table></div>
+<figcaption>Basic and EV: this book's arithmetic at Oct 15 prices. Net: workbook estimate at Oct 15 prices, using dated basic shares and awards. dat-accretion was 1.191x for the week ending Oct 11. These are different snapshots. Always label which mNAV you mean, and its date.</figcaption>
+</figure>
+<figure class="figure">
+<h4>The rest of the scorecard</h4>
+<div class="tbl"><table>
+<thead><tr><th>Measure</th><th>What it means</th><th>How it's calculated</th></tr></thead>
+<tbody>
+<tr><td><b>Bitcoin per share</b></td><td>How much bitcoin stands behind one share</td><td>BTC held ÷ assumed diluted shares. Net BTC subtracts out-of-money debt and preferred claims, adds USD Assets, then divides by fully diluted shares</td></tr>
+<tr><td><b>BTC Yield</b></td><td>Growth in bitcoin per share over a period</td><td>Change in BPS divided by BPS at the beginning of the applicable reference period, under the current issuer methodology</td></tr>
+<tr><td><b>BTC Gain</b></td><td>That growth expressed in coins</td><td>BTC Yield × bitcoin holdings at the start of the applicable reference period</td></tr>
+<tr><td><b>BTC $ Gain</b></td><td>The same in dollars</td><td>BTC Gain × bitcoin price</td></tr>
+<tr><td><b>BTC cover</b> (this book)</td><td>How many times bitcoin covers the claims ahead of common</td><td>Bitcoin value ÷ (debt + preferred notional). 3.4x today</td></tr>
+<tr><td><b>Reserve coverage</b></td><td>How long the cash lasts</td><td>USD Reserve ÷ (annual dividends + interest). ≈ 37 months today; policy floor 12</td></tr>
+</tbody></table></div>
+<figcaption>Strategy's definitions: its investor presentations (e.g. the Aug 24, 2026 FWP glossary). BTC Yield and BTC Gain are company-defined measures, not GAAP. They say nothing about cash, and a premium can create them while the share price falls.</figcaption>
+</figure>
+<div class="warn"><b>Read with care</b>Definitions changed on July 23, 2026, and the BTC Yield/Gain methodology was updated in 2026. Compare only like definitions and dates. The timing does not establish management’s motive. See <a href="https://www.strategy.com/notes">the issuer’s current definitions</a>.</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Can BTC Yield be positive while MSTR's price falls?</summary><p>Yes. If Strategy sells stock at a premium, bitcoin per share rises even if bitcoin and the stock both fall. BTC Yield measures bitcoin per share, not value per share.</p></details>
+<details><summary>Why does net mNAV come out higher than basic mNAV?</summary><p>The net version first subtracts debt and preferred from the bitcoin, which shrinks the denominator (net bitcoin per share). It also uses diluted shares and counts cash.</p></details>
+</div>
+<p class="meta">Core source: <a href="https://www.strategy.com/notes">issuer definitions</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="v1">
+<span class="ch-num">Chapter 20</span>
+<h2>Valuing the common</h2>
+<div class="prose">
+<p class="lede-big">MSTR is worth its net bitcoin plus whatever the market will pay for Strategy's ability to grow it. The first part is arithmetic. The second part is the whole debate.</p>
+</div>
+
+<h3>Step 1: net asset value per share</h3>
+<figure class="figure">
+<h4>From bitcoin to a per-share number, October 2026</h4>
+<div class="tbl"><table>
+<thead><tr><th>Line</th><th class="r">$B</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Bitcoin (848,250 × $82,131)</td><td class="r">69.7</td><td>Oct 15 close</td></tr>
+<tr><td>+ Cash (USD Reserve + USD Cash)</td><td class="r">5.5</td><td>Weekly 8-K, Oct 11</td></tr>
+<tr><td>− Debt</td><td class="r">(6.8)</td><td>Convertibles + other</td></tr>
+<tr><td>− Preferred notional</td><td class="r">(13.8)</td><td>All five, STRE at spot EUR/USD</td></tr>
+<tr class="hl"><td><b>Net assets</b></td><td class="r"><b>54.7</b></td><td></td></tr>
+<tr><td>÷ Shares (Class A + B, estimate)</td><td class="r">0.422B</td><td>Rolled forward from the 10-Q</td></tr>
+<tr class="hl"><td><b>Net assets per share</b></td><td class="r"><b>≈ $130</b></td><td>vs a share price of $151.29</td></tr>
+</tbody></table></div>
+<figcaption>Price ÷ net assets per share ≈ 1.17x. Strategy's own net mNAV uses fully diluted shares and treats in-the-money converts as shares; the coverage model's reconstruction gives 1.175x (<a class="xref" href="#ch8">Chapter 19</a>). This simple version ignores the software business and taxes.</figcaption>
+</figure>
+
+<h3>Step 2: why would anyone pay a premium?</h3>
+<div class="prose"><p>Paying $151 for $130 of net assets needs a reason. These are the arguments, with the honest objection to each.</p></div>
+<figure class="figure">
+<div class="tbl"><table>
+<thead><tr><th>Argument for the premium</th><th>The objection</th></tr></thead>
+<tbody>
+<tr><td><b>Growth in bitcoin per share.</b> Strategy can sell stock above net assets and buy more bitcoin, so each share's bitcoin grows. A growth company deserves a multiple</td><td>Circular: the premium is what makes the growth possible. If the premium goes, so does the growth</td></tr>
+<tr><td><b>Cheap leverage.</b> Perpetual preferreds and 0% converts give common holders leverage that can't be margin-called</td><td>The preferreds cost 8–12% a year. Leverage is only good if bitcoin outruns that</td></tr>
+<tr><td><b>Access.</b> Some funds can buy a Nasdaq stock but not bitcoin or ETFs, and MSTR has deep options markets</td><td>Spot ETFs (since Jan 2024) have narrowed this edge for most buyers</td></tr>
+<tr><td><b>Optionality.</b> Volatile stocks with active options markets attract traders</td><td>Volatility cuts both ways and can vanish in a long bear market</td></tr>
+<tr><td><b>Management and brand.</b> Saylor's following and Strategy's head start in "bitcoin credit"</td><td>Key-person risk; a brand is not an asset you can sell</td></tr>
+</tbody></table></div>
+</figure>
+
+<h3>Step 3: reflexivity</h3>
+<div class="prose">
+<p>The premium is <b>reflexive</b>: it affects the very thing it's valuing. A high premium lets Strategy add bitcoin per share. That growth supports the premium, and the loop can run either way (<a class="xref" href="#ch3">Chapter 6</a>). This is why mNAV swings so much. Basic mNAV was around 3.4x in November 2024 (a secondary estimate). The enterprise-value version fell below 1.0x in late June 2026, and the net version sat at about 1.19x in October.</p>
+</div>
+<div class="key"><b>A simple way to value it</b>Value = net assets × a multiple you believe is sustainable. A bull might argue for 1.5–2x on the basis of future accretion. A bear might argue for 1.0x or less, since an ETF gives the same bitcoin with no claims ahead of it. The model in <a class="xref" href="#ch11">Chapter 27</a> shows why the gap matters: above 1.0x Strategy can fund itself with stock; below it, it can't.</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Bitcoin rises 10% and mNAV stays the same. Roughly how much does MSTR rise?</summary><p>About 12.7%. Net assets move about 1.27x bitcoin because the claims are fixed, and the same mNAV multiple carries that through to the price.</p></details>
+<details><summary>Why might a bear value MSTR below its net assets?</summary><p>Holders face a decades-long stream of preferred dividends, management discretion and possible dilution. An ETF has none of those, so a discount can be rational.</p></details>
+</div>
+</section>
+
+<section class="chapter" id="k1">
+<span class="ch-num">Chapter 21</span>
+<h2>The credit view</h2>
+<div class="prose">
+<p class="lede-big">A credit analyst asks two questions about any security that promises payments. Will the payments keep coming? And if they stop, how much of my money comes back?</p>
+<p>The first is <b>coverage</b>: how long the cash lasts (<a class="xref" href="#ch11">Chapter 27</a> answers it in detail). The second is <b>cushion</b>: how much asset value sits below your claim. For Strategy's preferreds, the cushion is bitcoin.</p>
+</div>
+
+<h3>How far bitcoin can fall before each layer is underwater</h3>
+<figure class="figure">
+<h4>Cumulative claims as a share of the bitcoin, by seniority</h4>
+<p class="fl">Each layer is only covered after everything above it. "Loan-to-value" (LTV) is cumulative claims ÷ bitcoin value. The drawdown column is how far bitcoin could fall before that layer's claims equal the bitcoin.</p>
+<div class="tbl"><table>
+<thead><tr><th>Down to and including</th><th class="r">Cumulative claims ($B)</th><th class="r">LTV</th><th class="r">Bitcoin fall to reach 1.0x</th><th class="r">BTC price at 1.0x</th></tr></thead>
+<tbody>
+<tr><td>Debt</td><td class="r">6.8</td><td class="r">9.7%</td><td class="r">−90%</td><td class="r">≈ $8,000</td></tr>
+<tr><td>STRF</td><td class="r">8.0</td><td class="r">11.5%</td><td class="r">−88%</td><td class="r">≈ $9,500</td></tr>
+<tr class="hl"><td>STRC</td><td class="r">16.8</td><td class="r">24.2%</td><td class="r">−76%</td><td class="r">≈ $19,800</td></tr>
+<tr><td>STRE</td><td class="r">17.7</td><td class="r">25.4%</td><td class="r">−75%</td><td class="r">≈ $20,900</td></tr>
+<tr><td>STRK</td><td class="r">19.1</td><td class="r">27.4%</td><td class="r">−73%</td><td class="r">≈ $22,500</td></tr>
+<tr><td>STRD</td><td class="r">20.5</td><td class="r">29.4%</td><td class="r">−71%</td><td class="r">≈ $24,200</td></tr>
+</tbody></table></div>
+<figcaption>Bitcoin $69.7B at $82,131. Ignores the $5.5B of cash (which may be spent paying dividends) and the software business. Preferred holders have no direct claim on the coins. This is a measure of balance-sheet headroom, not collateral.</figcaption>
+</figure>
+
+<h3>How that compares</h3>
+<div class="prose">
+<p>A lender making a bitcoin-backed loan usually lends well under the coins' value and demands more collateral if the price falls. Strategy's most junior preferred sits at about 29% "LTV", which looks conservative by that standard. But the comparison flatters it in three ways:</p>
+<ul>
+<li><b>No margin call means no early warning.</b> A lender can sell collateral early. Preferred holders just watch.</li>
+<li><b>One asset.</b> The cushion is a single, volatile asset. Bitcoin has fallen more than 70% from its peak before.</li>
+<li><b>Perpetual exposure.</b> A one-year loan only has to survive one year. A perpetual preferred has to survive every year.</li>
+</ul>
+<p>That's why S&amp;P rated Strategy <b>B-</b> in October 2025, deep in high-yield territory. It cited bitcoin concentration, a narrow business, weak risk-adjusted capital and thin dollar liquidity. S&amp;P rates the issuer. The preferreds, ranking below its debt, would be judged riskier still.</p>
+</div>
+
+<h3>What the market says</h3>
+<div class="prose">
+<p>The preferreds' trading prices are the market's running credit opinion. A preferred far below $100 is the market demanding a higher yield. STRC climbing back to about $99.65 by October 2026, from the high $80s in mid-2026, is the market saying the credit risk eased, helped by the 12% rate, buybacks and the larger Reserve (<a class="xref" href="#ch6">Chapter 11</a>).</p>
+</div>
+<div class="key"><b>The credit analyst's summary</b>Strong cushion, strong near-term liquidity (37 months of Reserve), no maturities on the preferreds. Weaknesses: a single volatile asset, funding that depends on market confidence, and a junior position behind $6.8B of debt that holders can put in 2027–28. In short: well-cushioned, but with confidence-driven funding.</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Why is STRD's cushion thinner than STRF's when both are backed by the same bitcoin?</summary><p>STRD ranks last, so every claim above it (debt, STRF, STRC, STRE, STRK) is paid from the bitcoin first. Its claims-to-bitcoin ratio is 29% against STRF's 12%.</p></details>
+</div>
+</section>
+
+<section class="chapter" id="ch9">
+<span class="ch-num">Chapter 22</span>
+<h2>What can break</h2>
+<div class="prose">
+<p>Most risks start in the same place: the bitcoin price. A big fall hits Strategy through several channels at once, and they reinforce each other.</p>
+</div>
+<figure class="figure">
+<h4>One shock, four channels</h4>
+<p class="fl">Read across: bitcoin falls → what happens → what Strategy can do.</p>
+<div class="tbl"><table>
+<thead><tr><th>Channel</th><th>What happens</th><th>Early warning</th><th>Strategy's buffer</th></tr></thead>
+<tbody>
+<tr class="hl"><td><b>1. Premium collapses</b></td><td>Net mNAV falls below 1.0x, so selling MSTR stops adding bitcoin per share. The main fundraising tool switches off</td><td>Net mNAV vs 1.0x</td><td>Reserve; preferred sales if they trade above $100</td></tr>
+<tr><td><b>2. STRC rate spiral</b></td><td>STRC's price falls, the rate rises, and annual charges grow</td><td>STRC price vs $100; monthly rate announcement</td><td>Buybacks; 12% hold policy</td></tr>
+<tr><td><b>3. Cushion thins</b></td><td>BTC cover falls toward 1.0x. Preferreds trade like distressed credit</td><td>BTC cover; preferred yields</td><td>None directly: needs bitcoin to recover or claims to shrink</td></tr>
+<tr><td><b>4. Convert puts</b></td><td>If MSTR is below conversion prices, holders can demand $5.9B back between Sep 2027 and Sep 2028</td><td>MSTR vs each note's conversion price</td><td>Refinance, sell stock, or sell bitcoin</td></tr>
+</tbody></table></div>
+<figcaption>Channels 1, 2 and 3 are in the coverage model (<a class="xref" href="#ch11">Chapter 27</a>). Channel 4 is tracked there as principal falling due, not as a Reserve use.</figcaption>
+</figure>

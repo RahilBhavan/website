@@ -1,0 +1,121 @@
+<h3 id="sec-1-4-deep">Atomic-note deep dive — §1.4</h3>
+        <div class="atomic" id="A1.4.1-bank-conflict-math">
+            <div class="atomic-head"><span class="atomic-id">[[A1.4.1]]</span><h4 class="atomic-title">Shared-memory banking — the arithmetic of conflicts</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p>Shared memory is split into 32 banks, each 4 bytes wide. The bank number for address <em>a</em> (in bytes) is <code>(a / 4) % 32</code>. A warp's 32 lanes can issue 32 simultaneous accesses; if every lane targets a different bank or all 32 target the <em>same</em> address (broadcast), the access completes in one cycle. If two or more lanes hit the same bank but different addresses, the hardware serializes them — an <em>N</em>-way conflict costs <em>N</em> cycles. The classic pathology is row-major access of a 32-column FP32 array: every lane lands in bank 0, giving a 32-way conflict and a 32× slowdown.</p>
+                <p>The classic fix is <em>padding</em>: declare the array as <code>__shared__ float tile[32][33]</code> instead of <code>[32][32]</code>. The extra column shifts every row by one bank, eliminating the conflict at the cost of 32 wasted floats. A more advanced fix is <em>swizzling</em>: XOR the column index with a function of the row so accesses spread evenly across banks without padding. CUTLASS and Hopper TMA descriptors rely on swizzled layouts.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.4.3-cache">[[A0.4.3]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-2-4">[[§2.4 Tiling]]</a> <a class="rel-chip rel-usedby" href="#sec-3-4">[[§3.4 mma.sync]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.4.2-coalesce-formal">
+            <div class="atomic-head"><span class="atomic-id">[[A1.4.2]]</span><h4 class="atomic-title">Coalescing as a hardware rule, not an algorithm</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p>The memory subsystem services a warp's 32 loads in <em>sectors</em>: chunks of 32 contiguous bytes aligned to a 32-byte boundary. If all 32 lanes of a warp load 4-byte elements from a 128-byte aligned region, exactly four sectors are fetched — one full transaction per quarter-warp — and "coalescing" has happened. Any other access pattern fetches strictly more sectors than necessary. The hardware does not punish you for non-coalesced access; it just <em>does more work</em>. Coalescing is a property of the <em>address pattern</em>, not the loop nest; the same code path with permuted indices can shift from full coalescing to 32× over-fetch.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.4.3-cache">[[A0.4.3]]</a> <a class="rel-chip rel-prereq" href="#A0.3.2-matrix">[[A0.3.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-2-3">[[§2.3 Coalescing kernel]]</a> <a class="rel-chip rel-usedby" href="#sec-4-5">[[§4.5 NCU memory]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.4.3-l2-policy">
+            <div class="atomic-head"><span class="atomic-id">[[A1.4.3]]</span><h4 class="atomic-title">L2 cache — the GPU-wide last-level you can hint to</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p>L2 sits between the SMs and HBM. On A100 it is 40 MB; on RTX 3090 it is 6 MB; on H100 it is 50 MB. L2 is the only level shared by every SM, so it is the only place where data brought in by one SM can be cheaply reused by another. Ampere introduced <em>persisting access policy windows</em>: a kernel can mark a buffer as "expected to be reused" via <code>cudaAccessPolicyWindow</code>, and L2 will preferentially keep it resident, evicting transient data first. This is the only programmer-visible knob on the L2 replacement policy; everything else is hardware LRU.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.4.3-cache">[[A0.4.3]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-4-5">[[§4.5 Hit rates]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.4.4-dram-internals">
+            <div class="atomic-head"><span class="atomic-id">[[A1.4.4]]</span><h4 class="atomic-title">HBM internals — banks, channels, and burst length</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p>HBM2/HBM3 is not a flat pool. The physical memory is organized as <em>stacks</em>, each containing multiple <em>channels</em>, each containing multiple <em>banks</em>. A read transaction is "activate the bank's row buffer, then burst-out 32 bytes (HBM2) or 64 bytes (HBM3)." If two consecutive requests target the same bank with different rows, the bank must <em>precharge</em> and re-activate, costing ≈ 10 ns. Spreading accesses across banks and channels — which the GPU's address scrambler already tries to do — is the difference between 75% and 95% of peak HBM bandwidth in practice. The metric to watch in Nsight Compute is <code>dram__throughput.avg.pct_of_peak_sustained_elapsed</code>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A0.4.4-memwall">[[A0.4.4]]</a> <a class="rel-chip rel-related" href="#A1.4.3-l2-policy">[[A1.4.3]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 1.5 — OCCUPANCY
+         ============================================================ -->
+    <section class="section" id="sec-1-5">
+        <h2 class="section-title"><span class="sec-num">1.5</span>Occupancy and Latency Hiding</h2>
+        <div class="section-subtitle">How the GPU survives 500-cycle memory loads</div>
+
+        <p>A naive reading of the latency numbers in §1.4 is alarming. A global memory load takes ~500 cycles. Multiply that by the millions of loads per kernel, and nothing should run. In practice, GEMMs hit a sizeable fraction of peak. The reason is <strong>latency hiding by warp switching</strong>.</p>
+
+        <p>When a warp issues an instruction whose result is not yet available (a load, a Tensor Core op, etc.), the warp goes to sleep on a hardware scoreboard. The warp scheduler on that sub-partition immediately looks for <em>another</em> warp that is ready to issue, and runs that one instead. As long as there is always an eligible warp available, the SM never stalls. The 500-cycle load is invisible — it is fully <em>covered</em> by useful work from other warps.</p>
+
+        <h3>What occupancy is</h3>
+        <p><strong>Occupancy</strong> is the ratio of active warps on an SM to the maximum warps the SM can hold:</p>
+        <div class="formula"><span class="var">occupancy</span> <span class="op">=</span> active_warps_per_SM <span class="op">/</span> max_warps_per_SM</div>
+        <p>On Ampere, the maximum is <strong>48 warps per SM</strong> (= 1,536 threads).<sup>[2]</sup> So an "occupancy of 50%" means the SM is sustaining 24 active warps. An occupancy of "100%" (or "1.0") means 48.</p>
+
+        <h3>What limits occupancy</h3>
+        <p>Three resources compete for the SM:</p>
+        <ol>
+            <li><strong>Registers per thread.</strong> If your kernel needs 64 registers per thread and the SM has 65,536 registers, the SM can hold 65,536/64 = 1,024 threads = 32 warps. That alone caps occupancy at 32/48 ≈ 67%.</li>
+            <li><strong>Shared memory per block.</strong> If your block uses 32 KB of SMEM and the SM allots ~96 KB to SMEM, only 3 blocks fit. If each block has 8 warps, that is 24 active warps — 50%.</li>
+            <li><strong>Block size limits.</strong> Max 1024 threads/block; max 16 blocks/SM on Ampere (32 on Hopper). These ceilings matter most for tiny blocks.</li>
+        </ol>
+
+        <p>The limiting resource is whichever gives the smallest number. Your job during tuning is to know which one is binding and decide whether to relax it (e.g. spill some registers to gain a warp) or accept it (e.g. trade occupancy for better per-thread ILP).</p>
+
+        <h3>The "high occupancy is not always optimal" trap</h3>
+        <p>It is tempting to treat 100% occupancy as a goal. It is not. High occupancy is one strategy for hiding latency; the other is <strong>instruction-level parallelism</strong> within a single warp. A kernel that uses 128 registers per thread and runs at 33% occupancy can outperform a kernel that uses 32 registers at 100% occupancy, if the high-register kernel keeps more outstanding loads per thread and does more independent compute between them. Vasily Volkov's well-known talk <em>Better Performance at Lower Occupancy</em> (GTC 2010) is the canonical reference for this counter-intuitive result; the underlying observation is now reflected in CUDA's best-practice guidance.<sup>[7]</sup></p>
+
+        <p>Practically: chase occupancy <em>only until your kernel stops being limited by warp stalls</em>. Beyond that, more occupancy buys you nothing.</p>
+
+        <div class="figure" id="occ-fig">
+            <div class="figure-label">Figure 1.5 — Interactive calculator</div>
+            <div class="figure-title">Occupancy on Ampere (sm_86 limits)</div>
+            <div class="chart-controls">
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Threads / block</span>
+                    <input class="ctrl-input" type="range" id="occ-tpb" min="32" max="1024" step="32" value="256">
+                    <span class="ctrl-value" id="occ-tpb-v">256</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Registers / thread</span>
+                    <input class="ctrl-input" type="range" id="occ-reg" min="16" max="255" step="1" value="32">
+                    <span class="ctrl-value" id="occ-reg-v">32</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Shared mem / block (KB)</span>
+                    <input class="ctrl-input" type="range" id="occ-smem" min="0" max="99" step="1" value="16">
+                    <span class="ctrl-value" id="occ-smem-v">16 KB</span>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; font-family: var(--font-mono); font-size: 12px;">
+                <div style="padding:14px; background:var(--bg-elev-2); border-radius:6px; border:1px solid var(--border-subtle)">
+                    <div style="color:var(--text-tertiary); font-size:10px; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px">Active warps / SM</div>
+                    <div id="occ-warps" style="color:var(--accent-cyan); font-size:22px; font-weight:700">—</div>
+                    <div id="occ-warps-pct" style="color:var(--text-secondary); font-size:11px; margin-top:4px">— of 48</div>
+                </div>
+                <div style="padding:14px; background:var(--bg-elev-2); border-radius:6px; border:1px solid var(--border-subtle)">
+                    <div style="color:var(--text-tertiary); font-size:10px; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px">Active blocks / SM</div>
+                    <div id="occ-blocks" style="color:var(--accent-amber); font-size:22px; font-weight:700">—</div>
+                    <div id="occ-blocks-pct" style="color:var(--text-secondary); font-size:11px; margin-top:4px">of 16 max</div>
+                </div>
+                <div style="padding:14px; background:var(--bg-elev-2); border-radius:6px; border:1px solid var(--border-subtle)">
+                    <div style="color:var(--text-tertiary); font-size:10px; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px">Limiting factor</div>
+                    <div id="occ-limit" style="color:var(--accent-red); font-size:14px; font-weight:700; line-height: 1.3; margin-top:6px">—</div>
+                </div>
+            </div>
+            <div id="occ-derivation" style="margin-top:18px; padding:14px 18px; background:var(--bg-code); border:1px solid var(--border-subtle); border-left: 3px solid var(--accent-green); border-radius: 6px; font-family: var(--font-code); font-size: 12px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap"></div>
+            <div class="figure-caption">Move the sliders. The calculator applies the SM-86 hardware ceilings (65,536 regs/SM, 99 KB max SMEM/block, 48 warps/SM, 16 blocks/SM, 1024 threads/block, register allocation granularity 256 per warp). The "Limiting factor" tells you which resource is binding — that is the one to relax if you want more occupancy.</div>
+        </div>
+
+        <div class="callout warn">
+            <div class="callout-label">Practical guidance</div>
+            On Ampere, anything above about 50% occupancy is usually enough to hide DRAM latency in a well-written GEMM. The remaining performance comes from compute throughput (Tensor Cores), good memory access patterns, and pipelining — not from squeezing out more occupancy.
+        </div>
+
+        <!-- §1.5 atomic-note deep dive -->
+        

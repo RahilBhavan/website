@@ -1,0 +1,7 @@
+{
+  "title": "Zero to Beating cuBLAS \u2014 A CUDA Kernel Engineering Textbook",
+  "source_sha256": "65f67a65d477d4328097c72b6adbd2c4184ccddb3a3aff56425aa0aeaa0b5ec0",
+  "source_name": "textbook-rtx3090-fp16.html",
+  "edition": "Website reading edition",
+  "extra_head": "<script src=\"/textbooks/vendor/chart.umd.js\"></script>"
+}

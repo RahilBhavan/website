@@ -1,0 +1,227 @@
+<h3 class="atomic-title">The Bank Model</h3>
+                <span class="atomic-tag">shared memory</span>
+            </div>
+            <div class="atomic-body">
+                <p>Shared memory on every modern NVIDIA arch is organized as <strong>32 banks</strong>, each 4 bytes wide, interleaved across addresses. Bank <code>b</code> of word <code>w</code> holds byte address <code>4*(32*w + b)</code>. A warp issuing one shared-memory access produces 32 addresses. The hardware groups them by bank; <em>per-cycle a bank can serve exactly one 32-bit word</em>. Two cases:</p>
+                <ul>
+                    <li><strong>No conflict</strong> — each thread hits a distinct bank, or all 32 threads hit the same word in the same bank (broadcast). One cycle.</li>
+                    <li><strong>N-way conflict</strong> — 2 ≤ N ≤ 32 threads each hit a different word in the same bank. The hardware serializes into N cycles.</li>
+                </ul>
+                <p>Bank conflicts are a per-warp, per-instruction property — not per kernel. The metric to watch in Nsight Compute is <code>l1tex__data_bank_conflicts_pipe_lsu_mem_shared_op_*</code>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span><a class="rel-chip rel-prereq" href="#sec-1-4">§1.4 Memory hierarchy</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-11-2">§11.2 Swizzles</a><a class="rel-chip rel-usedby" href="#sec-2-4">§2.4 Tiling</a></div>
+            </div>
+        </div>
+
+        <div class="figure">
+            <div class="figure-label">Figure 11.1 — Interactive</div>
+            <div class="figure-title">Bank-conflict patterns for a 32×32 float tile</div>
+            <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="10" preserveAspectRatio="xMidYMid meet">
+                <g data-tip="**Row-major access — 1 cycle** — each lane of the warp hits a different bank → all 32 accesses complete in parallel. This is the target pattern for every SMEM load you can control.">
+                    <text x="20" y="20" fill="#111214">Row-major access (no conflict)</text>
+                    <text x="20" y="38" fill="#52545a">tile[tid][k] for fixed k, varying tid</text>
+                    <g transform="translate(0,50)">
+                    <rect x="20" y="0" width="320" height="32" fill="#111214" stroke="#111214"/>
+                    <g fill="#111214">
+                        <text x="30" y="20">B0</text><text x="70" y="20">B1</text><text x="110" y="20">B2</text>
+                        <text x="150" y="20">B3</text><text x="190" y="20">B4</text><text x="230" y="20">B5</text>
+                        <text x="270" y="20">…</text><text x="310" y="20">B31</text>
+                    </g>
+                    </g>
+                </g>
+
+                <g data-tip="**Column access — 32-way conflict, 32 cycles** — every lane lands in bank `tid mod 32` = 0. The hardware serializes 32 access requests into 32 sequential cycles. Catastrophic for inner loops.">
+                    <text x="20" y="120" fill="#111214">Column access (32-way conflict)</text>
+                    <text x="20" y="138" fill="#52545a">tile[k][tid] — stride-32 access, all in bank tid mod 32</text>
+                    <g transform="translate(0,150)">
+                    <rect x="20" y="0" width="320" height="32" fill="#111214" stroke="#111214"/>
+                    <g fill="#111214">
+                        <text x="30" y="20">B0×32</text>
+                    </g>
+                    </g>
+                </g>
+
+                <g data-tip="**Pad to [32][33]** — adding one float per row shifts each row's bank index by one. Stride 33 mod 32 = 1, so column access now hits 32 distinct banks. Costs 4 KB of wasted SMEM per 32×32 tile.">
+                    <text x="420" y="20" fill="#111214">Padded [33] column (no conflict)</text>
+                    <text x="420" y="38" fill="#52545a">tile[k][tid+pad] — stride 33, shifted bank each row</text>
+                    <g transform="translate(0,50)">
+                    <rect x="420" y="0" width="320" height="32" fill="#111214" stroke="#111214"/>
+                    <g fill="#111214">
+                        <text x="430" y="20">B0</text><text x="470" y="20">B1</text><text x="510" y="20">B2</text>
+                        <text x="550" y="20">…</text><text x="670" y="20">B30</text><text x="710" y="20">B31</text>
+                    </g>
+                    </g>
+                </g>
+
+                <g data-tip="**XOR swizzle** — `idx ^= (row &amp; 7) &lt;&lt; 2` permutes columns so each row's bank pattern is rotated. No wasted SMEM, no conflicts. This is what CUTLASS and `ldmatrix.sync` use under the hood.">
+                    <text x="420" y="120" fill="#111214">XOR-swizzled column (no conflict, no padding)</text>
+                    <text x="420" y="138" fill="#52545a">idx = (k * 32) ^ (k &amp; 0x7) &lt;&lt; 2</text>
+                    <g transform="translate(0,150)">
+                    <rect x="420" y="0" width="320" height="32" fill="#111214" stroke="#111214"/>
+                    <g fill="#111214">
+                        <text x="430" y="20">B0</text><text x="470" y="20">B1</text><text x="510" y="20">…</text>
+                        <text x="710" y="20">B31</text>
+                    </g>
+                    </g>
+                </g>
+            </svg>
+            <div class="figure-caption">Three solutions to the column-stride conflict: pad the row (wastes one bank per row), XOR-swizzle the index (no waste — used by CUTLASS), or transpose the tile in shared memory.</div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 11.1-A: Three layouts compared">// Conflict-free row access, 32-way conflict column access
+__shared__ float Tile1[32][32];
+
+// One-pad trick — 4 KB wasted but trivial
+__shared__ float Tile2[32][33];
+
+// XOR swizzle — no padding, no conflict.
+// Compute the storage index from (row, col):
+__device__ inline int swizzle(int row, int col) {
+    return row * 32 + (col ^ ((row &amp; 0x7) &lt;&lt; 2));
+}
+__shared__ float Tile3[32 * 32];   // accessed via swizzle(r,c)
+
+// Store-side write uses the same swizzle, so reads/writes are symmetric.
+Tile3[swizzle(r, c)] = value;
+float v = Tile3[swizzle(r, c)];
+</pre>
+    </section>
+
+    <section class="section" id="sec-11-2">
+        <h2 class="section-title"><span class="sec-num">11.2</span>XOR Swizzles &amp; <code>ldmatrix</code> Layouts</h2>
+        <p class="section-subtitle">Why CUTLASS never pads anything</p>
+
+        <div class="atomic" id="A11.2.1-swizzle">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.2.1]</span>
+                <h3 class="atomic-title">Swizzle as a Permutation</h3>
+                <span class="atomic-tag">layout</span>
+            </div>
+            <div class="atomic-body">
+                <p>A swizzle is a bijection on memory addresses such that for every access pattern your kernel issues, the addresses land in distinct banks. CUTLASS expresses swizzles as three integers: <code>Swizzle&lt;B, M, S&gt;</code> meaning "XOR the top <code>B</code> bits of the column index, shifted by <code>S</code>, into the row-offset whose lowest <code>M</code> bits we mask." The pattern is parameterized so that for a given tile shape and target instruction (<code>ldmatrix.x4.b16</code>, etc.) you can pick the swizzle that makes both loads <em>and</em> stores conflict-free.</p>
+                <p>The most useful concrete recipes:</p>
+                <ul>
+                    <li><strong>16×16 FP16 fragment</strong> (Tensor Core m16n8k16) → <code>Swizzle&lt;3,3,3&gt;</code> over a row-major tile.</li>
+                    <li><strong>16×8 FP16 fragment</strong> → <code>Swizzle&lt;2,3,3&gt;</code>.</li>
+                    <li><strong>32×32 FP32 tile</strong> (no Tensor Core) → <code>Swizzle&lt;2,3,2&gt;</code> or just the XOR-by-row-bits pattern in Listing 11.1-A.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="callout tip">
+            <div class="callout-label">Mental model</div>
+            <p>"Bank-conflict free" means the 32 addresses produced by one warp instruction map onto 32 distinct (bank, word) pairs. Padding achieves this by inserting empty bytes; swizzling achieves it by mixing the row bits into the column bits. Padding wastes capacity and complicates pointer arithmetic; swizzling is free at runtime and reversible.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-11-3">
+        <h2 class="section-title"><span class="sec-num">11.3</span>L2 Carveout &amp; Persisting Access Policies</h2>
+        <p class="section-subtitle">Pin hot data into L2 — the secret weapon for small-K GEMMs and embeddings</p>
+
+        <div class="atomic" id="A11.3.1-l2">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.3.1]</span>
+                <h3 class="atomic-title">The L2 Cache Is Programmer-Visible (sm_80+)</h3>
+                <span class="atomic-tag">cache</span>
+            </div>
+            <div class="atomic-body">
+                <p>Ampere's L2 is 40 MB on A100, 6 MB on RTX 3090. Hopper H100 has 50 MB. The driver lets you reserve a fraction of L2 as a <em>persistent carveout</em> for a designated address range. Reads/writes inside that range are tagged "persistent" and the cache replacement algorithm protects them from being evicted by streaming traffic. Use it when:</p>
+                <ul>
+                    <li>The same weights are reused across many launches (LLM decoder weights between tokens).</li>
+                    <li>A small lookup table is hit by every thread (embedding tables, position encodings).</li>
+                    <li>A GEMM has a small K — the operand traffic dominates and reuse is cross-tile.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-5-2">§5.2 Vulnerable shapes</a></div>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 11.3-A: Enabling L2 persistence on a buffer">cudaStream_t stream;
+cudaStreamCreate(&amp;stream);
+
+// 1. Reserve up to 30 MB of L2 as the persistent carveout.
+size_t persist_bytes = 30 * 1024 * 1024;
+cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, persist_bytes);
+
+// 2. Attach a stream attribute that maps a memory range to persistent policy.
+cudaStreamAttrValue attr = {};
+attr.accessPolicyWindow.base_ptr   = weight_ptr;
+attr.accessPolicyWindow.num_bytes  = weight_bytes;
+attr.accessPolicyWindow.hitRatio   = 1.0f;
+attr.accessPolicyWindow.hitProp    = cudaAccessPropertyPersisting;
+attr.accessPolicyWindow.missProp   = cudaAccessPropertyStreaming;
+cudaStreamSetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &amp;attr);
+
+// 3. Launch kernels on this stream — accesses inside [weight_ptr, +weight_bytes)
+//    are treated as persistent.
+my_decoder_kernel&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(weight_ptr, /*…*/);
+
+// 4. Reset when you're done so the next phase doesn't inherit the policy.
+attr.accessPolicyWindow.num_bytes  = 0;
+cudaStreamSetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &amp;attr);
+cudaCtxResetPersistingL2Cache();  // optional: drop any persistent lines
+</pre>
+
+        <div class="pitfall">
+            <div class="pitfall-label">Pitfall</div>
+            <p>Set <code>num_bytes</code> &gt; the carveout size, and you don't get a warning — you get false-positive hit rates because the hardware refuses to mark over-capacity lines as persistent. Always check the L2 hit-rate metric afterward; if it didn't move, the carveout was misconfigured.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-11-4">
+        <h2 class="section-title"><span class="sec-num">11.4</span>HBM, GDDR, and the Memory Subsystem</h2>
+        <p class="section-subtitle">Why "global memory bandwidth" hides three different physical realities</p>
+
+        <div class="atomic" id="A11.4.1-hbm">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.4.1]</span>
+                <h3 class="atomic-title">HBM2e/HBM3 vs GDDR6X — Same Goal, Different Trade-offs</h3>
+                <span class="atomic-tag">DRAM</span>
+            </div>
+            <div class="atomic-body">
+                <p><strong>HBM (High Bandwidth Memory)</strong> stacks 4–8 DRAM die on a silicon interposer right next to the GPU die. The interface is <em>1024 bits wide per stack</em>, with 4–6 stacks per GPU. A100 has 5 HBM2e stacks at 2.4 Gbit/s, giving 1.6 TB/s. H100 has 5 HBM3 stacks at 5.2 Gbit/s = 3.35 TB/s. The cost: HBM doubles GPU die cost and limits you to data-center thermal envelopes.</p>
+                <p><strong>GDDR6X</strong> sits on a PCB and talks to the GPU over a 256–384-bit bus. RTX 4090 has 384-bit GDDR6X at 21 Gbit/s = 1.0 TB/s. Cheaper, easier to manufacture, but lower bandwidth and higher latency.</p>
+                <p>Implication for kernel design: HBM rewards <em>large contiguous transfers</em> (cp.async, TMA). GDDR rewards <em>L2 hit rate</em> because the L2-to-HBM ratio is lower. Same kernel often wants different tile sizes on consumer cards vs data center cards.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span><a class="rel-chip rel-related" href="#sec-1-4">§1.4 Memory hierarchy</a><a class="rel-chip rel-related" href="#sec-11-3">§11.3 L2</a></div>
+            </div>
+        </div>
+
+        <div class="table-wrap"><table>
+            <thead><tr><th>Card</th><th>Memory Type</th><th>Capacity</th><th>Bus Width</th><th>Peak BW</th><th>L2 Size</th></tr></thead>
+            <tbody>
+                <tr><td>RTX 3090</td><td>GDDR6X</td><td>24 GB</td><td>384-bit</td><td class="num">936 GB/s</td><td class="num">6 MB</td></tr>
+                <tr><td>RTX 4090</td><td>GDDR6X</td><td>24 GB</td><td>384-bit</td><td class="num">1008 GB/s</td><td class="num">72 MB</td></tr>
+                <tr><td>A100 80GB</td><td>HBM2e</td><td>80 GB</td><td>5120-bit</td><td class="num">2039 GB/s</td><td class="num">40 MB</td></tr>
+                <tr><td>H100 SXM5</td><td>HBM3</td><td>80 GB</td><td>5120-bit</td><td class="num">3352 GB/s</td><td class="num">50 MB</td></tr>
+                <tr><td>H200</td><td>HBM3e</td><td>141 GB</td><td>6144-bit</td><td class="num">4800 GB/s</td><td class="num">50 MB</td></tr>
+                <tr><td>B200 (preview)</td><td>HBM3e</td><td>192 GB</td><td>8192-bit</td><td class="num">8000 GB/s</td><td class="num">~120 MB</td></tr>
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="section" id="sec-11-5">
+        <h2 class="section-title"><span class="sec-num">11.5</span>Pinned, Pageable, Unified, Stream-Ordered</h2>
+        <p class="section-subtitle">The four allocators and when each one wins</p>
+
+        <div class="atomic" id="A11.5.1-pinned">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.5.1]</span>
+                <h3 class="atomic-title">Pageable vs Pinned vs Mapped</h3>
+                <span class="atomic-tag">host memory</span>
+            </div>
+            <div class="atomic-body">
+                <p><strong>Pageable</strong> — default <code>malloc</code>. The CUDA driver must first copy your data into a hidden pinned staging buffer before DMA. Effective H2D bandwidth: ~6 GB/s on PCIe Gen4.</p>
+                <p><strong>Pinned</strong> (<code>cudaMallocHost</code> or <code>cudaHostAlloc</code>) — page-locked, eligible for direct DMA. Effective bandwidth: PCIe peak (~26 GB/s Gen4 x16, ~52 GB/s Gen5). Down-side: pinned pages cannot be swapped, so allocating GBs of pinned memory starves the OS.</p>
+                <p><strong>Mapped pinned</strong> (<code>cudaHostAllocMapped</code>) — pinned plus accessible by the GPU through a unified address. Useful for tiny, latency-critical writes (e.g., a kernel signaling completion to the host). For large transfers, an explicit memcpy is still faster because the driver can stream batches.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A11.5.2-async-allocator">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.5.2]</span>
+                

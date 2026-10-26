@@ -1,0 +1,127 @@
+<h3>5.2 Normalize first</h3>
+  <p>Before any similarity hash, <code>normalize_html</code> lowercases the page and replaces the parts that change on every load. Here is its real output on a toy fragment:</p>
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 5.1</span><p class="fig-title">Normalization deletes what changes per page, so the template is what gets compared <span class="illus">Illustration</span></p></div>
+    <p><code>&lt;div class="Price" data-nonce="9f86d081884c7d659a2feaa0c55ad015"&gt;BTC 67,214.50 · 2026-10-17&lt;/div&gt; &lt;img src="data:image/png;base64,iVBORw0KGgo…"&gt;</code></p>
+    <p style="margin:10px 0">↓ <code>normalize_html</code>: hex runs ≥ 16 → <code>H</code> · base64-like runs ≥ 40 → <code>B</code> · every digit run → <code>0</code> · whitespace collapsed</p>
+    <p><code>&lt;div class="price" data-nonce="H"&gt;btc 0,0.0 · 0-0-0&lt;/div&gt; &lt;img src="data:image/png;base0,B"&gt;</code></p>
+    <figcaption>The nonce, the price and the date are gone. So is the "64" in "base64". Normalization is blunt, and that's acceptable because it's applied to both pages the same way. Normalization is a decision about what counts as "the same", and section 5.7 shows that decision going wrong once.</figcaption>
+  </div>
+
+  <h3>5.3 TLSH: a fuzzy hash with a distance</h3>
+  <p>TLSH (Trend Micro's locality-sensitive hash) slides a 5-byte window over the input, counts byte triplets into 128 buckets, and records each bucket as one of four levels relative to the quartiles of all the counts. Add a short header (a checksum, the length and quartile ratios) and you get a hash of about 70 hex characters. Two hashes give a <strong>distance</strong>: 0 means near-identical, and it grows as the byte statistics drift apart. There's no fixed maximum: the distance can run well past 300.</p>
+  <ul>
+    <li>Input must be at least 50 bytes, and some low-variety inputs return no hash (<code>TNULL</code>). That's why <code>tlsh_hash</code> can return <code>None</code>.</li>
+    <li>Published cutoffs come from executables, not web pages. The config's <code>tlsh_max_distance = 70</code> is a <strong>placeholder</strong>. The SPEC says to sweep 30 to 150 on your own labeled pages in week 3.</li>
+    <li>TLSH sees bytes, not structure. Two pages from one WordPress theme can be close even with different owners. That's one reason a single content signal never alerts on its own.</li>
+  </ul>
+
+  <h3>5.4 Shingles and Jaccard similarity</h3>
+  <p>The structural signal ignores text and attributes. It walks the HTML and lists tag names in document order: <code>html head meta title … body div nav a …</code>. Then it takes every run of <em>k</em> = 5 consecutive tags, called a <strong>shingle</strong>. A page becomes a set of shingles, and two sets are compared by <strong>Jaccard similarity</strong>: shared shingles ÷ all distinct shingles, |A ∩ B| ÷ |A ∪ B|. 1 means the same set; 0 means nothing in common. Try it: change a tag in page B and watch which shingles stop matching.</p>
+
+  <div class="figure" id="jaccard-widget">
+    <div class="fig-head"><span class="fig-no">Fig 5.2</span><p class="fig-title">One changed tag breaks up to <em>k</em> shingles, so bigger <em>k</em> is stricter <span class="illus">Illustration</span></p></div>
+    <div class="two">
+      <label style="display:grid;gap:6px;font-size:14px;font-weight:600;color:var(--color-figure-secondary)">Page A tags
+        <textarea id="jA" spellcheck="false">html head meta title link body div nav a a a div h1 p a div form input input button div footer p a</textarea></label>
+      <label style="display:grid;gap:6px;font-size:14px;font-weight:600;color:var(--color-figure-secondary)">Page B tags
+        <textarea id="jB" spellcheck="false">html head meta title link script body div nav a a a div h2 p a div form input input button div footer p a</textarea></label>
+    </div>
+    <div class="widget" style="margin-top:16px">
+      <label>Shingle size k: <output id="jKo">5</output><input id="jK" type="range" min="1" max="8" value="5" aria-describedby="jOut"></label>
+      <p class="readout" id="jOut" aria-live="polite"></p>
+    </div>
+    <p class="fig-no" style="margin-top:4px">Page A's shingles (shared ones highlighted)</p>
+    <div class="chips" id="jChips"></div>
+    <figcaption>Two synthetic pages: B adds a <code>script</code> tag and uses <code>h2</code> instead of <code>h1</code>. With k = 1 they look almost identical, because a single tag name says little. With k = 5 each change knocks out several shingles. SSRD uses k = 5 (<code>shingle_k</code>) and a placeholder threshold of 0.80 (<code>jaccard_min</code>).</figcaption>
+  </div>
+
+  <h3>5.5 MinHash: estimating Jaccard without the sets</h3>
+  <p>Comparing a new page against every kit member means comparing many sets. MinHash compresses each set into a short signature. Pick a random hash function, hash every shingle, and keep only the <strong>smallest</strong> value. For two sets, the minimum is the same exactly when the shingle with the smallest hash in A ∪ B is in both sets. That happens with probability |A ∩ B| ÷ |A ∪ B|, which is the Jaccard. Repeat with 128 hash functions (<code>minhash_perm</code>) and count agreements. The fraction that agree is your estimate.</p>
+  <iframe class="anat" id="anat-minhash" src="minhash.html" title="Interactive figure: MinHash wheels" src="about:blank" loading="lazy" height="750"></iframe>
+  <div class="callout">
+    <p>How noisy is 128?</p>
+    <p>Each agreement is a coin flip with probability J, so the estimate's standard error is √(J(1 − J) / 128). At J = 0.80 that's about 0.035. A pair whose true Jaccard is 0.78 will show ≥ 0.80 roughly 3 times in 10 (normal approximation). A hard cut-off at 0.80 is noisy for pairs close to it. That's fine when another family has to agree too, and one more reason never to alert on one signal.</p>
+  </div>
+
+  <h3>5.6 The copy fingerprint: what separated the KCDA pages</h3>
+  <p>The KCDA pages recovered from the Wayback Machine are WordPress + Elementor (Hello theme) behind Cloudflare. Their tag structure, paths and scripts are shared with thousands of ordinary Elementor sites. Once an Elementor background sample was added, they correctly stopped forming a kit on assets. What their builders reused was the <strong>sales copy</strong>.</p>
+  <p><code>copy_shingles</code> takes the visible text, drops words that come from the domain's own brand (the label split on hyphens and digits, words of four or more letters), forms word 5-grams, hashes them with mmh3, and keeps the smallest 4,000 (a bottom-k sample, which estimates overlap consistently). Two pages are compared by <strong>containment</strong>: shared ÷ the smaller set. Containment, not Jaccard, because a long page containing a short page's whole copy is still a match.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 5.4</span><p class="fig-title">KCDA page pairs share 71 to 99 copy 5-grams. Seed-vs-background pairs never share more than 15</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 220" role="img" aria-label="Shared brand-stripped word 5-grams per page pair. Seed versus background pairs: 99th percentile 5, maximum 15. KCDA WordPress page pairs: 71 to 99. The placeholder strong threshold is 30 and the medium threshold is 12.">
+      <text x="20" y="58" class="tm">Seed vs</text><text x="20" y="76" class="tm">background</text>
+      <text x="20" y="124" class="tb">KCDA page pairs</text>
+      <rect x="120" y="50" width="111" height="22" class="faint" style="stroke:#52545A;stroke-width:1"/>
+      <path class="ln" d="M157 44V78"/><text x="160" y="40" class="ts tm">p99 = 5</text><text x="238" y="66" class="ts tm">max = 15</text>
+      <rect x="645" y="110" width="208" height="22" class="acc"/><text x="645" y="104" class="ts">71</text><text x="853" y="104" text-anchor="end" class="ts">99</text>
+      <path class="lnm dash" d="M342 30V160"/><text x="348" y="150" class="ts tm">strong ≥ 30 (placeholder)</text>
+      <path class="lnm dash" d="M209 92V160"/><text x="204" y="150" text-anchor="end" class="ts tm">medium ≥ 12</text>
+      <path class="ln" d="M120 170H860"/>
+      <g class="ts tm" text-anchor="middle"><text x="120" y="190">0</text><text x="305" y="190">25</text><text x="490" y="190">50</text><text x="675" y="190">75</text><text x="860" y="190">100</text></g>
+      <text x="490" y="212" text-anchor="middle" class="ts tm">shared brand-stripped word 5-grams per pair</text>
+    </svg>
+    </div>
+    <figcaption>Measured Oct 17. Containment for the KCDA pairs was 0.11 to 0.23, above <code>copy_min_containment = 0.10</code>. Background means 142 random urlscan scans plus 90 Elementor sites. Only the 99th percentile and the maximum of the background pairs were recorded, so the gray band spans 0 to the maximum. With this signal, kit-01-KCDA forms. Notice that the medium threshold (12) sits below the background maximum (15): a background pair can earn a medium copy signal.</figcaption>
+  </div>
+
+  <h3>5.7 Exact hashes: favicons, assets and inline scripts</h3>
+  <p><strong>Favicon mmh3.</strong> SSRD uses the Shodan recipe so its numbers match other tools: base64-encode the raw icon bytes <em>with a newline every 76 characters</em> (Python's <code>base64.encodebytes</code>), then take MurmurHash3 32-bit, signed. A different encoding of the same icon gives a different number, which makes pivots in Shodan or elsewhere silently fail. Default and CDN icons get zero weight through the denylist.</p>
+  <div class="callout">
+    <p>Try it in <code>uv run python</code></p>
+    <p><code>import base64, mmh3; mmh3.hash(base64.encodebytes(b"\x00\x00\x01\x00toy-icon-bytes"))</code> → <code>-1857383559</code>. Then try <code>base64.b64encode</code> (no newlines) on the same bytes and see the number change.</p>
+  </div>
+  <p><strong>Assets.</strong> SHA-256 of same-origin JS and CSS files, skipping common libraries matched by <code>library_asset_pattern</code> (jQuery, Bootstrap, GSAP, analytics and so on). Free urlscan accounts return 404 on response bodies, so seed favicons can't come from urlscan. Asset SHA-256s from its result JSON still work.</p>
+  <p><strong>Inline scripts</strong> over 200 characters are hashed with whitespace-only normalization. On Oct 17 they had been hashed after full normalization. That turned every chat-widget snippet's account number into <code>0</code>, so all sites using the same widget got one hash, and kit-01 chained unrelated sites together. Account IDs are exactly what should survive, so now only whitespace is collapsed.</p>
+
+  <h3>5.8 Page features, and values too common to mean anything</h3>
+  <p>Family C reads the page: a normalized title (≥ 8 characters), Telegram and WhatsApp IDs, crypto-address patterns, response header order and the CMS <code>generator</code>. Contact IDs and addresses are private linking evidence. Hard rule 5: never interact with them.</p>
+  <p>A value seen on many unrelated sites (the default WordPress favicon, a popular theme's path, "Home") would link everything to everything. <code>score.common_values</code> counts how many distinct background and live hosts carry each value. Above <code>max(3, 2% of hosts)</code> it gets zero weight. Seed pages are deliberately left out of that count. Otherwise a large, genuine kit would denylist its own shared assets.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Family</th><th>Signal</th><th>Fires when</th><th>Strength</th></tr></thead>
+      <tbody>
+        <tr><td>A content</td><td>tlsh</td><td>distance ≤ 70 (placeholder)</td><td>strong</td></tr>
+        <tr><td>A content</td><td>tag_jaccard</td><td>MinHash estimate ≥ 0.80 (placeholder)</td><td>strong</td></tr>
+        <tr><td>A content</td><td>copy</td><td>≥ 30 shared and containment ≥ 0.10 · or ≥ 12 shared</td><td>strong · medium</td></tr>
+        <tr><td>B assets</td><td>favicon_mmh3</td><td>equal, not common</td><td>strong</td></tr>
+        <tr><td>B assets</td><td>asset_sha256 · inline_script</td><td>any shared hash, not common</td><td>strong</td></tr>
+        <tr><td>B assets</td><td>asset_paths</td><td>≥ 2 shared paths and ≥ 50% overlap</td><td>medium</td></tr>
+        <tr><td>C page</td><td>telegram · whatsapp · crypto_addresses</td><td>any shared value</td><td>strong</td></tr>
+        <tr><td>C page</td><td>title</td><td>equal normalized title, ≥ 8 chars</td><td>medium</td></tr>
+        <tr><td>C page</td><td>header_order · generator</td><td>identical</td><td>weak</td></tr>
+        <tr><td>D infra</td><td>asn · ns</td><td>identical</td><td>weak</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="meta">From <code>score.compare</code> in the working tree on Oct 17. Placeholders are set by the week 3 sweep.</p>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>Compute the Jaccard of {a, b, c, d} and {b, c, d, e, f}.</summary><div>Shared {b, c, d} = 3. All distinct {a, b, c, d, e, f} = 6. J = 0.5. Containment = 3 ÷ min(4, 5) = 0.75.</div></details>
+    <details><summary>Why does the copy signal use containment instead of Jaccard?</summary><div>A long landing page that contains a short page's entire copy, plus more, should still match. Jaccard would be dragged down by the extra text, while containment divides by the smaller set.</div></details>
+    <details><summary>Why are seed pages excluded when building the common-value denylist?</summary><div>A genuine kit with many seed members would push its own shared favicon or script over the "common" cut-off and erase the evidence that defines it.</div></details>
+    <details><summary>Your favicon hash doesn't match the number in a Shodan search for the same icon. First thing to check?</summary><div>The encoding: <code>encodebytes</code> (newlines every 76 chars plus a trailing newline), not <code>b64encode</code>. And signed 32-bit output.</div></details>
+    <details><summary>A TLSH distance of 70 between two pages. What can you say?</summary><div>Their normalized byte statistics are fairly close, below the current placeholder cut-off. That isn't the same as "same kit" until the threshold has been swept on labeled pairs, and it must agree with another family.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://github.com/trendmicro/tlsh">TLSH repo and paper (Oliver, Cheng &amp; Chen 2013)</a> · <a href="https://ekzhu.com/datasketch/minhash.html">datasketch MinHash docs</a> · Broder, "On the resemblance and containment of documents" (1997) · <a href="https://arxiv.org/abs/2005.14440">Phillips &amp; Wilder 2020</a> (compare their TF-IDF clustering with these signals) · <a href="https://blog.shodan.io/deep-dive-http-favicon/">Shodan: deep dive into HTTP favicons</a></div>
+</section>
+
+<section class="chapter" id="ch6" aria-labelledby="ch6-h">
+  <p class="issue-line">Chapter 6 · Week 2, Mon Oct 26 · 45 minutes</p>
+  <h2 id="ch6-h">When is a match a match?</h2>
+  <p class="lede">Any one signal from chapter 5 can be shared by accident: a theme, a widget, a hosting company. SSRD's answer is to require agreement between <strong>different kinds</strong> of evidence. Two signals that tend to fail together don't count as two.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Signal families, the alert rule (as specified and as coded), union-find clustering, chaining and the backtest.</dd></div>
+    <div><dt>Why it matters</dt><dd>False positives go to investigators. The alert rule is the main thing standing between a lookalike site and a wrong lead.</dd></div>
+    <div><dt>In the repo</dt><dd><code>score.decide</code>, <code>score.strong_families</code>, <code>kits.cluster</code>, <code>evaluate.backtest</code>.</dd></div>
+  </dl>
+
+  <h3>6.1 Why "different families"</h3>
+  <p>TLSH and tag-Jaccard both measure the HTML template. If two unrelated shops use the same WordPress theme, both fire together. Counting them as two independent confirmations would be double-counting one fact. So signals are grouped by what they measure: <strong>A</strong> content, <strong>B</strong> assets, <strong>C</strong> page features, <strong>D</strong> infrastructure. The SPEC rule is: <em>alert only on ≥ 2 strong signals from different families among A/B/C; D only adds weight.</em> Infrastructure is weak because the VCU release says the network used "Eastern European and American" hosts. Sharing Cloudflare or a big host's ASN means almost nothing.</p>
+
+  

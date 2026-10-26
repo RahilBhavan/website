@@ -28,6 +28,18 @@ pnpm-debug.log*
 # Local consulting project (embedded repo, not part of site source)
 openEden\ Consulting\ Project/
 
+# Generated textbook reading editions (source lives in src/textbooks)
+public/textbooks/*/
+
+.generated/
+docs/textbook-verification/*.png
+docs/textbook-verification/*.jpg
+
+# Raw browser diagnostics; summarized receipts are tracked
+docs/textbook-verification/layout.json
+docs/textbook-verification/contrast.json
+docs/textbook-verification/figures/
+
 # playwright
 test-results/
 playwright-report/

@@ -1,0 +1,326 @@
+<h3>Figure 14.1 — The placebo distribution</h3>
+        <span class="tag">interactive · randomize treatment dates</span>
+      </div>
+      <div class="controls">
+        <label>
+          True effect size
+          <input type="range" id="trueEffect" min="-1" max="1" step="0.05" value="0.5" />
+          <span class="value" id="trueEffectV">0.50</span>
+        </label>
+        <label>
+          Noise (within-token SD)
+          <input type="range" id="placeboNoise" min="0.1" max="1" step="0.05" value="0.3" />
+          <span class="value" id="placeboNoiseV">0.30</span>
+        </label>
+        <button id="runPlacebo">Run 500 placebos</button>
+      </div>
+      <svg id="placeboHist" width="720" height="320"></svg>
+      <div class="readout" id="placeboReadout"></div>
+      <div class="interactive-caption">
+        Histogram: placebo ATT estimates from 500 random re-assignments of treatment dates.
+        Red vertical line: the actual ATT under the true effect size you specified.
+        The placebo p-value is the fraction of placebos at least as extreme as the actual.
+      </div>
+    </div>
+
+    <h2>Why this matters: what reviewers care about</h2>
+
+    <p>
+      Two reviewers, three concerns. Standard pushback on a DiD paper with N=7:
+    </p>
+
+    <ol>
+      <li>
+        <strong>"How do you know the effect isn't just noise?"</strong>
+        Answer: the placebo test. Random treatment assignment produces a distribution
+        centered near zero with the same level of within-cluster noise as our actual data.
+        If the actual ATT sits in the right tail of that distribution, the noise
+        explanation is implausible.
+      </li>
+      <li>
+        <strong>"How do you know the effect isn't driven by one outlier token?"</strong>
+        Answer: the leave-one-out check. Re-run the main spec dropping each token in turn.
+        If the result is stable across all 7 drops, no single token is doing the work.
+        Reported in the appendix; brief discussion in the robustness section.
+      </li>
+      <li>
+        <strong>"How do you know listing isn't endogenous to pre-trends you can't measure?"</strong>
+        Answer: HonestDiD bounds. Even allowing the post-treatment PT violation to be as
+        large as the largest observed pre-treatment violation, the CI still excludes zero.
+        This is the strongest version of the parallel-trends defense available with this
+        sample.
+      </li>
+    </ol>
+
+    <h2>A note on what NOT to call robustness</h2>
+
+    <p>
+      A common trap in empirical work: running the same specification with slightly
+      different controls and calling each one a "robustness check". This is not robustness
+      — it's specification fishing, and reviewers spot it immediately. A real robustness
+      check perturbs <em>one</em> structural choice (the DV, the treatment, the sample,
+      the estimator) and keeps everything else constant. Then you can interpret any
+      differences as informative about that one choice.
+    </p>
+
+    <p>
+      Our eleven robustness specs each perturb a single dimension. They are not
+      "specifications I happen to like best"; they are pre-specified probes of the most
+      likely concerns a reviewer will raise.
+    </p>
+
+    <p>
+      The final chapter of Part IV confronts the limitations head-on: small N, endogenous
+      listing, BENJI exclusion, and the multi-chain follow-up paper that this work is
+      really setting up.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="15-limitations" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 15 · Part IV — Execution</div>
+    <h1 class="chapter-title">Limitations and improvements</h1>
+    <p class="chapter-subtitle">
+      The four major limitations that bound what this paper can claim, and the
+      concrete improvements that would let a follow-up paper claim more.
+    </p>
+
+    <h2>Limitation 1: N=7 makes statistical power low</h2>
+
+    <p>
+      We have said this many times in this textbook, but it deserves one more direct
+      treatment. With 7 clusters, 170 weeks, and the noise levels we observe in pilot
+      data, our expected power to detect a 30% velocity-increase ATT at the 5% level
+      is around 45%. For a 50% increase, power is around 65%. For a 100% increase,
+      power is around 85%.
+    </p>
+
+    <p>
+      What "45% power" means in practice: if the true ATT is 30% and we ran this exact
+      study 100 times with fresh data each time, we would detect a significant effect in
+      about 45 of those 100 studies. The other 55 would report a confidence interval
+      that includes zero — a "null result" — even though the true effect is real and
+      30% in magnitude. With one study, we have a coin-flip chance of detecting an
+      effect of plausible magnitude. That is the honest constraint.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 15.1 — Power calculator</h3>
+        <span class="tag">interactive · add tokens, see power</span>
+      </div>
+      <div class="controls">
+        <label>
+          Number of treated tokens
+          <input type="range" id="nTreated" min="1" max="20" step="1" value="3" />
+          <span class="value" id="nTreatedV">3</span>
+        </label>
+        <label>
+          Number of never-treated controls
+          <input type="range" id="nControls" min="1" max="20" step="1" value="4" />
+          <span class="value" id="nControlsV">4</span>
+        </label>
+        <label>
+          Sample length (weeks)
+          <input type="range" id="nWeeks" min="50" max="500" step="10" value="170" />
+          <span class="value" id="nWeeksV">170</span>
+        </label>
+        <label>
+          True effect size (IHS units)
+          <input type="range" id="effSize" min="0.05" max="2" step="0.05" value="0.4" />
+          <span class="value" id="effSizeV">0.40</span>
+        </label>
+        <label>
+          Residual noise (within-token SD)
+          <input type="range" id="resNoise" min="0.1" max="1.5" step="0.05" value="0.6" />
+          <span class="value" id="resNoiseV">0.60</span>
+        </label>
+      </div>
+      <svg id="powerChart" width="720" height="280"></svg>
+      <div class="readout" id="powerReadout"></div>
+      <div class="interactive-caption">
+        Power estimate uses a normal-approximation formula with a design-effect
+        adjustment for within-cluster correlation:
+        power ≈ Φ(|ATT| / SE − 1.96) where SE = σ·√((1 + (T·prop − 1)·ρ) / (N·T·prop))
+        and ρ ≈ 0.3 is the assumed intraclass correlation; prop is the share of
+        post-treatment observations. Slider defaults (3 treated, 4 controls, T=170,
+        ATT=0.40, σ=0.60) reproduce the chapter's headline ~45% figure.
+      </div>
+    </div>
+
+    <p>
+      Three concrete improvements that buy us power:
+    </p>
+
+    <ul>
+      <li>
+        <strong>Add 8–10 more tokens.</strong> The natural expansion targets are TBILL
+        (OpenEden), WTGXX (WisdomTree), TBILL+ (Backed), USTBL / EUTBL (Spiko),
+        USDM (Mountain), bIB01 (Backed Treasury Bond), and HKTBILL (Hong Kong-issued
+        T-bill token).
+        Doubling N from 7 to ~15 roughly doubles power at fixed effect size.
+      </li>
+      <li>
+        <strong>Switch to daily panels.</strong> Multiplying T from 170 to 1,190 adds
+        a $\sqrt{7}$ factor to power. Daily aggregation introduces more noise per cell
+        but the increased T usually wins for moderate effects.
+      </li>
+      <li>
+        <strong>Expand to multi-chain.</strong> OUSG on Mantle, BUIDL on Arbitrum/Avalanche,
+        USDY on Aptos and Solana, BENJI on Stellar. Each chain-deployment of the same
+        underlying token is partially a separate observation, especially for the
+        treatment-vs-no-treatment comparison (some chains have AMM listings, others
+        don't, of the same token).
+      </li>
+    </ul>
+
+    <h2>Limitation 2: AMM listing timing is endogenous</h2>
+
+    <p>
+      We have flagged this throughout. Ondo did not pick a random week to list OUSG
+      on Uniswap — they picked the week when they were ready, when their compliance
+      sign-offs were in, and (most concerning) when their growth trajectory suggested
+      the pool would attract enough volume to justify the LP incentive program. Some
+      of the post-listing velocity rise reflects pre-listing momentum that would have
+      continued anyway.
+    </p>
+
+    <p>
+      We address this within the data via three mechanisms — parallel pre-trends,
+      the placebo test, and HonestDiD bounds — but none of them are a true instrumental
+      variable. The fundamental answer is "we cannot fully break the endogeneity with
+      this data; what we can say is that the post-listing pattern is consistent with a
+      treatment effect of the magnitude reported, and is inconsistent with several
+      alternative explanations."
+    </p>
+
+    <p>
+      A follow-up paper could pursue genuine instruments. Two plausible candidates:
+    </p>
+
+    <ul>
+      <li>
+        <strong>The Uniswap Foundation's RWA pool incentive program.</strong> In late
+        2024 Uniswap allocated grants to specific RWA pool LPs. The timing of grant
+        approvals (which involve Foundation governance votes that have idiosyncratic
+        delays) is plausibly exogenous to the underlying token's trajectory. If we
+        can collect grant timing data, that becomes a candidate first-stage instrument.
+      </li>
+      <li>
+        <strong>Regulatory clarifications.</strong> The SEC's various 2024 and 2025
+        statements on tokenized money market funds shifted the calculus for AMM listing.
+        Some statements affected some issuers but not others. A cross-issuer comparison
+        around the regulatory event might give us a quasi-IV.
+      </li>
+    </ul>
+
+    <p>
+      Neither instrument is clean enough for a top-five journal, but either would push
+      the paper from "consistent with a treatment effect" to "instrumental variables
+      identify a treatment effect of X". That is the difference between a working paper
+      and a JF submission.
+    </p>
+
+    <h2>Limitation 3: Multi-chain scoping (BENJI in particular)</h2>
+
+    <p>
+      We scoped BENJI to its Polygon deployment, ignoring Stellar where most of its
+      supply sits. This was a pragmatic choice driven by Stellar's lack of a mature
+      <code>getAssetTransfers</code>-equivalent API. The cost: BENJI is a partial unit
+      in our panel, providing a never-treated control but with much smaller transfer
+      volume than its true global activity.
+    </p>
+
+    <p>
+      An obvious extension is to build a Stellar Horizon pipeline. This is roughly
+      4–6 weeks of engineering effort. The Horizon API does return operations
+      list-by-account, so the basic data is available — what's missing is the
+      Alchemy-style bulk filtering that makes the EVM pipeline efficient. A dedicated
+      Stellar effort would essentially involve writing a custom transfer collector
+      that walks the operations log block by block, an order of magnitude slower
+      than the EVM pipeline. We don't do it now because the payoff is one extra
+      never-treated unit (Stellar BENJI is still never AMM-listed). It would be more
+      worthwhile if a multi-chain follow-up paper aimed to study a network of cross-chain
+      bridged tokens specifically.
+    </p>
+
+    <h2>Limitation 4: Zero-inflated dependent variable</h2>
+
+    <p>
+      Forty percent of token-week observations have $V_{i,t} = 0$. Our main spec
+      handles this with the IHS transform, which is defined at zero. The two-part
+      hurdle model is reported as robustness. But neither approach gives us a clean
+      decomposition of the AMM effect into:
+    </p>
+
+    <ul>
+      <li>
+        <strong>Extensive margin:</strong> AMM listing makes <em>any</em> trade more
+        likely in a given week (turns zero weeks into positive weeks).
+      </li>
+      <li>
+        <strong>Intensive margin:</strong> Conditional on a trade happening, AMM listing
+        makes the trade <em>bigger</em>.
+      </li>
+    </ul>
+
+    <p>
+      Distinguishing these is interesting in its own right because they suggest different
+      economic mechanisms. The extensive margin is consistent with AMM listing reaching
+      new traders who otherwise would not have transacted at all; the intensive margin
+      is consistent with existing traders simply trading more efficiently. With a
+      panel large enough to support the two-part model as the main spec, we could
+      separately report both. Currently we cannot.
+    </p>
+
+    <h2>Two improvements that don't require a new paper</h2>
+
+    <p>
+      Some of the limitations can be partially addressed by additional analyses within
+      the same paper. Two worth doing before submission:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Leave-one-out sensitivity.</strong> Run the main CS estimator 7 times,
+        each time dropping one token. Report the seven estimates. If the result is
+        stable across all 7 leave-outs, no single token is driving the headline.
+        Implementation is one R loop; reported in appendix.
+      </li>
+      <li>
+        <strong>Cohort heterogeneity table.</strong> The CS estimator naturally produces
+        three cohort-specific ATTs (one for OUSG, USDY, STBT). Reporting these
+        separately answers the natural follow-up question — "does the effect differ
+        by issuer / venue type?" Likely finding: USDY's effect is largest (most
+        retail-facing), STBT's smallest (Curve, smaller pool, institutional).
+      </li>
+    </ol>
+
+    <h2>How to position limitations in the paper</h2>
+
+    <p>
+      The biggest mistake authors make in the limitations section is being defensive.
+      The reviewer's job is to find limitations; if you've named them yourself, you've
+      reframed the conversation. Our limitations section will:
+    </p>
+
+    <ul>
+      <li>State each of the four major limitations in the same plain language used in this chapter.</li>
+      <li>Quantify each one where possible (e.g., "power for a 30% ATT is approximately 45%").</li>
+      <li>Describe the specific follow-up paper or extension that would address it.</li>
+      <li>Not apologize. Limitations of one paper are research opportunities for the next.</li>
+    </ul>
+
+    <p>
+      With limitations and improvements covered, you have read the full textbook.
+      The final chapter is a glossary you can return to whenever a term needs
+      refreshing.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="16-glossary" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 16 · Part IV — Execution</div>
+    

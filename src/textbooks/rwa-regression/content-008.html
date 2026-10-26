@@ -1,0 +1,344 @@
+<h2>The fix: wild cluster bootstrap</h2>
+
+    <p>
+      The wild cluster bootstrap was proposed by Cameron, Gelbach, and Miller (2008) and
+      remains the consensus solution for few-cluster inference. The recommended variant
+      for hypothesis testing is the <strong>restricted</strong> wild cluster bootstrap
+      (WCR), which imposes the null hypothesis before resampling. The recipe:
+    </p>
+
+    <ol>
+      <li>Fit the regression <em>under the null hypothesis</em> $H_0: \beta = \beta_0$ (typically $\beta_0 = 0$) by re-estimating with the constraint imposed, obtaining restricted coefficients $\tilde\beta$ and restricted residuals $\tilde e_{i,t}$.</li>
+      <li>For each bootstrap iteration $b$ (typically B = 999 or 9,999): independently for each cluster, draw a single random sign $\omega_i \in \{-1, +1\}$ (Rademacher weights) — or from the 6-point Webb distribution for even better small-N performance.</li>
+      <li>Construct bootstrap residuals $\tilde e^*_{i,t} = \omega_i \cdot \tilde e_{i,t}$ and bootstrap outcomes $Y^*_{i,t} = X_{i,t}\tilde\beta + \tilde e^*_{i,t}$.</li>
+      <li>Re-fit the unrestricted regression to $Y^*$ and store $\hat\beta^*_b$.</li>
+      <li>The bootstrap distribution of $\{\hat\beta^*_b\}_{b=1}^B$ approximates the sampling distribution of $\hat\beta$ <em>under the null</em>. The bootstrap p-value is the fraction of $|\hat\beta^*_b - \beta_0|$ at least as large as $|\hat\beta - \beta_0|$. Confidence intervals come from inverting the bootstrap test over a grid of $\beta_0$ values.</li>
+    </ol>
+
+    <p>
+      The key statistical fact: under $H_0$, the bootstrap distribution is asymptotically
+      correct even as N gets small, because the sign-flips preserve the within-cluster
+      correlation structure exactly. Roodman et al. (2019) showed in extensive simulations
+      that WCR with Webb weights gives near-nominal coverage at N as small as 5. The
+      unrestricted variant (WCU), which resamples around the unrestricted $\hat\beta$,
+      is faster to compute but has noticeably worse coverage in our N=7 regime; we use WCR.
+    </p>
+
+    <p>
+      A separate small-N correction is also baked into <code>fixest</code>'s analytical
+      cluster-robust variance: the <strong>CR1</strong> scaling
+      $\frac{G}{G-1} \cdot \frac{N-1}{N-K}$ where $G$ is the number of clusters, $N$ is
+      total observations, and $K$ is the number of parameters. Without this scaling the
+      CR estimator is biased downward; with it, the bias is smaller but still material at
+      $G = 7$. The bootstrap is what carries the day; the analytical SE is reported only
+      alongside as a comparison.
+    </p>
+
+    <h2>Wild bootstrap in action</h2>
+
+    <p>
+      The widget below runs a synthetic wild cluster bootstrap. The "data" are 7
+      cluster-level mean residuals. Click "Run bootstrap" to draw 999 sign-flipped
+      replications and see the bootstrap distribution. Compare the bootstrap-based
+      95% CI to the conventional cluster-robust 95% CI (the orange dashed band).
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 11.1 — Wild cluster bootstrap, illustrated</h3>
+        <span class="tag">interactive · run the bootstrap</span>
+      </div>
+      <div class="controls">
+        <label>
+          Number of bootstrap iterations
+          <input type="range" id="B" min="99" max="9999" step="100" value="999" />
+          <span class="value" id="BV">999</span>
+        </label>
+        <label>
+          Weight scheme
+          <select id="wts">
+            <option value="rademacher">Rademacher (±1)</option>
+            <option value="webb">Webb (6-point)</option>
+          </select>
+        </label>
+        <button id="runBoot">Run bootstrap</button>
+      </div>
+      <svg id="bootHist" width="720" height="320"></svg>
+      <div class="readout" id="bootReadout">Click "Run bootstrap" to draw 999 sign-flipped replications. The histogram below shows the resulting distribution of $\hat\beta^*$, with conventional CR-SE CI (orange dashed) and wild bootstrap CI (blue solid).</div>
+      <div class="interactive-caption">
+        With only 7 clusters, the conventional CR-SE CI (orange) is typically too narrow.
+        The wild bootstrap CI (blue) is wider and more honest about the small-N uncertainty.
+        Webb weights produce a slightly smoother bootstrap distribution because they
+        offer 6 outcomes per cluster rather than 2.
+      </div>
+    </div>
+
+    <h2>Practical implementation in R</h2>
+
+    <p>
+      The <code>wildboottest</code> package implements the wild cluster bootstrap
+      directly on top of a <code>fixest</code> regression:
+    </p>
+
+    <pre class="code-r"><code>library(fixest)
+library(wildboottest)
+
+twfe <- feols(
+  ihs_velocity_w ~ amm_listed_10k + log_mcap + log_holders +
+                   token_age_weeks + ffr + log_defi_tvl |
+                   token_id + week_num,
+  data = panel
+)
+
+boot_result <- boottest(
+  twfe,
+  param   = "amm_listed_10k",
+  clustid = "token_id",
+  B       = 9999,
+  type    = "webb"
+)
+summary(boot_result)
+# returns bootstrap p-value and 95% confidence interval</code></pre>
+
+    <p>
+      For the Callaway-Sant'Anna estimator, the cleanest path is to use the
+      <code>bstrap</code> argument of <code>att_gt()</code>, which performs the bootstrap
+      natively on the ATT(g, t) components:
+    </p>
+
+    <pre class="code-r"><code>cs_main <- att_gt(
+  yname = "ihs_velocity_w",
+  gname = "first_amm_week",
+  idname = "token_id",
+  tname = "week_num",
+  data = panel,
+  control_group = "nevertreated",
+  bstrap = TRUE,
+  biters = 9999,
+  cband = TRUE  # uniform (rather than pointwise) confidence bands
+)</code></pre>
+
+    <p>
+      <code>cband = TRUE</code> requests uniform confidence bands across the entire
+      event-study curve. Without this, the per-event-time CIs would each have nominal
+      coverage but the simultaneous coverage across all event times would be lower —
+      and that simultaneous coverage is what matters for visual inspection of the plot.
+    </p>
+
+    <h2>What we report in the paper</h2>
+
+    <p>
+      Every standard error reported in any table is the wild cluster bootstrap version
+      (Webb weights, B=9999). Every confidence interval on an event-study plot uses
+      uniform bands. The paper's methodology section explicitly cites Cameron-Miller
+      (2015) and Roodman et al. (2019) to justify these choices, and the appendix
+      contains a comparison table showing conventional CR-SEs alongside bootstrap SEs
+      so a sophisticated reader can see the small-N adjustment quantitatively.
+    </p>
+
+    <h2>The fundamental honesty</h2>
+
+    <p>
+      No amount of clever bootstrap fixes the basic fact that N=7 produces wide
+      confidence intervals. If the true ATT on IHS(velocity) is 0.5 and the
+      bootstrap-implied standard error is 0.3, our 95% CI is roughly (−0.1, 1.1) —
+      we cannot rule out either a zero effect or a doubling effect. That's not a
+      failure of the inference procedure; that's an honest reflection of the data.
+      Chapter 12 covers exactly how the same N=7 makes pre-trend tests almost
+      useless. Chapter 15 explains how to acknowledge this honestly in the paper.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="12-pretrends" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 12 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">Pre-trend tests and their limits</h1>
+    <p class="chapter-subtitle">
+      Why a pre-trend test that fails to reject does not validate parallel trends —
+      and the Roth (2022) critique that should keep you humble.
+    </p>
+
+    <h2>The standard pre-trends ritual</h2>
+
+    <p>
+      Every paper using a DiD design includes some version of this ritual. The author
+      shows an event-study plot. The pre-treatment ATT coefficients are statistically
+      indistinguishable from zero. The author writes: "consistent with parallel trends".
+      Reviewer accepts. Paper publishes.
+    </p>
+
+    <p>
+      The implicit logic chain is:
+    </p>
+
+    <ol>
+      <li>If parallel trends held in the pre-period, $\beta_{-1}, \beta_{-2}, \ldots, \beta_{-8}$ should all be zero on average.</li>
+      <li>The estimates of those coefficients are close to zero.</li>
+      <li>Therefore, parallel trends probably held.</li>
+      <li>Therefore, the post-treatment estimates are unbiased.</li>
+    </ol>
+
+    <p>
+      Each individual step is reasonable. The chain as a whole is misleading, in a way
+      that Jonathan Roth's <em>AER: Insights</em> 2022 paper made precise. The problem
+      is step 2 — "close to zero" — which is a statement about <em>statistical
+      significance</em>, not about the <em>true underlying violation</em>. And in a
+      small sample, the gap between those two is enormous.
+    </p>
+
+    <h2>Why pretesting fails: a thought experiment</h2>
+
+    <p>
+      Suppose the true counterfactual trend for OUSG is slightly steeper than BUIDL's
+      — say, the counterfactual would have increased by 0.3 IHS units per quarter, while
+      BUIDL increases by 0.1 per quarter. That difference of 0.2 per quarter is a real
+      parallel-trends violation. Over 8 pre-treatment weeks, it accumulates to about
+      0.4 units of "missing" trend in the pre-period.
+    </p>
+
+    <p>
+      In a panel with 7 units and large within-token noise, the standard error on each
+      pre-treatment coefficient is approximately ±0.5. The pre-treatment coefficients
+      will average around 0.4 — but with standard errors of ±0.5, each individual coefficient
+      will fail to reject the null of zero at the 5% level. The pre-trend test will
+      report "no evidence of pre-trend" and the author will declare parallel trends valid.
+    </p>
+
+    <p>
+      But the violation is real. The post-treatment estimate will be biased <em>upward</em>
+      by the same 0.4 units that the pre-period violation was hiding. The "passing"
+      pre-trend test gave false reassurance.
+    </p>
+
+    <h2>The Roth (2022) bias amplification</h2>
+
+    <p>
+      Roth's contribution goes further: he shows that <em>conditional on passing the
+      pre-trend test</em>, the post-treatment estimate is biased in a predictable way.
+      The selection effect ("we only kept publishing the papers whose pre-trends test
+      passed") makes the conditional bias larger than the unconditional bias would be.
+    </p>
+
+    <p>
+      The interactive widget below makes this concrete. You set a true pre-trend
+      violation slope and the noise level. The simulator runs 1,000 synthetic experiments,
+      records which ones pass a pre-trend test at $\alpha = 0.05$, and shows the
+      distribution of post-treatment estimates separately for those that pass and those
+      that fail.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 12.1 — Pre-trend test power and conditional bias</h3>
+        <span class="tag">interactive · Roth (2022)</span>
+      </div>
+      <div class="controls">
+        <label>
+          True PT violation slope
+          <input type="range" id="trueSlope" min="0" max="0.4" step="0.01" value="0.10" />
+          <span class="value" id="trueSlopeV">0.10 per week</span>
+        </label>
+        <label>
+          Noise (SE of each pre-coefficient)
+          <input type="range" id="noiseSE" min="0.05" max="0.5" step="0.01" value="0.20" />
+          <span class="value" id="noiseSEV">0.20</span>
+        </label>
+        <label>
+          Pre-period length (weeks)
+          <input type="range" id="prePeriod" min="4" max="16" step="1" value="8" />
+          <span class="value" id="prePeriodV">8</span>
+        </label>
+        <button id="runSim">Run 1,000 simulations</button>
+      </div>
+      <svg id="rothChart" width="720" height="280"></svg>
+      <div class="readout" id="rothReadout"></div>
+      <div class="interactive-caption">
+        Histogram of post-treatment estimates across 1,000 simulations.
+        Blue: simulations whose pre-trend test FAILED to reject (i.e., "looked clean").
+        Red: simulations whose pre-trend test rejected (i.e., would normally be flagged
+        as concerning). The "passing" subset is what gets published — and is biased
+        in the same direction as the true PT violation.
+      </div>
+    </div>
+
+    <h2>What Rambachan and Roth recommend instead</h2>
+
+    <p>
+      Rambachan and Roth (2023) — building on Roth's 2022 critique — propose
+      <strong>honest DiD inference</strong>: rather than test the binary null of "parallel
+      trends", pre-specify a set of plausible parallel-trends violations and report a
+      confidence interval that is valid <em>uniformly</em> over that set. The R package
+      <code>HonestDiD</code> implements this.
+    </p>
+
+    <p>
+      For example, you might pre-specify "the post-treatment PT violation is at most as
+      large as the largest single pre-treatment coefficient I observed" — a natural
+      benchmark called "relative magnitudes" restriction. The reported CI is then
+      wider than the conventional one (because it accounts for the possibility of any
+      PT violation in that range) but it is honest.
+    </p>
+
+    <p>
+      We report HonestDiD bounds as a robustness check in Chapter 14, using the
+      relative-magnitudes restriction with $\bar M = 1$ (i.e., allow the post-treatment
+      violation to be as large as the largest pre-treatment one). If the headline
+      result still holds under this restriction — i.e., the HonestDiD CI still excludes
+      zero — that is much stronger evidence than a passing pre-trend test.
+    </p>
+
+    <h2>What we actually do in the paper</h2>
+
+    <ol>
+      <li>Report the event-study plot with pre-period coefficients.</li>
+      <li>Report the formal pre-trend Wald test (joint null that all pre-coefficients = 0) but explicitly note its low power in N=7.</li>
+      <li>Report the HonestDiD bounds for the main aggregated ATT.</li>
+      <li>Discuss the qualitative shape of the pre-period coefficients — even if individually insignificant, are they trending in a worrying direction?</li>
+      <li>Acknowledge in the limitations section that pre-trend testing in small N is severely underpowered and cannot fully validate the design.</li>
+    </ol>
+
+    <p>
+      The honest framing is: "we cannot prove parallel trends, but we can probe it from
+      several angles and show that the headline finding is robust to plausible
+      violations within the bounds the pre-period suggests." This is what reviewers in
+      the modern DiD literature expect; the days of "the pre-trend test passed, therefore
+      our design is valid" are over.
+    </p>
+
+    <h2>The deeper point</h2>
+
+    <p>
+      Even before Roth, a generation of methodologists has been saying that
+      pre-trend tests provide weak evidence at best. The Roth result formalizes the
+      intuition. The takeaway you should carry into the paper-writing process:
+    </p>
+
+    <div class="callout warn">
+      <div class="label">Internalize this</div>
+      <p>
+        A pre-trend test that passes (fails to reject) provides evidence that the
+        pre-period violation is <em>small enough</em> to be undetectable at the available
+        power level. That is not the same as evidence that the violation is small enough
+        to be ignorable in the post-period.
+      </p>
+    </div>
+
+    <p>
+      With inference and pre-trend tests covered, you have the full causal-inference
+      toolkit. Chapter 13 puts everything together into the project's end-to-end
+      methodology — pipeline, panel, spec, robustness, paper structure.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="13-methodology" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 13 · Part IV — Execution</div>
+    <h1 class="chapter-title">Project methodology end-to-end</h1>
+    <p class="chapter-subtitle">
+      Every step from raw on-chain transfers to the headline ATT estimate, in execution
+      order. The chapter that ties Parts I–III together.
+    </p>
+
+    

@@ -1,0 +1,370 @@
+<h2>How to position the contribution</h2>
+
+    <p>
+      In the paper's introduction, our contribution paragraph should read something like:
+    </p>
+
+    <div class="callout">
+      <div class="label">Draft contribution paragraph</div>
+      <p>
+        We extend Mafrur (2025), which classified tokenized RWAs by their liquidity
+        profiles, by introducing a within-token, before-versus-after research design.
+        Where Mafrur reports that AMM-listed tokens are observationally more active,
+        we ask the underlying causal question: <em>does AMM listing make a given token
+        more active, holding the issuer, the regulatory regime, the holder base, and
+        common market shocks fixed?</em> We answer this with the Callaway-Sant'Anna
+        staggered difference-in-differences estimator, fit to a panel of seven tokenized
+        U.S. Treasury instruments over 170 weeks. Our headline estimate [TBD — to be
+        filled in from the actual ATT once estimated; placeholder magnitudes here should
+        NOT be quoted] finds a significant increase in secondary-market velocity following
+        AMM listing, driven primarily by pool depth above the $50k threshold.
+      </p>
+    </div>
+
+    <p>
+      (The exact magnitude will be filled in from the actual estimates. The
+      <em>structure</em> of the contribution paragraph — extend the descriptive
+      predecessor, name the causal question, name the estimator, summarize the result —
+      is what reviewers look for in the first paragraph of an empirical paper.)
+    </p>
+
+    <h2>Three other papers worth citing alongside Mafrur</h2>
+
+    <p>
+      Mafrur is not the only relevant prior work, just the most direct predecessor.
+      In the literature review, the project will also cite:
+    </p>
+
+    <ul>
+      <li>
+        <strong>Swinkels (2023), <em>Journal of Banking &amp; Finance</em></strong> —
+        "Trading liquidity of tokenized real estate." Documents liquidity gaps in
+        tokenized real-estate (not Treasury) markets and discusses what marketplace
+        design choices accelerate or slow turnover. Methodologically different but
+        topically adjacent.
+      </li>
+      <li>
+        <strong>Laschinger, Riedler, &amp; Bormann (2024), SSRN 5036350</strong> —
+        analyzes 573,000 tokenized real-estate trades and finds that on-chain venue
+        choice matters for execution quality. The cleanest large-N empirical paper in
+        the tokenization-microstructure literature.
+      </li>
+      <li>
+        <strong>Sockin &amp; Xiong (2023), <em>Journal of Finance</em></strong> —
+        "Decentralization through Tokenization." A theoretical paper that motivates
+        why tokenization should expand the investor base and increase liquidity in
+        equilibrium. We cite it as the theoretical backdrop for our empirical question.
+      </li>
+    </ul>
+
+    <p>
+      The Sockin-Xiong cite matters because it lets us frame the paper as testing
+      a theoretical prediction rather than purely descriptive empirical work. Reviewers
+      reward this framing.
+    </p>
+
+    <h2>Reading checklist before moving on</h2>
+
+    <p>
+      Before continuing to Chapter 7, you should:
+    </p>
+
+    <ul>
+      <li>Read Mafrur (2508.11651) in full — it's 30 pages, accessible without econometrics background.</li>
+      <li>Re-read its concluding section twice; that's the "future work" launch pad.</li>
+      <li>Note the tokens in Mafrur's sample but not ours (and vice versa) — useful for the literature review.</li>
+    </ul>
+
+    <p>
+      With the predecessor paper read, the next chapter pivots to the methodological
+      backbone of our extension: causal inference using potential outcomes, the
+      difference-in-differences identification strategy, and the parallel-trends
+      assumption that everything rides on.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="07-causal-inference" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 07 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">Causal inference primer</h1>
+    <p class="chapter-subtitle">
+      Potential outcomes, the fundamental problem, average treatment effects,
+      and the difference-in-differences identification strategy in its simplest
+      2×2 form.
+    </p>
+
+    <h2>The Rubin potential-outcomes framework</h2>
+
+    <p>
+      Imagine OUSG in week 50 of our sample. Two parallel worlds exist:
+    </p>
+
+    <ul>
+      <li>
+        $Y_{\text{OUSG}, 50}(1)$ — OUSG's velocity in week 50 <em>in the world where it
+        was AMM-listed</em>. (This is the world we observe.)
+      </li>
+      <li>
+        $Y_{\text{OUSG}, 50}(0)$ — OUSG's velocity in week 50 <em>in the counterfactual
+        world where it was not AMM-listed</em>. (This is the world we cannot observe.)
+      </li>
+    </ul>
+
+    <p>
+      The causal effect of AMM listing on OUSG in week 50 is the difference between
+      these two potential outcomes:
+    </p>
+
+    <p>
+      $$\tau_{\text{OUSG}, 50} = Y_{\text{OUSG}, 50}(1) - Y_{\text{OUSG}, 50}(0)$$
+    </p>
+
+    <p>
+      This quantity is the holy grail. It is also <strong>fundamentally unobservable</strong>,
+      because we only ever see one of the two potential outcomes for any given unit at any
+      given time. This is the fundamental problem of causal inference (Holland 1986).
+      Every causal estimator is, at heart, a strategy for plausibly imputing the missing
+      potential outcome.
+    </p>
+
+    <h2>The first estimand: ATT, the average treatment effect on the treated</h2>
+
+    <p>
+      Because we cannot estimate individual treatment effects, we settle for averages.
+      The <strong>Average Treatment effect on the Treated</strong> (ATT) is the average
+      of $\tau_{i,t}$ across the units and time periods where treatment was actually applied:
+    </p>
+
+    <p>
+      $$\text{ATT} = \mathbb{E}[Y_{i,t}(1) - Y_{i,t}(0) \mid D_{i,t} = 1]$$
+    </p>
+
+    <p>
+      where $D_{i,t} = 1$ indicates that unit $i$ was treated in period $t$. ATT answers
+      the question "for the tokens that were AMM-listed during our sample, how much did
+      listing change their average velocity?" Note it does <em>not</em> answer "what would
+      happen if we listed BUIDL on an AMM" — that's a different estimand (ATU, average
+      treatment effect on the untreated) and harder to identify.
+    </p>
+
+    <p>
+      The Callaway-Sant'Anna estimator estimates a richer object —
+      $\text{ATT}(g, t)$, the ATT for treatment cohort $g$ in calendar period $t$ — but
+      every aggregation of CS estimates rolls back into an ATT-style summary. Keep this
+      in mind: throughout the paper, when we say "the treatment effect", we strictly
+      mean ATT, never ATE.
+    </p>
+
+    <h2>The simplest identification strategy: 2×2 difference-in-differences</h2>
+
+    <p>
+      Suppose, for a moment, we had only one treated token (OUSG) and one untreated
+      token (BUIDL), and two periods: a "before" period (averaged over weeks before
+      OUSG's listing) and an "after" period (averaged over weeks after). We observe:
+    </p>
+
+    <table class="data">
+      <thead>
+        <tr><th></th><th>Before</th><th>After</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>OUSG (treated)</td><td>$\bar Y_{\text{O, pre}}$</td><td>$\bar Y_{\text{O, post}}$</td></tr>
+        <tr><td>BUIDL (control)</td><td>$\bar Y_{\text{B, pre}}$</td><td>$\bar Y_{\text{B, post}}$</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      The 2×2 DiD estimator of the ATT for OUSG is the "difference of differences":
+    </p>
+
+    <p>
+      $$\widehat{\text{ATT}}_{\text{DiD}} = \left( \bar Y_{\text{O, post}} - \bar Y_{\text{O, pre}} \right) - \left( \bar Y_{\text{B, post}} - \bar Y_{\text{B, pre}} \right)$$
+    </p>
+
+    <p>
+      In words: the change in OUSG's velocity around its listing event, minus the change
+      in BUIDL's velocity over the same calendar period. The intuition is that BUIDL's
+      change tells us how much OUSG would have changed <em>even without listing</em>,
+      due to common time effects (macro, sector, weather, anything). Netting that out
+      leaves us with the part of OUSG's change that is specific to its treatment.
+    </p>
+
+    <h2>The 2×2 calculator</h2>
+
+    <p>
+      Set the four cell values below and watch the DiD estimate update. The chart on the
+      right shows the implied parallel-trends assumption (BUIDL's actual trajectory and
+      the assumed counterfactual for OUSG).
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 7.1 — The 2×2 DiD calculator</h3>
+        <span class="tag">interactive · the simplest case</span>
+      </div>
+      <div class="controls">
+        <label>
+          OUSG before (Y_O,pre)
+          <input type="range" id="Opre" min="0" max="5" step="0.1" value="0.5" />
+          <span class="value" id="OpreV">0.5</span>
+        </label>
+        <label>
+          OUSG after (Y_O,post)
+          <input type="range" id="Opost" min="0" max="5" step="0.1" value="2.5" />
+          <span class="value" id="OpostV">2.5</span>
+        </label>
+        <label>
+          BUIDL before (Y_B,pre)
+          <input type="range" id="Bpre" min="0" max="5" step="0.1" value="0.1" />
+          <span class="value" id="BpreV">0.1</span>
+        </label>
+        <label>
+          BUIDL after (Y_B,post)
+          <input type="range" id="Bpost" min="0" max="5" step="0.1" value="0.3" />
+          <span class="value" id="BpostV">0.3</span>
+        </label>
+      </div>
+      <svg id="did22" width="720" height="320"></svg>
+      <div class="readout" id="did22Readout"></div>
+    </div>
+
+    <h2>The identifying assumption: parallel trends</h2>
+
+    <p>
+      The 2×2 DiD estimator is unbiased for the ATT <em>if and only if</em> the
+      counterfactual outcome trajectory for the treated unit (had it not been treated)
+      would have moved <em>in parallel</em> with the control unit's actual trajectory:
+    </p>
+
+    <p>
+      $$\mathbb{E}\!\left[Y_{\text{O,post}}(0) - Y_{\text{O,pre}}(0)\right] = \mathbb{E}\!\left[Y_{\text{B,post}}(0) - Y_{\text{B,pre}}(0)\right]$$
+    </p>
+
+    <p>
+      This is the <strong>parallel trends assumption</strong>. It is not testable directly
+      (we cannot observe $Y_{\text{O,post}}(0)$ — that's the whole point), but we can
+      look at <em>pre-treatment</em> trends as a plausibility check. If OUSG and BUIDL
+      moved in parallel for many weeks <em>before</em> OUSG's listing, the assumption is
+      more plausible than if they were diverging. (More on the limits of this check in
+      Chapter 12 — it is much less informative than it appears.)
+    </p>
+
+    <h2>The parallel-trends sandbox</h2>
+
+    <p>
+      Drag the counterfactual line below to set what you believe OUSG's velocity would
+      have done in the absence of AMM listing. The observed treated-minus-counterfactual
+      gap is the true causal effect. The DiD estimator <em>assumes</em> the counterfactual
+      change equals the control's actual change — drag to see what happens to the estimate
+      when this assumption is wrong.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 7.2 — Parallel-trends violation sandbox</h3>
+        <span class="tag">interactive · drag the counterfactual</span>
+      </div>
+      <svg id="parallelSandbox" width="720" height="360"></svg>
+      <div class="readout" id="ptReadout"></div>
+      <div class="interactive-caption">
+        Dashed line: what OUSG would have done in the absence of treatment
+        ("counterfactual"). Drag its right endpoint to change the counterfactual change.
+        Solid charcoal line: observed treated outcome. Dotted grey line: control. The DiD
+        estimator silently assumes the counterfactual change equals the control's change —
+        when these diverge, DiD gives the wrong answer.
+      </div>
+    </div>
+
+    <h2>From 2×2 to two-way fixed effects</h2>
+
+    <p>
+      With more than two units or more than two periods, the natural generalization of
+      DiD is a panel regression with token fixed effects and time fixed effects:
+    </p>
+
+    <p>
+      $$Y_{i,t} = \alpha_i + \delta_t + \beta \cdot D_{i,t} + \varepsilon_{i,t}$$
+    </p>
+
+    <p>
+      Here $\alpha_i$ is a fixed effect for each token (absorbing time-invariant
+      differences across tokens — BUIDL's institutional KYC, BENJI's chain), $\delta_t$
+      is a fixed effect for each week (absorbing common shocks — FOMC, regulatory news),
+      and $D_{i,t}$ is a binary indicator that equals 1 once token $i$ has been treated.
+      The coefficient $\beta$ is — under the parallel trends assumption — the average
+      treatment effect.
+    </p>
+
+    <p>
+      This is called the <strong>two-way fixed effects</strong> (TWFE) regression,
+      and it has been the workhorse of empirical economics for forty years. It is
+      ALMOST always what someone writes down first when they have panel data with
+      staggered treatment.
+    </p>
+
+    <p>
+      And — this is where Chapter 8 picks up — it turns out that when treatment is
+      <em>staggered</em> across units (different units treated in different periods,
+      as in our project), the TWFE coefficient $\beta$ is NOT generally a clean estimate
+      of the ATT. It is a weighted average of many 2×2 comparisons. The weights themselves
+      are non-negative and sum to 1, but a subset of those comparisons silently use
+      already-treated units as controls — and under dynamic treatment effects, those
+      comparisons subtract a chunk of the treatment effect from the implied ATT estimate.
+      This is the Goodman-Bacon (2021) decomposition, and understanding it is the gateway
+      to understanding why we use Callaway-Sant'Anna instead.
+    </p>
+
+    <h2>Recap before the next chapter</h2>
+
+    <p>
+      Three things to lock in:
+    </p>
+
+    <ul>
+      <li>Causal effects live in counterfactual world. We never observe both potential outcomes.</li>
+      <li>DiD identifies ATT under the parallel-trends assumption. Plausibility is supported (not proven) by pre-treatment parallel motion.</li>
+      <li>TWFE extends DiD to large panels but breaks down under staggered treatment, in a way you have to understand precisely.</li>
+    </ul>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="08-twfe-bacon" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 08 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">TWFE and the Goodman-Bacon decomposition</h1>
+    <p class="chapter-subtitle">
+      Why the workhorse two-way fixed-effects estimator gives the wrong answer under
+      staggered treatment, not because its weights are negative (they aren't) but
+      because some of the implicit 2×2 comparisons it averages use already-treated units
+      as controls.
+    </p>
+
+    <h2>The setup</h2>
+
+    <p>
+      Chapter 7 ended with the TWFE specification:
+    </p>
+
+    <p>
+      $$Y_{i,t} = \alpha_i + \delta_t + \beta \cdot D_{i,t} + \varepsilon_{i,t}$$
+    </p>
+
+    <p>
+      Three treated cohorts in our project: OUSG at week 44, USDY at week 68, STBT at
+      week 92. Four never-treated controls. A naive reader might assume the TWFE
+      coefficient $\hat\beta$ is some kind of weighted average of the individual
+      treatment effects for these three cohorts.
+    </p>
+
+    <p>
+      The Goodman-Bacon (2021) decomposition tells us exactly what $\hat\beta$ is: it is
+      a weighted average of every possible 2×2 DiD comparison hidden inside the panel.
+      And — this is the surprise — some of those comparisons use <em>already-treated
+      units as controls</em> for not-yet-treated units. When the treatment effect grows
+      over time (a "dynamic treatment effect", which is exactly what we expect for AMM
+      listing), those comparisons enter the weighted average with the <strong>wrong
+      sign</strong> and bias $\hat\beta$ downward — possibly all the way through zero.
+    </p>
+
+    

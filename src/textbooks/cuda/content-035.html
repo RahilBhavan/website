@@ -1,0 +1,265 @@
+<h3 class="atomic-title">The Two FP8 Formats</h3>
+                <span class="atomic-tag">FP8 · hopper</span>
+            </div>
+            <div class="atomic-body">
+                <p>Hopper introduces two FP8 formats following the OCP FP8 spec:</p>
+                <ul>
+                    <li><strong>E4M3</strong> — 1 sign, 4 exponent, 3 mantissa. Range ±448, ~3 ULP precision. Used for activations and weights in forward pass.</li>
+                    <li><strong>E5M2</strong> — 1 sign, 5 exponent, 2 mantissa. Range ±57344, ~7 ULP precision. Used for backward gradients (wider range, less precision).</li>
+                </ul>
+                <p>Hopper Tensor Cores accept any mix: <code>fp8_e4m3 × fp8_e4m3 → fp32</code>, <code>fp8_e5m2 × fp8_e4m3 → fp16</code>, etc. The Transformer Engine library auto-selects format per tensor based on histogram statistics.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-19-5">§19.5 Transformer Engine</a></div>
+            </div>
+        </div>
+
+        <div class="callout warn">
+            <div class="callout-label">Accuracy hint</div>
+            <p>FP8 inference of an LLM can match FP16 within 0.1 perplexity if (a) weights and activations use per-tensor scales updated every forward, (b) attention logits stay in FP16, and (c) layer-norm runs in FP32. Skipping any of these makes the model diverge within a few hundred tokens.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-13-4">
+        <h2 class="section-title"><span class="sec-num">13.4</span>Sub-Byte Weights — INT4 &amp; FP4</h2>
+        <p class="section-subtitle">When the GEMM is memory-bound, every bit you save is throughput</p>
+
+        <div class="atomic" id="A13.4.1-int4">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.4.1]</span>
+                <h3 class="atomic-title">Packing &amp; Decoding INT4</h3>
+                <span class="atomic-tag">int4</span>
+            </div>
+            <div class="atomic-body">
+                <p>Two INT4 values share one byte. The kernel decodes them on load with shifts and masks, multiplies the FP16 activations, accumulates in INT32 (or FP32 after dequant). The 2× memory savings over INT8 plus the unchanged Tensor-Core throughput means INT4 weight-only quantization is the workhorse of consumer LLM inference. Marlin, AWQ, and ExLlamaV2 are all INT4 weight kernels with different tile/layout choices.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A13.4.2-fp4">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.4.2]</span>
+                <h3 class="atomic-title">NVFP4 — Blackwell's 4-bit Float</h3>
+                <span class="atomic-tag">blackwell</span>
+            </div>
+            <div class="atomic-body">
+                <p>Blackwell adds an FP4 format (E2M1) and Tensor-Core instructions that consume it directly. Two-level scaling: each block of 16 FP4 values has an FP8 scale, and each block of 16 of <em>those</em> has an FP32 scale. The hardware decodes and rescales on the fly. Total memory cost: ~4.5 bits/value. Theoretical 2× over FP8 throughput on Blackwell Tensor Cores.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-13-5">
+        <h2 class="section-title"><span class="sec-num">13.5</span>2:4 Structured Sparsity</h2>
+        <p class="section-subtitle">Free 2× from the hardware if your weights cooperate</p>
+
+        <div class="atomic" id="A13.5.1-2to4">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.5.1]</span>
+                <h3 class="atomic-title">The 2:4 Pattern</h3>
+                <span class="atomic-tag">sparsity</span>
+            </div>
+            <div class="atomic-body">
+                <p>In every group of 4 consecutive weights, exactly 2 must be zero. The hardware stores only the 2 non-zeros plus a 2-bit index (<code>0b00–0b11</code>) telling it which positions are non-zero. A sparse Tensor Core multiplies a sparse 16×K weight tile by a dense K×N activation tile in the same cycle count as a dense 16×(K/2) tile — i.e., 2× throughput.</p>
+                <p>Restrictions:</p>
+                <ul>
+                    <li>2:4 along the K-axis of the weight tile (not the M-axis).</li>
+                    <li>K must be a multiple of 4 (16 for FP16/BF16, 32 for INT8).</li>
+                    <li>Activations stay dense; only the weight side is sparse.</li>
+                </ul>
+                <p>Practical approach: train dense, prune to 2:4 with the ASP (Automatic Sparsity) workflow, fine-tune for ~10% of original training cost, deploy. Accuracy loss on most LLMs is &lt; 0.5%.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-13-6">
+        <h2 class="section-title"><span class="sec-num">13.6</span>Dequant Fusion &amp; Epilogues</h2>
+        <p class="section-subtitle">Why a separate dequant kernel is always wrong</p>
+
+        <div class="atomic" id="A13.6.1-epilogue">
+            <div class="atomic-head">
+                <span class="atomic-id">[A13.6.1]</span>
+                <h3 class="atomic-title">The Epilogue Belongs in the GEMM</h3>
+                <span class="atomic-tag">fusion</span>
+            </div>
+            <div class="atomic-body">
+                <p>An INT8 GEMM produces an INT32 partial sum that you need to dequantize, add a bias to, then apply an activation (GeLU, SiLU). If you write three separate kernels, you re-read and re-write the M×N tile to/from global memory twice. Fusing the dequant + bias + activation inside the GEMM <em>epilogue</em> — the code that runs after the K loop — keeps the tile in registers until the final store. Savings: typically 30–50% end-to-end latency on small-M LLM decode.</p>
+                <p>CUTLASS exposes this via the <code>EpilogueOp</code> template parameter. Triton fuses it automatically when you write <code>tl.store(c_ptr, activation(c_int32 * scale + bias))</code>. Raw CUDA: you write the epilogue yourself, after the final <code>mma.sync</code> and before the global <code>stmatrix</code>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-14-3">§14.3 FlashAttention</a><a class="rel-chip rel-usedby" href="#sec-16-3">§16.3 CUTLASS</a></div>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 13</div>
+            <div class="checkpoint-sub">Quantization fluency</div>
+            <ul>
+                <li>Pick a granularity (per-tensor / per-channel / per-token / group-wise) for weights and activations of a transformer linear layer.</li>
+                <li>Write the symmetric quantize/dequantize formula.</li>
+                <li>Explain the difference between FP8 E4M3 and E5M2 in one sentence each.</li>
+                <li>Describe the 2:4 sparsity layout and the constraints it imposes.</li>
+                <li>Sketch a fused INT8 GEMM + bias + GeLU epilogue.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-12"><span class="label">← Previous</span>Numerical Methods</a>
+            <a href="#chapter-14" class="next"><span class="label">Next →</span>Flash Attention</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 14 — FLASH ATTENTION & IO-AWARE ALGORITHMS
+     ===================================================================== -->
+<article class="chapter" id="chapter-14">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">14</div>
+        <div class="chapter-eyebrow">Chapter 14</div>
+        <h1 class="chapter-title">Flash Attention &amp;<br>IO-Aware Algorithms</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> FlashAttention is the canonical example of an algorithm that beat the textbook math by being honest about the memory hierarchy. Understanding it teaches you a generalizable design pattern — <em>tile so the inner loop stays in shared memory, recompute instead of storing, and online-update the dependent statistics</em> — that you can apply to softmax, layer norm, scan-based loss functions, and any kernel that touches a large intermediate.</p>
+    </header>
+
+    <section class="section" id="sec-14-1">
+        <h2 class="section-title"><span class="sec-num">14.1</span>Why Attention Is Memory-Bound</h2>
+        <p class="section-subtitle">The N² intermediate that doesn't fit anywhere</p>
+
+        <div class="atomic" id="A14.1.1-attn">
+            <div class="atomic-head">
+                <span class="atomic-id">[A14.1.1]</span>
+                <h3 class="atomic-title">Standard Attention's IO Cost</h3>
+                <span class="atomic-tag">attention</span>
+            </div>
+            <div class="atomic-body">
+                <p>Standard scaled-dot-product attention on a sequence of length N with head dimension d:</p>
+                <div class="formula">S = Q · Kᵀ            // (N × d) · (d × N) → N × N
+P = softmax(S / √d)   // N × N
+O = P · V             // (N × N) · (N × d) → N × d</div>
+                <p>Compute cost: O(N²·d) FLOPs. <strong>Memory cost</strong>: the N×N matrix <code>S</code> (or <code>P</code>) must be written to global memory and read back — 2·N² FP16 reads/writes. For N = 8192, that's 256 MB <em>per attention head</em>, on a chip whose L2 is 50 MB. The kernel becomes memory-bound long before it becomes compute-bound.</p>
+                <p>Arithmetic intensity:</p>
+                <div class="formula">AI ≈ N²·d / (N² + N·d) ≈ d   FLOPs/byte</div>
+                <p>For d = 64, AI ≈ 64. The A100 ridge point is around 290. So we are 4.5× below the roofline ridge — memory-bound by construction.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span><a class="rel-chip rel-builds" href="#sec-1-6">§1.6 Roofline</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-14-2">
+        <h2 class="section-title"><span class="sec-num">14.2</span>Online Softmax — The Mathematical Trick</h2>
+        <p class="section-subtitle">Update the normalizer as new blocks arrive, without storing the unnormalized scores</p>
+
+        <div class="atomic" id="A14.2.1-online">
+            <div class="atomic-head">
+                <span class="atomic-id">[A14.2.1]</span>
+                <h3 class="atomic-title">Streaming Maximum &amp; Streaming Sum-Exp</h3>
+                <span class="atomic-tag">softmax</span>
+            </div>
+            <div class="atomic-body">
+                <p>Naive softmax requires three passes: find max, subtract max and exp, divide by sum. The flash idea: process the input in blocks of size B, and after each block update the running <code>(max, sum, output)</code> tuple such that the final answer is exact. For two blocks with statistics <code>(mᵢ, ℓᵢ)</code> and <code>(mⱼ, ℓⱼ)</code>:</p>
+                <div class="formula">m_new = max(mᵢ, mⱼ)
+ℓ_new = exp(mᵢ - m_new)·ℓᵢ + exp(mⱼ - m_new)·ℓⱼ
+O_new = (exp(mᵢ - m_new)·ℓᵢ / ℓ_new)·Oᵢ + (exp(mⱼ - m_new)·ℓⱼ / ℓ_new)·Oⱼ</div>
+                <p>The update touches only the running scalars and the current output tile — never the full N×N <code>S</code>. This is the algorithmic core of FlashAttention.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-14-3">§14.3 FA-1</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-14-3">
+        <h2 class="section-title"><span class="sec-num">14.3</span>FlashAttention-1 Walkthrough</h2>
+        <p class="section-subtitle">The reference algorithm, block-by-block</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 14.3-A: FlashAttention forward (pseudocode)">// Inputs: Q (N x d), K (N x d), V (N x d)
+// Outputs: O (N x d)
+// Block sizes: Br rows of Q, Bc rows of K/V
+
+for (i = 0; i &lt; N; i += Br) {
+    // Load a Br × d block of Q into shared memory.
+    Q_i = load_tile(Q, i, Br);
+    // Running statistics for this Q-block.
+    m_i = -inf;                     // running max
+    l_i = 0;                        // running sum-exp
+    O_i = zeros(Br, d);             // running output
+
+    for (j = 0; j &lt; N; j += Bc) {
+        // Load a Bc × d block of K and V.
+        K_j = load_tile(K, j, Bc);
+        V_j = load_tile(V, j, Bc);
+
+        // Compute S_ij = Q_i · K_jᵀ (Br × Bc) — stays in shared mem.
+        S_ij = mma(Q_i, transpose(K_j));   // Tensor Core GEMM
+
+        // Apply causal mask if needed.
+        if (j &gt; i) S_ij = mask(S_ij);
+
+        // Online softmax update.
+        m_ij     = rowmax(S_ij);
+        m_i_new  = max(m_i, m_ij);
+        P_ij     = exp(S_ij - m_i_new);
+        l_ij     = rowsum(P_ij);
+        l_i_new  = exp(m_i - m_i_new) * l_i + l_ij;
+
+        // Update output: rescale prior, add new contribution.
+        O_i = (exp(m_i - m_i_new) * l_i / l_i_new) * O_i
+            + (1.0 / l_i_new) * mma(P_ij, V_j);
+
+        m_i = m_i_new;
+        l_i = l_i_new;
+    }
+    store_tile(O, i, O_i);
+}
+</pre>
+
+        <div class="callout tip">
+            <div class="callout-label">Why this is faster</div>
+            <p>The N×N matrix <code>S</code> is never written to global memory — it lives in shared memory as a Br×Bc block, then disappears. HBM traffic drops from O(N²) to O(N·d) (the four input/output tensors). For N = 8K, d = 64, that's a 60× reduction in memory traffic, which on an A100 translates to a 4–7× speedup over a fused-but-non-IO-aware implementation.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-14-4">
+        <h2 class="section-title"><span class="sec-num">14.4</span>FlashAttention-2 &amp; 3</h2>
+        <p class="section-subtitle">What changed when Tri Dao revisited the design</p>
+
+        <div class="atomic" id="A14.4.1-fa2">
+            <div class="atomic-head">
+                <span class="atomic-id">[A14.4.1]</span>
+                <h3 class="atomic-title">FA-2 — Work Partitioning</h3>
+                <span class="atomic-tag">fa2</span>
+            </div>
+            <div class="atomic-body">
+                <p>FA-1 split the grid along (head, batch). FA-2 adds a third axis: <em>sequence</em>. Multiple thread blocks now collaborate on different Q-blocks of the same head, increasing parallelism for the short-context, large-batch case. Other tweaks:</p>
+                <ul>
+                    <li>Reduce the rescaling chain by deferring the <code>1/ℓ</code> division to the end.</li>
+                    <li>Refactor inner loops so the producer-consumer pipeline interleaves load and MMA more tightly.</li>
+                    <li>Avoid the implicit transpose of K by storing K already transposed.</li>
+                </ul>
+                <p>Net result: ~2× throughput vs FA-1 on A100, ~70% of theoretical Tensor-Core peak.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A14.4.2-fa3">
+            <div class="atomic-head">
+                <span class="atomic-id">[A14.4.2]</span>
+                <h3 class="atomic-title">FA-3 — Hopper-Native</h3>
+                <span class="atomic-tag">fa3 · hopper</span>
+            </div>
+            <div class="atomic-body">
+                <p>FlashAttention-3 targets Hopper's TMA, <code>wgmma</code>, and warp specialization. It splits the warps inside a block into a <em>producer</em> warp group that issues TMA loads and a <em>consumer</em> warp group that runs <code>wgmma</code> on the loaded tiles. The two communicate via an mbarrier, so loads and math overlap at fine granularity. Reaches ~75% of H100 Tensor-Core peak FP16.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-19-3">§19.3 wgmma</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-14-5">
+        <h2 class="section-title"><span class="sec-num">14.5</span>IO-Aware Design Principles</h2>
+        <p class="section-subtitle">The transferable lessons</p>
+
+        <div class="atomic" id="A14.5.1-principles">
+            <div class="atomic-head">
+                <span class="atomic-id">[A14.5.1]</span>
+                

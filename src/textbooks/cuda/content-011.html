@@ -1,0 +1,154 @@
+<h3 id="sec-1-5-deep">Atomic-note deep dive — §1.5</h3>
+        <div class="atomic" id="A1.5.1-tlp-vs-ilp">
+            <div class="atomic-head"><span class="atomic-id">[[A1.5.1]]</span><h4 class="atomic-title">TLP vs ILP — the two flavors of parallelism your kernel exposes</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p><strong>Thread-Level Parallelism (TLP)</strong> is what occupancy measures: more resident warps means the scheduler has more pools to pick from when the current warp stalls. <strong>Instruction-Level Parallelism (ILP)</strong> is what <em>each warp</em> exposes through independent operations the scheduler can keep in flight. A high-occupancy kernel with low ILP needs DRAM to be saturated by lots of small threads; a low-occupancy kernel with high ILP needs each thread to keep dozens of FMAs in flight. Modern GEMM kernels use <em>both</em>: 4–8 warps per SM and 4–8 independent register accumulators per thread, multiplying out to ~32 in-flight FMAs per scheduler.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.4.5-pipeline-ilp">[[A0.4.5]]</a> <a class="rel-chip rel-builds" href="#A0.4.6-little">[[A0.4.6]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-2-5">[[§2.5 Register tiling]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.5.2-register-budget">
+            <div class="atomic-head"><span class="atomic-id">[[A1.5.2]]</span><h4 class="atomic-title">The register-budget trap — why "use more registers" can lose</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p>An SM has a fixed register file (65,536 32-bit registers on Ampere). If each thread uses <em>R</em> registers and a block has <em>B</em> threads, the SM can host at most <code>65536 / (R·B)</code> blocks. Past a register budget the kernel <em>spills</em>: the compiler stores excess live values to "local memory," which lives in L1 / L2 / DRAM. A spill costs orders of magnitude more than the register access it replaced. Diagnose with <code>--ptxas-options=-v</code> (look for "stack frame: N bytes spill stores") or with NCU's source view (look for <code>STL</code>/<code>LDL</code> instructions). The fix is one of: lower <code>--maxrregcount</code>, set <code>__launch_bounds__</code>, restructure to shorten live ranges, or accept lower occupancy if the ILP wins.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-2-5">[[§2.5]]</a> <a class="rel-chip rel-usedby" href="#sec-4-6">[[§4.6 Source-level]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 1.6 — ROOFLINE
+         ============================================================ -->
+    <section class="section" id="sec-1-6">
+        <h2 class="section-title"><span class="sec-num">1.6</span>The Roofline Model</h2>
+        <div class="section-subtitle">A single chart that classifies every kernel</div>
+
+        <p>The <strong>Roofline Model</strong> was introduced by Williams, Waterman, and Patterson at Berkeley in 2008 and has since become the standard one-page summary for kernel performance.<sup>[8]</sup> It plots achievable performance against a single number — <strong>arithmetic intensity</strong> — and bounds every kernel above by two ceilings: peak compute and peak memory bandwidth. Whichever ceiling you hit first is your bottleneck.</p>
+
+        <h3>Arithmetic intensity</h3>
+        <div class="formula"><span class="var">I</span> <span class="op">=</span> FLOPs executed <span class="op">/</span> bytes moved from DRAM</div>
+        <p>Units: FLOP/byte. High intensity means lots of compute per byte of DRAM traffic (good for compute-bound work). Low intensity means lots of DRAM traffic per FLOP (memory-bound). Two kernels with the same FLOP count can have radically different intensity depending on data reuse.</p>
+
+        <h3>The two ceilings</h3>
+        <p>Performance <code>P</code> in FLOPS for a kernel with intensity <code>I</code> running on a machine with peak compute <code>C</code> and peak DRAM bandwidth <code>B</code> is bounded by:</p>
+        <div class="formula"><span class="res">P</span> <span class="op">≤</span> <span class="var">min</span><span class="op">(</span><span class="var">C</span><span class="op">,</span> <span class="var">I</span> <span class="op">·</span> <span class="var">B</span><span class="op">)</span></div>
+        <p>When you plot this with <code>I</code> on a log-scale x-axis and <code>P</code> on a log-scale y-axis, you get a horizontal "ceiling" of height <code>C</code> and a diagonal of slope <code>B</code> that intersects at <strong>the ridge point</strong>, <code>I*</code> = <code>C / B</code>. Kernels left of the ridge are memory-bound; kernels right of it are compute-bound.</p>
+
+        <h4>Ridge point for the RTX 3090 (FP16 Tensor Core, dense)</h4>
+        <div class="formula"><span class="var">C</span> <span class="op">=</span> <span class="num">142,000</span> GFLOPS    <span class="op">(NVIDIA-published peak FP16-TC w/ FP32 acc, no sparsity)</span>
+<span class="var">B</span> <span class="op">=</span> <span class="num">936</span> GB/s        <span class="op">(GDDR6X, 384-bit, 19.5 Gbps)</span>
+<span class="var">I*</span> <span class="op">=</span> C <span class="op">/</span> B <span class="op">=</span> <span class="num">142000 / 936</span> <span class="op">≈</span> <span class="res">151.7 FLOP/byte</span></div>
+
+        <h4>Arithmetic intensity of a 4096³ FP16 GEMM</h4>
+        <p>FLOPs: <code>2·M·N·K = 2·4096³ ≈ 1.37 × 10<sup>11</sup></code>. Bytes (load each input once, write output once, FP16 = 2 bytes): <code>2·(M·K + K·N + M·N) ≈ 1.01 × 10<sup>8</sup></code>.</p>
+        <div class="formula"><span class="var">I</span><sub>algorithmic</sub> <span class="op">=</span> 2&middot;4096³ <span class="op">/</span> [2&middot;(4096&middot;4096 &middot; 3)] <span class="op">=</span> <span class="num">137,438,953,472 / 100,663,296</span> <span class="op">≈</span> <span class="res">1365 FLOP/byte</span></div>
+
+        <div class="callout warn">
+            <div class="callout-label">Algorithmic vs realized intensity — read this twice</div>
+            <p style="margin: 6px 0 8px 0">The 1365 FLOP/byte above is the <strong>algorithmic upper bound</strong> — it assumes each input and output element is read from DRAM exactly once. It is what a perfectly tiled kernel <em>can</em> reach.</p>
+            <p style="margin: 0">A <em>naive</em> kernel that re-reads <code>A</code> from DRAM for every output column achieves a <strong>realized intensity of roughly 1 FLOP/byte</strong> — and that is exactly why naive kernels sit far below the roofline. Tiling chases the upper bound by reusing data through shared memory and registers. Always ask which number you mean.</p>
+        </div>
+
+        <p>1365 ≫ 152, so a 4096³ FP16 GEMM is <strong>massively compute-bound</strong> on the RTX 3090 — <em>provided</em> you implement it well enough to realize the available reuse. This is why GEMM should be Tensor-Core throughput limited, not bandwidth limited, and why cuBLAS-class kernels run at &gt; 90% of FP16-TC peak on large square shapes.</p>
+
+        <div class="figure" id="roofline-fig">
+            <div class="figure-label">Figure 1.6 — Interactive chart</div>
+            <div class="figure-title">Roofline (RTX 3090, FP16 Tensor Core)</div>
+            <div class="chart-controls">
+                <div class="ctrl-group">
+                    <span class="ctrl-label">GPU</span>
+                    <select id="roof-gpu" class="ctrl-input">
+                        <option value="3090">RTX 3090 · FP16 TC</option>
+                        <option value="a100">A100 80GB · FP16 TC</option>
+                        <option value="h100">H100 SXM · FP16 TC</option>
+                        <option value="3090-fp32">RTX 3090 · FP32 CUDA</option>
+                    </select>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Your kernel intensity (FLOP/byte)</span>
+                    <input class="ctrl-input" type="range" id="roof-i" min="-1" max="4" step="0.05" value="2">
+                    <span class="ctrl-value" id="roof-i-v">100</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Achieved efficiency (% of roof)</span>
+                    <input class="ctrl-input" type="range" id="roof-eff" min="5" max="100" step="1" value="60">
+                    <span class="ctrl-value" id="roof-eff-v">60%</span>
+                </div>
+            </div>
+            <div class="chart-container" style="height:440px">
+                <canvas id="roofline-canvas"></canvas>
+            </div>
+            <div class="figure-caption">The horizontal line is the compute roof; the diagonal line is the bandwidth roof. Their intersection is the ridge point. Your kernel's position relative to the ridge tells you which roof you are pushing against. cuBLAS-class GEMM kernels for a 4096³ FP16 problem land at the right of the chart, just below the compute roof.</div>
+        </div>
+
+        <!-- §1.6 atomic-note deep dive -->
+        <h3 id="sec-1-6-deep">Atomic-note deep dive — §1.6</h3>
+        <div class="atomic" id="A1.6.1-intensity-def">
+            <div class="atomic-head"><span class="atomic-id">[[A1.6.1]]</span><h4 class="atomic-title">Arithmetic intensity, formally</h4><span class="atomic-tag">performance</span></div>
+            <div class="atomic-body">
+                <p>For a kernel that performs <em>F</em> floating-point operations while moving <em>B</em> bytes between DRAM and the chip, the arithmetic intensity is <em>I = F / B</em>, measured in FLOPs/byte. There are two flavors to be careful about: <strong>operational intensity</strong> uses the bytes actually transferred (depends on cache behavior and the access pattern), while <strong>algorithmic intensity</strong> uses the minimum bytes the math requires. Roofline plots usually mean the operational one; the algorithmic one is a theoretical upper bound on it.</p>
+                <p>For a tiled GEMM with tile size <em>T</em>, the operational intensity rises linearly with <em>T</em> because each tile reused for <em>T</em> inner-loop iterations amortizes its load over <em>T</em> FLOPs per byte. That linear knob is why "make tiles bigger" almost always helps — until you exhaust register or shared-memory budget.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.4-gemm">[[A0.3.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-4-4">[[§4.4 NCU roofline]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.6.2-ridge-meaning">
+            <div class="atomic-head"><span class="atomic-id">[[A1.6.2]]</span><h4 class="atomic-title">The ridge point — single number that classifies your kernel</h4><span class="atomic-tag">performance</span></div>
+            <div class="atomic-body">
+                <p>The ridge point is the intensity <em>I*</em> where the bandwidth roof equals the compute roof: <em>I* = P<sub>peak</sub> / β</em>, where <em>P<sub>peak</sub></em> is peak FLOP/s and <em>β</em> is peak DRAM bandwidth. Kernels with <em>I &lt; I*</em> are <em>memory-bound</em>; with <em>I &gt; I*</em> they are <em>compute-bound</em>. For an A100 in FP16 with 312 TFLOPs and 1555 GB/s, <em>I* ≈ 200 FLOPs/byte</em>. For the same A100 in FP32 (non-tensor-core) with 19.5 TFLOPs, <em>I* ≈ 12 FLOPs/byte</em>. <strong>The ridge is much higher when you turn on tensor cores</strong>; that fact alone explains why "tensor cores didn't help" almost always means "the kernel was still memory-bound."</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A1.6.1-intensity-def">[[A1.6.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-1">[[§5.1 cuBLAS]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHECKPOINT -->
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 1 Checkpoint</div>
+        <div class="checkpoint-sub">Before continuing, verify you can answer each — click to mark complete.</div>
+        <ul>
+            <li>What is a warp, and why is the number 32 load-bearing for every CUDA performance argument?</li>
+            <li>What causes warp divergence, what is its runtime cost, and which kinds of branches are safe vs catastrophic?</li>
+            <li>Define memory coalescing. Write the warp-thread-to-address mapping that yields a single 128-byte transaction.</li>
+            <li>On an RTX 3090, what are the sizes of: register file per SM, shared memory per SM, L2, global memory? What is the latency of each?</li>
+            <li>Compute, from first principles, whether a 4096×4096 FP16 GEMM is compute-bound or memory-bound on the RTX 3090. Show the FLOP count, the byte count, the intensity, and the ridge point.</li>
+            <li>Define occupancy. Name the three resources that can limit it, and one common reason maximum occupancy is not the right target.</li>
+        </ul>
+    </div>
+
+    <!-- REFERENCES -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 1</div>
+        <ol>
+            <li>Sutter, H. <em>The Free Lunch Is Over: A Fundamental Turn Toward Concurrency in Software.</em> Dr. Dobb's Journal, March 2005. <a href="https://www.gotw.ca/publications/concurrency-ddj.htm" target="_blank" rel="noopener">gotw.ca/publications/concurrency-ddj.htm</a></li>
+            <li>NVIDIA. <em>GeForce RTX 3090 Product Specifications.</em> <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090-3090ti/" target="_blank" rel="noopener">nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090-3090ti/</a></li>
+            <li>NVIDIA. <em>NVIDIA Ampere GA102 GPU Architecture Whitepaper.</em> 2020. Available at <a href="https://www.nvidia.com/content/PDF/nvidia-ampere-ga-102-gpu-architecture-whitepaper-v2.pdf" target="_blank" rel="noopener">nvidia.com</a> (consumer Ampere).</li>
+            <li>NVIDIA. <em>NVIDIA A100 Tensor Core GPU Architecture Whitepaper.</em> 2020. <a href="https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf" target="_blank" rel="noopener">images.nvidia.com</a></li>
+            <li>Jia, Z., Maggioni, M., Smith, J., Scarpazza, D. <em>Dissecting the NVIDIA Ampere GPU Architecture through Microbenchmarking.</em> 2021. arXiv:2106.10499. <a href="https://arxiv.org/abs/2106.10499" target="_blank" rel="noopener">arxiv.org/abs/2106.10499</a></li>
+            <li>NVIDIA. <em>CUDA C++ Programming Guide — Device Memory Accesses.</em> <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cuda-c-programming-guide/</a></li>
+            <li>Volkov, V. <em>Better Performance at Lower Occupancy.</em> GPU Technology Conference, 2010. Talk slides commonly hosted at <a href="https://www.nvidia.com/content/GTC-2010/pdfs/2238_GTC2010.pdf" target="_blank" rel="noopener">nvidia.com (GTC 2010 archive)</a>.</li>
+            <li>Williams, S., Waterman, A., Patterson, D. <em>Roofline: An Insightful Visual Performance Model for Multicore Architectures.</em> Communications of the ACM 52(4), 2009. DOI 10.1145/1498765.1498785. <a href="https://dl.acm.org/doi/10.1145/1498765.1498785" target="_blank" rel="noopener">dl.acm.org/doi/10.1145/1498765.1498785</a></li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#cover"><span class="label">← Previous</span>Front Matter</a>
+        <a href="#chapter-2" class="next"><span class="label">Next →</span>CUDA Programming</a>
+    </nav>
+</article>
+<!-- =====================================================================
+     CHAPTER 2
+     ===================================================================== -->
+<article class="chapter" id="chapter-2">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">02</div>
+        <div class="chapter-eyebrow">Chapter 02</div>
+        

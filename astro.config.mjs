@@ -10,7 +10,7 @@ export default defineConfig({
   trailingSlash: 'never',
   adapter: vercel(),
   redirects: {
-    '/books': '/',
+    '/books': '/textbooks',
     '/analytics': '/',
     '/tools/watts-to-tokens': '/tools/datacenter-math',
     '/projects/watts-to-tokens': '/projects/datacenter-math',

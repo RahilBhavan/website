@@ -1,0 +1,241 @@
+<h3 class="atomic-title">Stream-Ordered Memory (<code>cudaMallocAsync</code>)</h3>
+                <span class="atomic-tag">allocator · pools</span>
+            </div>
+            <div class="atomic-body">
+                <p>Since CUDA 11.2 each device has a default <em>memory pool</em>. <code>cudaMallocAsync(ptr, n, stream)</code> queues an allocation that completes when <em>stream</em> reaches it; the pool reuses freed blocks instead of returning them to the driver. Benefits:</p>
+                <ul>
+                    <li>Allocation cost drops from microseconds to a handful of instructions for typical sizes.</li>
+                    <li>Correctness across streams is automatic via <code>cudaMemPoolAttrReleaseThreshold</code> and stream events.</li>
+                    <li>Works inside CUDA Graphs (legacy <code>cudaMalloc</code> does not).</li>
+                </ul>
+                <p>Always prefer <code>cudaMallocAsync</code> for short-lived per-iteration buffers in training/inference loops.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 11.5-A: Stream-ordered allocation pattern">// Tunable pool: keep up to 4 GB of freed blocks, never trim below 256 MB.
+cudaMemPool_t pool; cudaDeviceGetDefaultMemPool(&amp;pool, 0);
+uint64_t threshold = 4ull * 1024 * 1024 * 1024;
+cudaMemPoolSetAttribute(pool, cudaMemPoolAttrReleaseThreshold, &amp;threshold);
+
+cudaStream_t s; cudaStreamCreate(&amp;s);
+for (int iter = 0; iter &lt; 1000; ++iter) {
+    float* tmp;
+    cudaMallocAsync(&amp;tmp, N * sizeof(float), s);   // O(1) — reuses pool memory
+    my_kernel&lt;&lt;&lt;grid, block, 0, s&gt;&gt;&gt;(tmp, /*...*/);
+    cudaFreeAsync(tmp, s);                          // queued, no host stall
+}
+cudaStreamSynchronize(s);
+</pre>
+    </section>
+
+    <section class="section" id="sec-11-6">
+        <h2 class="section-title"><span class="sec-num">11.6</span>TMA &amp; Async Bulk Copy (Hopper)</h2>
+        <p class="section-subtitle">Move an entire tile with a single descriptor</p>
+
+        <div class="atomic" id="A11.6.1-tma">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.6.1]</span>
+                <h3 class="atomic-title">What the Tensor Memory Accelerator Actually Does</h3>
+                <span class="atomic-tag">hopper · tma</span>
+            </div>
+            <div class="atomic-body">
+                <p>On Ampere, copying an N-element tile from global to shared takes N/4 cp.async instructions, each issued by a thread. On Hopper, the TMA does it in <em>one</em> instruction (<code>cp.async.bulk.tensor</code>) issued by a single elected thread, given a precomputed descriptor that encodes:</p>
+                <ul>
+                    <li>Global base pointer and per-dimension strides.</li>
+                    <li>Tile shape (up to 5-D).</li>
+                    <li>Shared-memory destination, with optional swizzle pattern (<code>SWIZZLE_NONE</code>, <code>SWIZZLE_32B</code>, <code>SWIZZLE_64B</code>, <code>SWIZZLE_128B</code>).</li>
+                    <li>Out-of-bounds policy (zero-fill or padding).</li>
+                </ul>
+                <p>The TMA computes addresses, issues coalesced loads, and signals completion via an mbarrier. The warps doing math never compute an address. Result: more compute units do useful work, and the address-generation pressure that limited Ampere disappears.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span><a class="rel-chip rel-builds" href="#sec-3-5">§3.5 cp.async</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-19-2">§19.2 TMA</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-11-7">
+        <h2 class="section-title"><span class="sec-num">11.7</span>Texture, Constant, and Read-Only Cache</h2>
+        <p class="section-subtitle">Three under-used memory paths that still matter</p>
+
+        <div class="atomic" id="A11.7.1-constant">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.7.1]</span>
+                <h3 class="atomic-title">Constant Memory — Broadcast or Bust</h3>
+                <span class="atomic-tag">constant memory</span>
+            </div>
+            <div class="atomic-body">
+                <p>64 KB of read-only memory cached by a small dedicated cache per SM. The win condition: <em>all threads in a warp read the same address</em>. The hardware broadcasts the value to all 32 lanes in a single cycle. Different addresses serialize. Use for: scalar hyperparameters, RoPE base/scale, lookup tables shared by every thread.</p>
+                <p>Kernel parameters (the arguments of <code>__global__</code>) live in constant bank 0 implicitly — that's the <code>cmem[0]</code> in ptxas output.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A11.7.2-texture">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.7.2]</span>
+                <h3 class="atomic-title">Texture &amp; Surface — Still Useful in 2026</h3>
+                <span class="atomic-tag">texture · surface</span>
+            </div>
+            <div class="atomic-body">
+                <p>Texture memory is global memory accessed through a special read path that adds (a) hardware bilinear interpolation, (b) clamp/wrap addressing, (c) 8-/16-/32-bit normalized loads, and (d) a separate cache that does not pollute L1. Modern uses:</p>
+                <ul>
+                    <li>Image and volume processing where bilinear interpolation is free.</li>
+                    <li>Look-up tables larger than constant memory where reads are spatially correlated.</li>
+                    <li>Sparse/scattered reads where you want a cache distinct from L1.</li>
+                </ul>
+                <p>The <code>__ldg(ptr)</code> intrinsic gives you the read-only cache without the texture object machinery — usually enough for modern kernels.</p>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 11</div>
+            <div class="checkpoint-sub">From memory, before turning the page</div>
+            <ul>
+                <li>Diagram the 32-bank model and predict the conflict count for stride-1, stride-2, stride-32 access.</li>
+                <li>Compute a swizzled shared-memory address by hand for a 16×16 FP16 tile.</li>
+                <li>Configure an L2 persisting carveout for a 32 MB weight buffer.</li>
+                <li>State the bandwidth and latency trade-offs between HBM3 and GDDR6X.</li>
+                <li>Pick the right allocator (pageable/pinned/mapped/async pool) for three scenarios.</li>
+                <li>Explain why TMA frees the warp's address-generation budget.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-10"><span class="label">← Previous</span>Compiler &amp; Toolchain</a>
+            <a href="#chapter-12" class="next"><span class="label">Next →</span>Numerical Methods</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 12 — NUMERICAL METHODS ON GPU
+     ===================================================================== -->
+<article class="chapter" id="chapter-12">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">12</div>
+        <div class="chapter-eyebrow">Chapter 12</div>
+        <h1 class="chapter-title">Numerical Methods:<br>What FP32 Promises and What It Actually Delivers</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Floating-point math on a GPU is <em>not</em> the same as floating-point math you grew up with. Order of operations changes results, parallel reductions are non-deterministic by default, tensor cores accumulate to a different precision than they multiply with, and a "fast-math" flag can silently change your model's accuracy. This chapter teaches you to predict the numerical behavior of a kernel, prove it, and choose the right precision strategy.</p>
+    </header>
+
+    <section class="section" id="sec-12-1">
+        <h2 class="section-title"><span class="sec-num">12.1</span>IEEE 754 Beyond the Bit Layout</h2>
+        <p class="section-subtitle">Rounding modes, subnormals, ULPs, and what NVIDIA chose</p>
+
+        <div class="atomic" id="A12.1.1-rounding">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.1.1]</span>
+                <h3 class="atomic-title">Rounding Modes</h3>
+                <span class="atomic-tag">IEEE 754</span>
+            </div>
+            <div class="atomic-body">
+                <p>IEEE 754 defines four rounding modes. NVIDIA hardware supports all four per instruction, but the compiler default is <strong>round-to-nearest-even</strong> (RTNE). The PTX suffixes are <code>.rn</code> (nearest-even), <code>.rz</code> (toward zero / truncation), <code>.rm</code> (toward −∞), <code>.rp</code> (toward +∞). Use cases:</p>
+                <ul>
+                    <li><code>.rn</code> — default, lowest expected error.</li>
+                    <li><code>.rz</code> — required by some quantization schemes that want symmetric clipping.</li>
+                    <li><code>.rm</code>/<code>.rp</code> — interval arithmetic, error bounds.</li>
+                </ul>
+                <p>Rounding mode is part of the SASS instruction; you cannot change it at runtime. Set it per-FMA with intrinsics like <code>__fmul_rn</code>, <code>__fmaf_rz</code>.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A12.1.2-subnormals">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.1.2]</span>
+                <h3 class="atomic-title">Subnormals &amp; Flush-to-Zero</h3>
+                <span class="atomic-tag">denormals</span>
+            </div>
+            <div class="atomic-body">
+                <p>Numbers smaller than the smallest normal float (2<sup>−126</sup> for FP32) are <em>subnormals</em>. They preserve relative precision near zero, but on most hardware they cost extra cycles. NVIDIA GPUs handle subnormals at full speed for FP32 add/multiply on sm_53+, but a few transcendentals are <em>flushed</em> to zero unconditionally.</p>
+                <p>The <code>-use_fast_math</code> flag enables FTZ globally: every operation that would produce a subnormal returns ±0. This is fine for inference and most training, but breaks careful numerical code (Kahan summation, ill-conditioned linear solvers).</p>
+                <p>To probe what FTZ is doing, check <code>__float_as_uint(x)</code> after an arithmetic op and look for the exponent field being all zero with non-zero mantissa — that is a subnormal.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A12.1.3-ulp">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.1.3]</span>
+                <h3 class="atomic-title">ULP — The Currency of Error</h3>
+                <span class="atomic-tag">error analysis</span>
+            </div>
+            <div class="atomic-body">
+                <p>One <strong>unit in the last place</strong> (ULP) is the gap between two adjacent representable floats. For FP32 at magnitude 1.0, 1 ULP ≈ 1.19e−7. A correctly rounded operation has error ≤ 0.5 ULP. NVIDIA documents the max ULP error of every intrinsic in the CUDA Math API; e.g. <code>__expf</code> is 2 ULPs while <code>expf</code> is &lt; 1 ULP. When you read "tolerance of 1e-5" in a unit test, translate it: at magnitude 1, that's ~84 ULPs of slack. At magnitude 10⁶, the same absolute tolerance accepts ~8 ULPs.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-12-2">
+        <h2 class="section-title"><span class="sec-num">12.2</span>FMA Semantics &amp; Why Multiply-Then-Add ≠ FMA</h2>
+        <p class="section-subtitle">A single rounding step changes more than you'd think</p>
+
+        <div class="atomic" id="A12.2.1-fma">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.2.1]</span>
+                <h3 class="atomic-title">Fused Multiply-Add</h3>
+                <span class="atomic-tag">FMA</span>
+            </div>
+            <div class="atomic-body">
+                <p><code>fma(a,b,c)</code> computes <code>a*b + c</code> with a <em>single</em> rounding step at the end. Plain <code>a*b + c</code> in C++ rounds twice. The difference can be 1 ULP per operation, which is everywhere in GEMM (millions of FMAs). The reason your CUDA result differs from your CPU reference is often that <code>nvcc</code> fused multiply-adds while gcc didn't.</p>
+                <p>Force FMA on/off when reproducing bug reports:</p>
+                <ul>
+                    <li><code>nvcc -fmad=false</code> — disable contraction. Useful to match a CPU reference compiled with <code>-ffp-contract=off</code>.</li>
+                    <li><code>__fmul_rn(a,b) + c</code> — explicit unfused multiply, then add.</li>
+                    <li><code>__fma_rn(a,b,c)</code> — explicit fused.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-12-5">§12.5 Mixed precision</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-12-3">
+        <h2 class="section-title"><span class="sec-num">12.3</span>Summation Algorithms — When Floats Stop Associating</h2>
+        <p class="section-subtitle">Naive, pairwise, Kahan, and Neumaier compared</p>
+
+        <div class="atomic" id="A12.3.1-summation">
+            <div class="atomic-head">
+                <span class="atomic-id">[A12.3.1]</span>
+                <h3 class="atomic-title">Why Order Matters</h3>
+                <span class="atomic-tag">numerical stability</span>
+            </div>
+            <div class="atomic-body">
+                <p>FP addition is non-associative: <code>(a+b)+c ≠ a+(b+c)</code> in general. The relative error of a naive serial sum of N positive FP32 numbers is bounded by <code>N · ε</code> where <code>ε = 2⁻²⁴</code>. With N = 2²⁴ ≈ 16M, you can lose <em>all</em> precision. Better algorithms cap or shrink this dependence on N.</p>
+                <div class="table-wrap"><table>
+                    <thead><tr><th>Algorithm</th><th>Forward error</th><th>Cost</th><th>GPU fit</th></tr></thead>
+                    <tbody>
+                        <tr><td>Naive serial</td><td class="num">O(Nε)</td><td>N adds</td><td>Bad — also slow</td></tr>
+                        <tr><td>Pairwise (tree)</td><td class="num">O(log N · ε)</td><td>N adds</td><td>Natural for warp/block reduce</td></tr>
+                        <tr><td>Kahan</td><td class="num">O(ε)</td><td>4N ops</td><td>Possible, register pressure</td></tr>
+                        <tr><td>Neumaier</td><td class="num">O(ε)</td><td>3N ops</td><td>Like Kahan, handles mixed signs</td></tr>
+                        <tr><td>Higher precision accumulator</td><td class="num">O(Nε²)</td><td>2× regs</td><td>Use FP64 acc for FP32 sum</td></tr>
+                    </tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 12.3-A: Kahan-compensated summation in a warp">// Warp-level Kahan reduce. 32 threads, each holds val; output = sum across warp.
+__device__ float warp_kahan_sum(float val) {
+    float sum = val;
+    float c   = 0.0f;                    // running compensation
+    for (int offset = 16; offset &gt; 0; offset &gt;&gt;= 1) {
+        float other_sum = __shfl_down_sync(0xffffffff, sum, offset);
+        float other_c   = __shfl_down_sync(0xffffffff, c,   offset);
+        float y = other_sum - (c + other_c);
+        float t = sum + y;
+        c = (t - sum) - y;               // bits lost going into t
+        sum = t;
+    }
+    return sum;                          // lane 0 holds the answer
+}
+</pre>
+
+        <div class="callout warn">
+            <div class="callout-label">Tensor Cores accumulate in FP32 — be aware</div>
+            <p>An FP16×FP16 → FP32 Tensor Core operation multiplies in FP16 (3 decimal digits of precision) but accumulates in FP32. The accumulation chain is hardware-pairwise across the 8/16/32 K-axis steps, so a single mma.sync is well-behaved. The problem comes in the K loop: how many <code>mma.sync</code> calls feed the same FP32 accumulator? After ~10⁴ calls you may lose accuracy in the low bits.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-12-4">
+        

@@ -1,0 +1,174 @@
+<h2 class="section-title"><span class="sec-num">2.7</span>Benchmarking Correctly</h2>
+        <div class="section-subtitle">Most "kernel is faster" claims are measurement artifacts</div>
+
+        <p>The single most common mistake in CUDA performance work is timing the wrong thing. The cardinal rules:</p>
+
+        <ol>
+            <li><strong>Use CUDA events</strong>, not <code>std::chrono</code> or <code>clock_gettime</code>. The host clock will measure host time, which includes kernel-launch overhead, driver queuing, and may miss the actual GPU work entirely if the launch is asynchronous.</li>
+            <li><strong>Warm up</strong> the GPU. The first kernel launch pays JIT compilation costs (if PTX is loaded), driver setup, and clock ramp-up. Throw away the first 5&ndash;10 runs.</li>
+            <li><strong>Run many iterations</strong> (≥ 100, often 500&ndash;1000) and report mean and standard deviation. Variance under 1% is the bar for "stable enough to claim a winner."</li>
+            <li><strong>Lock GPU clocks</strong> before benchmarking. Without locking, the boost clock drifts with temperature and you compare apples to oranges. (Covered in §5.4.)</li>
+            <li><strong>Always run a correctness check</strong> against a CPU reference (or against a trusted GPU reference). A "30% faster" kernel that produces wrong answers is worse than a slow correct kernel.</li>
+        </ol>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.7-A: A benchmarking harness you can reuse">#include &lt;cuda_runtime.h&gt;
+#include &lt;chrono&gt;
+#include &lt;vector&gt;
+#include &lt;numeric&gt;
+#include &lt;cmath&gt;
+#include &lt;cstdio&gt;
+
+struct BenchResult {
+    double mean_ms;
+    double stddev_ms;
+    double gflops;
+};
+
+template &lt;typename Launcher&gt;
+BenchResult benchmarkKernel(Launcher launch,
+                            long long flops,           // 2*M*N*K for GEMM
+                            int warmup = 10,
+                            int iters  = 500)
+{
+    cudaEvent_t start, stop;
+    cudaEventCreate(&amp;start);
+    cudaEventCreate(&amp;stop);
+
+    // 1) Warmup.
+    for (int i = 0; i &lt; warmup; ++i) launch();
+    cudaDeviceSynchronize();
+
+    // 2) Timed runs.
+    std::vector&lt;float&gt; times_ms(iters);
+    for (int i = 0; i &lt; iters; ++i) {
+        cudaEventRecord(start);
+        launch();
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&amp;times_ms[i], start, stop);
+    }
+
+    // 3) Stats.
+    double mean = std::accumulate(times_ms.begin(), times_ms.end(), 0.0) / iters;
+    double var  = 0.0;
+    for (float t : times_ms) var += (t - mean) * (t - mean);
+    var /= iters;
+    double sd = std::sqrt(var);
+
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    // 4) Convert to GFLOPS.  flops / (ms * 1e6) = GFLOPS.
+    double gflops = (double)flops / (mean * 1e6);
+    return { mean, sd, gflops };
+}
+
+// Usage:
+//   long long flops = 2LL * M * N * K;
+//   auto r = benchmarkKernel([&amp;]() {
+//       gemmTiled&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_A, d_B, d_C, M, N, K);
+//   }, flops);
+//   printf("mean=%.3f ms  stddev=%.3f ms  %.1f GFLOPS\n",
+//          r.mean_ms, r.stddev_ms, r.gflops);
+</pre>
+
+        <h3>Correctness check</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.7-B: Tolerance check vs CPU reference">// CPU reference (slow but trusted).
+void gemmRef(const float* A, const float* B, float* C, int M, int N, int K) {
+    for (int i = 0; i &lt; M; ++i)
+        for (int j = 0; j &lt; N; ++j) {
+            float s = 0.f;
+            for (int k = 0; k &lt; K; ++k) s += A[i*K + k] * B[k*N + j];
+            C[i*N + j] = s;
+        }
+}
+
+// Compare with a relative-tolerance threshold.
+bool verify(const float* test, const float* ref, int N, float rtol = 1e-3f) {
+    int wrong = 0;
+    double maxrel = 0.0;
+    for (int i = 0; i &lt; N; ++i) {
+        float r = ref[i];
+        float t = test[i];
+        float denom = std::max(std::abs(r), 1.0f);
+        float rel = std::abs(t - r) / denom;
+        if (rel &gt; maxrel) maxrel = rel;
+        if (rel &gt; rtol) ++wrong;
+    }
+    printf("verify: %d/%d wrong, max rel err = %.2e\n", wrong, N, maxrel);
+    return wrong == 0;
+}
+// rtol = 1e-3 is appropriate for FP16; tighten to 1e-5 or so for FP32.
+</pre>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2.8 — THE CUDA SOFTWARE STACK
+         ============================================================ -->
+    <section class="section" id="sec-2-8">
+        <h2 class="section-title"><span class="sec-num">2.8</span>The CUDA Software Stack — From <code>.cu</code> to SASS</h2>
+        <div class="section-subtitle">What actually happens when you press <kbd>nvcc</kbd></div>
+
+        <div class="cluster">
+            <strong>Reading order.</strong> Every box in the compile pipeline (preprocessor → CUDA front-end → PTX → SASS → cubin → fatbin) is a checkpoint where something can go wrong silently and you must know how to peek. The atomic notes below split the pipeline into its inspectable stages.
+        </div>
+
+        <div class="atomic" id="A2.8.1-runtime-vs-driver">
+            <div class="atomic-head"><span class="atomic-id">[[A2.8.1]]</span><h4 class="atomic-title">Runtime API vs Driver API — two front doors to the same hardware</h4><span class="atomic-tag">toolchain</span></div>
+            <div class="atomic-body">
+                <p>CUDA exposes two C APIs that target the same underlying driver. The <strong>Runtime API</strong> (<code>cuda_runtime.h</code>, <code>cudaMalloc</code>, <code>cudaMemcpy</code>, <code>cudaLaunchKernel</code>) is what you use 95% of the time; it hides the context, module loading, and module unloading behind global per-process state. The <strong>Driver API</strong> (<code>cuda.h</code>, <code>cuMemAlloc</code>, <code>cuLaunchKernel</code>) exposes those — <code>CUcontext</code>, <code>CUmodule</code>, <code>CUfunction</code> — explicitly. Use the Driver API when you need to JIT load PTX at runtime, manage multiple contexts on one process, or implement a library others embed; for kernels and applications, the Runtime API is the right level.</p>
+                <p>You can call the two from the same process — the runtime is implemented on top of the driver — but mixing handles (driver <code>CUstream</code> vs runtime <code>cudaStream_t</code>) is a recipe for confusion. They are <em>type-compatible</em> on most platforms but not on all.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A2.8.2-nvcc-pipeline">[[A2.8.2]]</a> <a class="rel-chip rel-usedby" href="#A2.10.4-graph">[[A2.10.4]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.8.2-nvcc-pipeline">
+            <div class="atomic-head"><span class="atomic-id">[[A2.8.2]]</span><h4 class="atomic-title">The nvcc pipeline — five stages you can peek into</h4><span class="atomic-tag">toolchain</span></div>
+            <div class="atomic-body">
+                <ol>
+                    <li><strong>Host/device split.</strong> <code>cudacc</code> splits a <code>.cu</code> file into host-only and device-only intermediate files. The host file is shipped to your usual C++ compiler (g++/clang/cl); the device file goes to the CUDA front-end.</li>
+                    <li><strong>CUDA front-end → PTX.</strong> NVIDIA's Clang-based front-end lowers the device file into PTX — a virtual ISA in textual form. <code>nvcc --ptx</code> stops here. PTX is forward-compatible across architectures; the driver can JIT-compile it at load time.</li>
+                    <li><strong>ptxas → SASS.</strong> <code>ptxas</code> consumes PTX and emits SASS — the actual instructions for a specific compute capability (<code>-arch=sm_86</code>). This is where register allocation, instruction scheduling, and most peephole optimization happen. <code>--ptxas-options=-v</code> prints register and shared-memory usage; <code>-keep</code> keeps the intermediate SASS as <code>.cubin</code>.</li>
+                    <li><strong>fatbin packaging.</strong> <code>fatbinary</code> bundles one or more cubins (different architectures) plus optionally the original PTX into a "fat binary" that the runtime can dispatch from based on the device it finds at load time.</li>
+                    <li><strong>Driver load &amp; JIT.</strong> At <code>cuModuleLoad</code> time (or implicitly during the first kernel launch), the driver picks the best cubin for the running device; if none matches, it JIT-compiles the embedded PTX to SASS, caching the result in <code>~/.nv/ComputeCache</code>.</li>
+                </ol>
+                <p>Inspecting the output of each stage is how you debug the compiler. <code>cuobjdump --dump-ptx</code> and <code>cuobjdump --dump-sass</code> extract PTX and SASS from a finished binary. <code>nvdisasm</code> disassembles a cubin into human-readable SASS. <code>nvprof --print-gpu-trace</code> (older) or <code>ncu --target-processes all</code> (newer) tells you which cubin was actually selected on a particular GPU.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.6.1-compute-cap">[[A0.6.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A2.8.3-fatbin">[[A2.8.3]]</a> <a class="rel-chip rel-usedby" href="#sec-3-3">[[§3.3 PTX]]</a> <a class="rel-chip rel-usedby" href="#sec-4-6">[[§4.6 SASS]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.8.3-fatbin">
+            <div class="atomic-head"><span class="atomic-id">[[A2.8.3]]</span><h4 class="atomic-title">Fatbin and <code>-gencode</code> — shipping one binary that runs everywhere</h4><span class="atomic-tag">toolchain</span></div>
+            <div class="atomic-body">
+                <p>A typical release-time compile looks like <code>nvcc -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_86,code=compute_86 ...</code>. The third entry, <code>code=compute_86</code>, embeds PTX so unknown future GPUs can JIT-compile it. Ship without it and your binary fails to launch on any device newer than what you compiled for; ship with it and the driver pays a one-time JIT cost on first launch (a few seconds in extreme cases). The right compile policy: ship cubins for every architecture you care about plus PTX for the newest architecture, so future GPUs can still run.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.8.2-nvcc-pipeline">[[A2.8.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.8.4-launch-bounds">
+            <div class="atomic-head"><span class="atomic-id">[[A2.8.4]]</span><h4 class="atomic-title"><code>__launch_bounds__</code> and <code>--maxrregcount</code> — telling ptxas your contract</h4><span class="atomic-tag">toolchain</span></div>
+            <div class="atomic-body">
+                <p>Two ways to constrain the register usage of a kernel: a per-kernel attribute or a global compile flag. <code>__launch_bounds__(maxThreadsPerBlock, minBlocksPerSM)</code> tells ptxas "this kernel will run with at most <em>maxThreadsPerBlock</em> threads, and I want enough register room to host <em>minBlocksPerSM</em> blocks simultaneously." ptxas then targets a register budget of <code>65536 / (maxThreadsPerBlock · minBlocksPerSM)</code> and spills if the kernel needs more. <code>--maxrregcount=N</code> is the global, less precise version. Prefer <code>__launch_bounds__</code> because it's local to the kernel and survives refactoring.</p>
+                <div class="pitfall">
+                    <div class="pitfall-label">Sharp edge</div>
+                    <p style="margin:0">A <em>too-tight</em> launch_bounds can murder a Tensor-Core-heavy kernel: the compiler will spill rather than refuse, and the spills cost orders of magnitude more than the occupancy you bought. Profile both versions.</p>
+                </div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A1.5.2-register-budget">[[A1.5.2]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2.9 — SYNCHRONIZATION & MEMORY ORDERING
+         ============================================================ -->
+    <section class="section" id="sec-2-9">
+        

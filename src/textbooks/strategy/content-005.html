@@ -1,0 +1,185 @@
+<h2>The price of each product</h2>
+<div class="prose">
+<p class="lede-big">Every security is a trade. Strategy gets cash now and gives up something later. The buyer gives cash now and is paid for a specific risk. This chapter prices both sides of every product.</p>
+<p>Three numbers do most of the work:</p>
+<ul>
+<li><b>Cash raised per $100 of claim:</b> how much money Strategy actually received for each $100 it now owes.</li>
+<li><b>Yearly cost on the cash raised:</b> the dividend divided by the cash Strategy actually got. This is the real cost of the money.</li>
+<li><b>Break-even bitcoin growth:</b> roughly how fast bitcoin must rise for the trade to help common holders. For a preferred spent on bitcoin, it's about the yearly cost on cash raised.</li>
+</ul>
+</div>
+<figure class="figure">
+<h4>Strategy's side: what each product cost at launch</h4>
+<p class="fl">Initial public offerings only. Later ATM sales happened at other prices.</p>
+<div class="tbl"><table>
+<thead><tr><th>Product</th><th class="r">Launch price</th><th class="r">Cash per $100 of claim</th><th class="r">Rate on face</th><th class="r">Cost on cash raised</th><th class="r">Claim created above cash raised</th></tr></thead>
+<tbody>
+<tr><td><b>STRK</b> (Jan 2025)</td><td class="r">$80</td><td class="r">$80</td><td class="r">8%</td><td class="r">10.0%</td><td class="r">$146M</td></tr>
+<tr><td><b>STRF</b> (Mar 2025)</td><td class="r">$85</td><td class="r">$85</td><td class="r">10%</td><td class="r">11.8%</td><td class="r">$128M</td></tr>
+<tr><td><b>STRD</b> (Jun 2025)</td><td class="r">$85</td><td class="r">$85</td><td class="r">10%</td><td class="r">11.8%</td><td class="r">$177M</td></tr>
+<tr class="hl"><td><b>STRC</b> (Jul 2025)</td><td class="r">$90</td><td class="r">$90</td><td class="r">9% then, 12% now</td><td class="r">10.0% then, 13.3% now</td><td class="r">$280M</td></tr>
+<tr><td><b>STRE</b> (Nov 2025)</td><td class="r">€80</td><td class="r">€80</td><td class="r">10%</td><td class="r">12.5%</td><td class="r">€155M</td></tr>
+</tbody></table></div>
+<figcaption>Shares × (face − launch price) from the pricing 8-Ks (<a class="xref" href="#sources">Appendix C</a>). Gross of fees. In total the five launches created about $0.9B more claim than the cash they raised. That's the price of introducing a new kind of security to buyers who had never seen one.</figcaption>
+</figure>
+
+<h3>Each product's trade, both sides</h3>
+<div class="cards">
+<article class="card"><span class="tk">MSTR</span><span class="nm">Common stock</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>Cash with no repayment and no dividend</dd></div>
+<div><dt>Strategy pays</dt><dd>A slice of all future value. Selling $1 of stock at net mNAV m gives away $1/m of net assets. At 1.19x that's $0.84 per $1, so existing holders gain $0.16. At 0.8x it's $1.25, so they lose $0.25</dd></div>
+<div><dt>Buyer is paid for</dt><dd>Taking the first loss, with leveraged upside (about 1.27x bitcoin at net asset value, <a class="xref" href="#e1">Chapter 7</a>)</dd></div>
+<div><dt>Economics</dt><dd>The cheapest money when the premium is high, and the most expensive when it's below 1.0x</dd></div>
+</dl></article>
+<article class="card"><span class="tk">Converts</span><span class="nm">Convertible notes</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>Cash at 0–2.25% interest</dd></div>
+<div><dt>Strategy pays</dt><dd>Two contingent costs. Dilution if MSTR ends above the conversion price, or cash if it ends below and holders put the notes</dd></div>
+<div><dt>Buyer is paid for</dt><dd>Selling interest income in exchange for an option on a very volatile stock. Arbitrage funds hedge by shorting MSTR and earn from the volatility</dd></div>
+<div><dt>Economics</dt><dd>Cheap in cash, but the bill is only postponed. The 2029 notes convert at about $672 against an Oct 2026 price near $151, so for now they behave like 0% debt that must be repaid</dd></div>
+</dl></article>
+<article class="card"><span class="tk">STRF</span><span class="nm">Senior 10% preferred</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>Perpetual money: no repayment, ever</dd></div>
+<div><dt>Strategy pays</dt><dd>$10 a year per $100 forever, with a step-up penalty if skipped</dd></div>
+<div><dt>Buyer is paid for</dt><dd>Credit risk at the safest preferred rank, with about 88% bitcoin drawdown room before its claims exceed the bitcoin (<a class="xref" href="#k1">Chapter 21</a>)</dd></div>
+<div><dt>Break-even</dt><dd>Bitcoin ≈ +11.8% a year on money raised at $85</dd></div>
+</dl></article>
+<article class="card new"><span class="tk">STRC</span><span class="nm">Variable-rate preferred</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>A security it can sell continuously near $100, because the rate adjusts</dd></div>
+<div><dt>Strategy pays</dt><dd>A rate that rises under stress. The move from 9% to 12% costs about $264M a year at today's ≈ $8.8B. Each 0.25% costs ≈ $22M a year</dd></div>
+<div><dt>Buyer is paid for</dt><dd>Credit risk, with less price risk than a fixed-rate preferred. It's a high-yield cash substitute</dd></div>
+<div><dt>Break-even</dt><dd>Bitcoin ≈ +12% a year on money raised at $100; 13.3% on the $90 launch money</dd></div>
+</dl></article>
+<article class="card"><span class="tk">STRE</span><span class="nm">Euro 10% preferred</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>Access to European income buyers</dd></div>
+<div><dt>Strategy pays</dt><dd>€10 a year per €100, plus currency risk. The euro weakened from $1.1534 at launch to $1.1253, which shrank the claim in dollars from about $894M to $872M. That move helped Strategy</dd></div>
+<div><dt>Break-even</dt><dd>Bitcoin ≈ +12.5% a year in euro terms on the €80 launch money</dd></div>
+</dl></article>
+<article class="card"><span class="tk">STRK</span><span class="nm">8% convertible preferred</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>The lowest preferred rate</dd></div>
+<div><dt>Strategy pays</dt><dd>8% plus the conversion option. One STRK converts into 0.1 MSTR, an implied price of $1,000 a share. At $151 MSTR that option is worth about $15 against a $100 face, so today STRK is effectively a plain 8% preferred</dd></div>
+<div><dt>Extra lever</dt><dd>It can pay in MSTR shares. Above 1.0x mNAV, that's cheaper than cash in net-asset terms (<a class="xref" href="#n5">Chapter 16</a>)</dd></div>
+</dl></article>
+<article class="card"><span class="tk">STRD</span><span class="nm">Junior non-cumulative 10%</span>
+<dl>
+<div><dt>Strategy gets</dt><dd>A dividend it can stop without owing it later</dd></div>
+<div><dt>Strategy pays</dt><dd>The same 10% rate as senior STRF, but sold at $85, so 11.8% on cash. That premium is the price of the option to skip</dd></div>
+<div><dt>Buyer is paid for</dt><dd>The most risk: last in line, and payments that can vanish</dd></div>
+</dl></article>
+<article class="card"><span class="tk">Software</span><span class="nm">The operating business</span>
+<dl>
+<div><dt>Size</dt><dd>$122.4M of revenue in Q2 2026 with $81.6M gross profit, a 67% gross margin. Annualized revenue is about $490M</dd></div>
+<div><dt>Economics</dt><dd>Small next to $1.56B of charges, and its operating cash after costs isn't separately sourced in this book, so the model counts none of it</dd></div>
+</dl></article>
+</div>
+<div class="key"><b>The pattern</b>Strategy pays more cash for money that never has to be repaid. Converts cost almost nothing yearly but come back as puts. Preferreds cost 10–13% on the cash raised, but never mature. Common costs no cash at all, but its true cost swings with the premium. Choosing between them is choosing which risk to hold.</div>
+</section>
+
+<section class="chapter" id="n2">
+<span class="ch-num">Chapter 13</span>
+<h2>2020–2022: the first bets, priced</h2>
+<div class="prose"><p class="lede-big">The early decisions were small by today's standards. Their economics set every rule Strategy follows now.</p></div>
+
+<h3>Cash into bitcoin (2020)</h3>
+<div class="prose">
+<p><b>The trade.</b> Strategy swapped $250M of cash, which was earning close to nothing in 2020, for 21,454 BTC at an average of about $11,650.</p>
+<p><b>What it cost.</b> The interest the cash would have earned, and the certainty of having it. In 2022, when bitcoin fell to about $15,500, those coins were worth about $330M, still above cost but far below their 2021 peak. Under the accounting of the time, they were also booked as large losses.</p>
+<p><b>What it gained.</b> At $82,131, those first coins are worth about <b>$1.76B</b>, seven times what was paid.</p>
+<p><b>The buyback signal.</b> At the same time, Strategy offered to buy back up to $250M of its own shares. Holders tendered only $60.5M. In economic terms, most owners declined to sell at up to $140 a share. That was a vote to keep their stake in the company and its new plan, and it left more cash for bitcoin.</p>
+</div>
+
+<h3>Borrowing with convertibles (2020–2021)</h3>
+<div class="prose">
+<p><b>The trade.</b> $1.7B borrowed through two convertible issues at an average coupon of about 0.3%.</p>
+<p><b>What it saved.</b> At the 6.125% Strategy paid on its secured notes in 2021, the same $1.7B would have cost about $100M a year in interest. The converts cost about $5M.</p>
+<p><b>What it really cost.</b> The difference was paid in options. If MSTR rose above the conversion prices, holders would receive shares, diluting common holders. If it fell, holders would want their cash back. Strategy effectively sold volatility on its own stock to fund bitcoin. Because MSTR was so volatile, that volatility was worth a lot to buyers.</p>
+</div>
+
+<h3>Borrowing against the coins (2021–2022)</h3>
+<figure class="figure">
+<h4>Secured debt: the full bill</h4>
+<div class="tbl"><table>
+<thead><tr><th>Item</th><th class="r">Amount</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>6.125% secured notes: interest per year</td><td class="r">≈ $31M</td><td>On $500M, from Jun 2021 until redemption</td></tr>
+<tr><td>Early redemption premium (Sep 2024)</td><td class="r">$15.3M</td><td>Paid 103.063% to release about 69,080 BTC from the lien</td></tr>
+<tr><td>Silvergate loan prepaid (Mar 2023)</td><td class="r">−$44M</td><td>Repaid $161M on a $205M loan, a gain</td></tr>
+<tr class="hl"><td>Margin-call level reported for the loan</td><td class="r">≈ $21,000 / BTC</td><td>Bitcoin went below it in 2022 (press report; not a filing)</td></tr>
+</tbody></table></div>
+<figcaption>Sources: the 2021 notes 8-K, the Silvergate 8-Ks, the Q3 2024 10-Q, Fortune (May 2022).</figcaption>
+</figure>
+<div class="prose">
+<p><b>The economics.</b> Secured debt was cheaper than unsecured debt would have been, because lenders had the coins as backup. But pledged coins carry a hidden cost: a price fall can force a sale at the bottom. In 2022 bitcoin went below the reported margin level. Strategy wasn't forced to sell, but it had to manage the risk. It later spent $15.3M to get its coins back from the lien.</p>
+<p><b>The rule it created.</b> Never pledge the bitcoin. That rule has a price: Strategy's unsecured preferreds cost 8–12%, more than secured debt. In return, no lender can ever force a sale.</p>
+</div>
+
+<h3>The 2022 accounting loss</h3>
+<div class="prose">
+<p>Strategy reported a $1.47B net loss for 2022, mostly from $1.29B of bitcoin impairments. Under the old rules a company wrote bitcoin down when the price fell but couldn't write it back up when it recovered. <b>No cash left the company.</b> The economic lesson is to read Strategy's earnings and its cash separately (<a class="xref" href="#ch15">Chapter 18</a>).</p>
+</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Why were the 2020–21 converts "cheap" but not free?</summary><p>The low coupon was paid for with an option. Strategy owed either shares if MSTR rose, or cash back if it fell.</p></details>
+<details><summary>What's the economic cost of the "never pledge bitcoin" rule?</summary><p>Unsecured money costs more: preferreds at 8–12% instead of secured debt rates. In exchange, no lender can force a sale.</p></details>
+</div>
+</section>
+
+<section class="chapter" id="n3">
+<span class="ch-num">Chapter 14</span>
+<h2>2024–2025: spending the premium</h2>
+<div class="prose"><p class="lede-big">When the market pays three times net assets for your stock, you sell stock. When that window might close, you build other ways to raise money. That's this era in two sentences.</p></div>
+
+<h3>Selling stock at about 3.4x</h3>
+<figure class="figure">
+<span class="tag">First-order arithmetic</span>
+<h4>What $1 of new stock did for existing holders</h4>
+<p class="fl">Each $1 raised buys $1 of bitcoin. The new shares claim $1 ÷ mNAV of net assets. The rest goes to existing holders.</p>
+<div class="hbar"><span>At 3.4x (Nov 2024)</span><div><div class="b hot" style="width:71%"></div></div><span class="a">+$0.71</span></div>
+<div class="hbar"><span>At 2.0x</span><div><div class="b" style="width:50%"></div></div><span class="a">+$0.50</span></div>
+<div class="hbar"><span>At 1.19x (Oct 2026)</span><div><div class="b" style="width:16%"></div></div><span class="a">+$0.16</span></div>
+<div class="hbar"><span>At 1.0x</span><div><div class="b" style="width:0%"></div></div><span class="a">$0</span></div>
+<figcaption>Gain = 1 − 1/mNAV, on one scale from $0 to $1. The Nov 2024 multiple is a secondary estimate on the basic measure. This curve is why the premium is the most important number in the book: the same dollar raised was worth more than four times as much to holders in 2024 as in 2026.</figcaption>
+</figure>
+<div class="prose">
+<p><b>The economic catch.</b> Every sale at a premium transfers value from new buyers to old holders. New buyers do it willingly only if they expect the premium to persist. So the strategy works as long as the market believes it will keep working.</p>
+</div>
+
+<h3>$3B of 0% convertibles due 2029</h3>
+<div class="prose">
+<p><b>The trade.</b> In Nov 2024 Strategy borrowed $3B at 0% interest, convertible at about $672 a share, roughly 55% above MSTR's price at the time.</p>
+<p><b>What it saved.</b> Interest. At even 6%, $3B costs $180M a year.</p>
+<p><b>How it turned out.</b> MSTR fell to about $151 by October 2026, far below $672. The option is nearly worthless, so the notes behave like 0% debt. Holders can put them in June 2028. Strategy repurchased $1.5B of them in May 2026, leaving $1.5B. In effect, the 2024 decision traded a $180M-a-year interest bill for a large principal question in 2028.</p>
+</div>
+
+<h3>Joining the Nasdaq-100</h3>
+<div class="prose">
+<p><b>The economics.</b> Index funds tracking the Nasdaq-100 must hold MSTR. That creates steady passive demand, which supports both the price and the trading volume that ATM sales depend on. The flip side showed up in Jan 2026, when MSCI froze its index share counts for bitcoin-heavy companies. Index decisions directly affect how much stock Strategy can sell.</p>
+</div>
+
+<h3>Fair-value accounting and the minimum tax</h3>
+<div class="prose">
+<p><b>The risk.</b> The 15% corporate alternative minimum tax is based on book profit. Under fair-value accounting, every $10,000 rise in bitcoin is about $8.5B of paper profit for Strategy. Taxed at 15%, that could have meant roughly <b>$1.3B of cash tax</b> on gains it never sold. That's an illustration, not a calculated liability.</p>
+<p><b>The outcome.</b> After IRS interim guidance (Notice 2025-49), Strategy said in Oct 2025 it no longer expects to owe the tax on unrealized gains. That removed a potential cash drain the size of a year's dividends.</p>
+</div>
+
+<h3>Launching preferreds below face value</h3>
+<div class="prose">
+<p><b>The economics.</b> As <a class="xref" href="#n1">Chapter 12</a> shows, the five launches created about $0.9B more claim than cash raised. Why accept that? Because a brand-new security from a B- rated bitcoin company needed a higher starting yield to win buyers. Selling at a discount raises the buyer's yield without printing a higher rate, which keeps the stated rate (and the long-run cost on any later sales at $100) lower.</p>
+</div>
+
+<h3>Making STRC variable</h3>
+<div class="prose">
+<p><b>The economics.</b> A fixed-rate preferred's price drifts with interest rates and credit worries. Once it trades below $100, every new sale creates more claim than cash, so issuance stalls. A variable rate lets management push the price back to $100 and keep selling every day. STRC has $17.5B of unsold ATM capacity for that reason.</p>
+<p><b>The cost.</b> The rate rose from 9% to 12% in a year: about $264M a year more at today's size. That is the price of a security that can always be sold.</p>
+</div>
+
+<h3>Selling in euros</h3>
+<div class="prose">
+<p><b>The economics.</b> A new investor pool means more demand and potentially a lower rate than selling a sixth US preferred into the same market. The cost is currency risk. So far it has worked in Strategy's favour: the euro weakened after launch, shrinking STRE's dollar claim by about $22M.</p>
+</div>
+</section>
+

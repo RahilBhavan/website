@@ -1,0 +1,102 @@
+<h2 class="section-title"><span class="sec-num">0.6</span>GPU Lineage — From Triangles to Tensor Cores</h2>
+        <p class="section-subtitle">Why today's architecture looks the way it does</p>
+
+        <p>The modern GPU did not arrive in one step. Each generation answered the previous generation's bottleneck and is the reason a particular CUDA feature exists. Knowing which generation introduced what makes <code>nvcc</code> error messages, compute-capability flags, and PTX manuals legible. Pick your target SM (sm_80 / sm_86 for Ampere, sm_90 for Hopper) and the table below tells you which features are real for you.</p>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Gen</th><th>Year</th><th>Compute Cap</th><th>What it introduced (in one line)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>G80 (Tesla)</td><td>2006</td><td>sm_10</td><td>CUDA itself — unified shaders + a C language for them</td></tr>
+                    <tr><td>Fermi</td><td>2010</td><td>sm_20</td><td>L1/L2 caches, ECC, dual warp scheduler, IEEE 754-compliant FP</td></tr>
+                    <tr><td>Kepler</td><td>2012</td><td>sm_30/35</td><td>SMX with 192 cores, dynamic parallelism, GPUDirect-RDMA</td></tr>
+                    <tr><td>Maxwell</td><td>2014</td><td>sm_50/52</td><td>4-partition SM, big shared-memory boost, energy-efficient redesign</td></tr>
+                    <tr><td>Pascal</td><td>2016</td><td>sm_60/61</td><td>FP16 vector arithmetic, NVLink, HBM2, unified-memory page migration</td></tr>
+                    <tr><td>Volta</td><td>2017</td><td>sm_70</td><td><strong>Tensor Cores</strong> v1 (HMMA), independent thread scheduling, TensorRT</td></tr>
+                    <tr><td>Turing</td><td>2018</td><td>sm_75</td><td>RT cores, INT8/INT4 Tensor Cores, mesh shaders</td></tr>
+                    <tr><td>Ampere</td><td>2020</td><td>sm_80/86</td><td>3rd-gen TC, TF32, BF16, <code>cp.async</code>, async barriers, sparse TC</td></tr>
+                    <tr><td>Hopper</td><td>2022</td><td>sm_90</td><td>4th-gen TC + <code>wgmma</code>, TMA, thread block clusters, distributed SMEM, FP8</td></tr>
+                    <tr><td>Blackwell</td><td>2024</td><td>sm_100/120</td><td>5th-gen TC, FP4/MX formats, transformer-engine v2, dual-die package</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="atomic" id="A0.6.1-compute-cap">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.6.1]]</span>
+                <h4 class="atomic-title">Compute capability — the version number that gates every feature</h4>
+                <span class="atomic-tag">toolchain</span>
+            </div>
+            <div class="atomic-body">
+                <p>Every NVIDIA GPU has a "compute capability" like <code>sm_80</code> (A100), <code>sm_86</code> (RTX 3090), <code>sm_90</code> (H100). It is a two-digit version number: the first digit is the architecture family (Volta=7, Ampere=8, Hopper=9), the second distinguishes SKUs within it. Compute capability decides three things: (1) which PTX instructions exist, (2) which shared-memory budget and register file size you get, (3) which Tensor Core MMA shapes you can issue. When you compile with <code>nvcc -arch=sm_86</code> you're asking the compiler to emit SASS for that target; <code>-arch=compute_86</code> emits PTX that the driver JITs at load time. We will revisit this in <a href="#chapter-2" class="note-ref">§2.x — toolchain</a>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-2">[[Ch2 — compile flags]]</a> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3 — TC gen]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.6.2-why-ampere">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.6.2]]</span>
+                <h4 class="atomic-title">Why this book targets Ampere (sm_80/sm_86)</h4>
+                <span class="atomic-tag">scope</span>
+            </div>
+            <div class="atomic-body">
+                <p>Three reasons. (1) <em>It is the sweet spot of availability</em>: an RTX 3090 is the most common high-end consumer card with full FP16 Tensor Cores; A100 is the most common data-center part. (2) <em>It is the first generation with all the modern primitives</em>: <code>cp.async</code>, async barriers, BF16, TF32, sparse Tensor Cores. Everything you learn here applies to Hopper; Hopper adds new primitives but does not remove these. (3) <em>The documentation is mature</em>: every Ampere quirk has by now been written about, profiled, and decoded in public. Hopper has more headroom for novel work but a thinner public corpus.</p>
+                <p>Throughout the rest of this book "the GPU" means an Ampere SM unless we say otherwise. Hopper-only material is collected in <a href="#sec-3-6" class="note-ref">§3.6</a> and an Ampere/Hopper cross-reference lives in <a href="#sec-6-1" class="note-ref">§6.1</a>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.6.1-compute-cap">[[A0.6.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="checkpoint">
+        <div class="checkpoint-header">Checkpoint · End of Chapter 0</div>
+        <div class="checkpoint-sub">You should now be able to, without looking back:</div>
+        <ul>
+            <li>State the bit layout of FP32 and explain what each field encodes.</li>
+            <li>Explain why FP16 needs FP32 accumulation for stable GEMMs.</li>
+            <li>Define arithmetic intensity in one sentence and compute it for GEMM.</li>
+            <li>Quote Amdahl's Law and identify the serial sections in a CUDA pipeline.</li>
+            <li>Use Little's Law to estimate how many bytes must be in flight to saturate HBM.</li>
+            <li>Pick the right compute capability for a given GPU and explain what it controls.</li>
+        </ul>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#cover"><span class="label">← Front matter</span>Cover</a>
+        <a href="#chapter-1" class="next"><span class="label">Continue →</span>Ch 1 · The Machine Underneath</a>
+    </nav>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 1
+     ===================================================================== -->
+<article class="chapter" id="chapter-1">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">01</div>
+        <div class="chapter-eyebrow">Chapter 01</div>
+        <h1 class="chapter-title">The Machine Underneath:<br>GPU Architecture</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> By the end of this chapter you can explain — without reference material — how a GPU executes code at the hardware level: what an SM is, what a warp is, the full memory hierarchy, what occupancy means, and how to use the roofline model to classify any operation as compute-bound or memory-bound.</p>
+    </header>
+
+    <!-- ============================================================
+         SECTION 1.1
+         ============================================================ -->
+    <section class="section" id="sec-1-1">
+        <h2 class="section-title"><span class="sec-num">1.1</span>Why GPUs Exist: The Parallelism Imperative</h2>
+        <div class="section-subtitle">A divergence of design philosophies</div>
+
+        <p>A CPU and a GPU both move bits around, but they were built to solve completely different problems. A CPU is a <strong>latency-minimizing</strong> machine — its job is to get a single thread through a complicated instruction stream as quickly as possible. Out-of-order execution, deep speculation, large branch predictors, multi-megabyte caches, and tightly clocked single-thread pipelines all serve one goal: drive the wall-clock time of one task as low as possible.</p>
+
+        <p>A GPU is a <strong>throughput-maximizing</strong> machine. It does not care that any single thread is slow. It cares that <em>tens of thousands</em> of threads, taken together, finish their work in less time than a CPU could. The chip is therefore organized to keep as many arithmetic units busy as physically possible. Where a CPU spends roughly four-fifths of its silicon area on caches and control logic, a GPU spends roughly four-fifths of its silicon on arithmetic units. The cache is small, the control logic is shared across many lanes, and the pipeline depth per lane is shallow.</p>
+
+        <h3>The free lunch is over</h3>
+        <p>The shift to GPUs is not a fashion. It is a forced response to physics. Until roughly the mid-2000s, every new CPU generation gave you a faster single thread for free — clock frequencies climbed, transistors got smaller, voltages dropped, and the same code simply ran faster on next year's silicon. This was <strong>Dennard scaling</strong>. It broke down around 2005&ndash;2007 as leakage current and thermal density made further voltage reduction impractical. Herb Sutter's essay <em>The Free Lunch Is Over</em> (Dr.&nbsp;Dobb's, March 2005) named the moment for the software industry.<sup>[1]</sup></p>
+
+        <p>Since the free lunch ended, performance growth has come almost entirely from parallelism — more cores, wider vector units, specialized accelerators. GPUs are the most aggressive expression of that trend: instead of a few fast cores, thousands of slow ones; instead of speculation, brute parallel coverage; instead of large per-core caches, a small shared on-chip memory that the programmer manages explicitly.</p>
+
+        

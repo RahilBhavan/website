@@ -1,0 +1,307 @@
+<h2>The pipeline at one altitude</h2>
+
+    <p>
+      Six Python scripts in <code>data_collection/</code> turn raw RPC responses into
+      one CSV file. Five R scripts in <code>analysis/</code> turn that CSV into Tables
+      2–4 and Figures 1–4 of the paper. Both halves are intentionally re-runnable:
+      every Python script uses SQLite with <code>INSERT OR IGNORE</code> semantics so
+      re-running never duplicates rows, and every R script is deterministic given a
+      fixed random seed.
+    </p>
+
+    <pre class="code-bash"><code># Phase A — data collection (Python)
+uv run python data_collection/01_pull_transfers.py       # raw transfers → SQLite
+uv run python data_collection/02_attach_prices.py        # add value_usd column
+uv run python data_collection/03_pull_amm_pools.py       # DefiLlama → AMM panel
+uv run python data_collection/04_pull_supply_holders.py  # supply + holder count
+uv run python data_collection/05_pull_macro.py           # FFR + DeFi TVL
+uv run python data_collection/06_assemble_panel.py       # all sources → panel_weekly.csv
+
+# Phase B — analysis (R)
+Rscript analysis/01_descriptives.R       # Tables 1, Figures 1
+Rscript analysis/02_twfe_baseline.R      # Tables 2 + Bacon decomp
+Rscript analysis/03_cs_estimator.R       # Tables 3-4, Figure 2, pre-trend Wald test
+Rscript analysis/04_sun_abraham.R        # Table 4 column 2
+Rscript analysis/05_robustness.R         # Table 5 (all robustness specs)
+Rscript analysis/06_placebo.R            # Figure 4 (placebo distribution)
+Rscript analysis/07_power_analysis.R     # Power simulation (pre-flight; see below)</code></pre>
+
+    <p>
+      The pipeline runs end-to-end in roughly 4 hours, dominated by the initial
+      transfer pulls (each token requires a few minutes of Alchemy paging). After that
+      first run, re-running phase A is fast because <code>INSERT OR IGNORE</code> means
+      only new blocks are pulled. Phase B takes maybe 30 minutes total — the CS
+      estimator is the slowest step, because the bootstrap with B=9999 iterations is
+      computationally non-trivial.
+    </p>
+
+    <h2>The pre-flight checklist</h2>
+
+    <p>
+      Before any regression runs, five things must be true. The blueprint specifies
+      these as hard preconditions:
+    </p>
+
+    <ol>
+      <li>All seven token contract addresses verified against issuer documentation, with verification dates logged in <code>notes/data_anomalies.md</code>.</li>
+      <li>Issuer wallet exclusion lists built and reviewed for each token (no <code>TODO_VERIFY</code> placeholders remain).</li>
+      <li>Five data-validation checks from Chapter 4 all pass.</li>
+      <li>Treatment dates in <code>data/treatment_dates.csv</code> cross-referenced with Uniswap/Curve pool creation transactions.</li>
+      <li>Power analysis (<code>analysis/07_power_analysis.R</code>) confirms the design has at least 40% power for the effect sizes we're targeting.</li>
+    </ol>
+
+    <p>
+      That last item — the power analysis — deserves emphasis. Before generating any
+      estimates that anyone will see, we run 1,000 synthetic datasets under our
+      maintained DGP assumptions with a postulated effect size, fit the CS estimator
+      to each, and count how often we reject the null of zero effect at $\alpha=0.05$.
+      The result is our pre-registered statistical power. With N=7 and the noise levels
+      we observe in pilot data, expected power for a 30% velocity-increase ATT is
+      around 45%. That's low but not zero. If power were below 30%, we would re-scope
+      (add more tokens, switch to monthly aggregation, etc.) before continuing.
+    </p>
+
+    <h2>The main specification, formally</h2>
+
+    <p>
+      Three specifications appear in the paper as "main".
+    </p>
+
+    <h3>Spec 1: TWFE baseline (comparison)</h3>
+
+    <p>
+      $$\text{IHS}(V_{i,t}) = \alpha_i + \delta_t + \beta \cdot \text{ammListed}_{i,t} + \mathbf{x}_{i,t}'\gamma + \varepsilon_{i,t}$$
+    </p>
+
+    <p>
+      Token FEs $\alpha_i$, week FEs $\delta_t$, binary treatment $\text{ammListed}$,
+      controls $\mathbf x = (\log \text{mcap}, \log \text{holders}, \text{age},
+      \text{FFR}, \log \text{defiTVL})$. SEs clustered at the token level with wild
+      bootstrap. <strong>Reported as Table 2 column 1 — for comparison only.</strong>
+      Accompanied by the Bacon decomposition showing the forbidden 2×2 comparisons
+      (already-treated units used as controls) and the share of total Bacon weight they
+      absorb.
+    </p>
+
+    <h3>Spec 2: Callaway-Sant'Anna (main causal spec)</h3>
+
+    <p>
+      $$\widehat{\text{ATT}}(g, t) \text{ via } \text{did::att\_gt(yname = "ihs\_velocity\_w", \ldots)} $$
+    </p>
+
+    <p>
+      With <code>control_group = "nevertreated"</code>, <code>est_method = "reg"</code>,
+      time-varying controls in <code>xformla</code>. Aggregated with
+      <code>aggte(type = "simple")</code> for Table 3 and
+      <code>aggte(type = "dynamic")</code> for Figure 2. Wild bootstrap inference with
+      B=9999. <strong>This is the headline.</strong>
+    </p>
+
+    <h3>Spec 3: Continuous treatment intensity</h3>
+
+    <p>
+      $$\text{IHS}(V_{i,t}) = \alpha_i + \delta_t + \beta \cdot \log(\text{ammTVL}_{i,t} + 1) + \mathbf{x}_{i,t}'\gamma + \varepsilon_{i,t}$$
+    </p>
+
+    <p>
+      Replaces the binary treatment with continuous AMM TVL (log-transformed).
+      Interpretation: a doubling of AMM TVL is associated with $\beta \cdot \log 2$
+      additional IHS velocity. This specification tests the mechanism: if AMM listing
+      matters because depth matters, the continuous version should be more significant
+      than the binary version. <strong>Reported as Table 4.</strong>
+    </p>
+
+    <h2>What goes in each paper table</h2>
+
+    <table class="data">
+      <thead>
+        <tr><th>Object</th><th>What it shows</th><th>Source script</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Table 1</td><td>Summary stats by token: obs, mean velocity, %zero, mean mcap, mean holders, AMM-listed weeks</td><td><code>01_descriptives.R</code></td></tr>
+        <tr><td>Table 2</td><td>TWFE estimates + Bacon decomposition weights</td><td><code>02_twfe_baseline.R</code></td></tr>
+        <tr><td>Table 3</td><td>CS aggregate ATT, plus pre-trend Wald test</td><td><code>03_cs_estimator.R</code></td></tr>
+        <tr><td>Table 4</td><td>CS vs SA vs continuous treatment, three columns</td><td><code>04_sun_abraham.R</code></td></tr>
+        <tr><td>Table 5</td><td>6 robustness columns (alt velocity, threshold, sample, monthly, etc.)</td><td><code>05_robustness.R</code></td></tr>
+        <tr><td>Figure 1</td><td>6-panel velocity time series, one per token, treatment marked</td><td><code>01_descriptives.R</code></td></tr>
+        <tr><td>Figure 2</td><td>Event-study plot from CS (Figure 9.2 from Ch 09, but with real data)</td><td><code>03_cs_estimator.R</code></td></tr>
+        <tr><td>Figure 3</td><td>AMM TVL time series, one panel per treated token</td><td><code>01_descriptives.R</code></td></tr>
+        <tr><td>Figure 4</td><td>Placebo distribution (Chapter 14)</td><td><code>06_placebo.R</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Decision points where the project gets a choice</h2>
+
+    <p>
+      Throughout the pipeline, there are about a dozen judgment calls where the analyst
+      has to pick one option over another. Each one is documented in the blueprint and
+      revisited as a robustness check in Chapter 14. The most consequential:
+    </p>
+
+    <ul>
+      <li><strong>Treatment threshold:</strong> $10k / $50k / $100k of AMM TVL? Main spec uses $10k; robustness shows $50k and $100k.</li>
+      <li><strong>Control group:</strong> never-treated or not-yet-treated? Main uses never-treated; robustness uses not-yet-treated.</li>
+      <li><strong>Estimation method:</strong> regression adjustment, IPW, or doubly robust? Main uses regression; robustness compares.</li>
+      <li><strong>Velocity measure:</strong> dollar volume or transfer count divided by mcap? Main uses dollar volume; robustness uses count.</li>
+      <li><strong>Winsorization threshold:</strong> 99th or 95th percentile? Main uses 99th; robustness uses 95th and unwinsorized.</li>
+      <li><strong>BENJI scope:</strong> Polygon only or include Stellar? Main uses Polygon only; robustness drops BENJI entirely.</li>
+      <li><strong>Aggregation:</strong> weekly or monthly? Main uses weekly; robustness uses monthly.</li>
+      <li><strong>Inference:</strong> wild bootstrap with Webb weights or Rademacher? Main uses Webb; both reported in appendix.</li>
+    </ul>
+
+    <p>
+      If the headline finding survives all eight robustness perturbations qualitatively
+      (same sign, statistical significance, roughly the same magnitude), the paper has
+      a strong story. If it does not survive some specific perturbation, that becomes
+      a finding in its own right — we report it honestly and discuss the implications.
+    </p>
+
+    <h2>The paper-writing handoff</h2>
+
+    <p>
+      Once all five robustness specs have been run and the placebo test has produced its
+      distribution plot, the analyst hands off to paper-writing. The blueprint's Part 5
+      provides the section-by-section writing guide. The order is:
+    </p>
+
+    <ol>
+      <li>Sections 3–4 first (data + institutional background — mechanical, you've already written most of this in your notes).</li>
+      <li>Section 5 (identification strategy — based on Chapters 7–12 of this textbook).</li>
+      <li>Section 6 (results — describe the tables and figures you've already produced).</li>
+      <li>Section 7 (robustness — brief).</li>
+      <li>Section 2 (literature review — needs citation management).</li>
+      <li>Section 1 (introduction — last, once you know the full story).</li>
+      <li>Section 8–9 (discussion + conclusion).</li>
+      <li>Abstract — last of all, once the full draft exists.</li>
+    </ol>
+
+    <p>
+      Writing introductions first is one of the most common mistakes empirical authors
+      make. The introduction's contribution paragraph requires knowing exactly what your
+      headline finding is and what surprises came out of the robustness section. Writing
+      it first forces you to commit to claims you may have to walk back. Write it last.
+    </p>
+
+    <h2>Two practical reminders</h2>
+
+    <ol>
+      <li>
+        <strong>Set a random seed at the top of every script that uses randomness.</strong>
+        <code>set.seed(42)</code> at the top of <code>06_placebo.R</code> and
+        <code>07_power_analysis.R</code> in R; the equivalent
+        <code>random.seed(42); numpy.random.seed(42)</code> at the top of any Python
+        script that uses synthetic data. The placebo and power-analysis figures must be
+        bit-for-bit reproducible by a reviewer.
+      </li>
+      <li>
+        <strong>Commit panel_weekly.csv to the repo.</strong> Phase A scripts re-pull
+        on-chain data, which may differ slightly across runs (new transfers arrive, NAV
+        prices update). To make the regression results perfectly reproducible from any
+        time in the future, commit the assembled panel CSV as the canonical input.
+        Re-running phase B against this CSV should always produce identical outputs.
+      </li>
+    </ol>
+
+    <p>
+      The next chapter walks through the robustness ladder in detail and shows what
+      the placebo test should look like.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="14-robustness" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 14 · Part IV — Execution</div>
+    <h1 class="chapter-title">Robustness and placebo tests</h1>
+    <p class="chapter-subtitle">
+      The ladder of robustness specifications every reviewer expects, and the placebo
+      test that converts "the result is statistically significant" into "the result is
+      meaningfully different from what we'd see under no effect".
+    </p>
+
+    <h2>The robustness ladder</h2>
+
+    <p>
+      Modern empirical economics has converged on a fairly standard set of robustness
+      checks for any DiD paper. We run eleven of them across four categories and select
+      the six most informative for Table 5; the remaining five live in the appendix.
+    </p>
+
+    <h3>Category A: Sensitivity to the dependent variable</h3>
+    <ul>
+      <li><strong>R1 — Transfer count instead of dollar volume.</strong> Define velocity as $(\text{transfer count}) / (\text{mcap})$ instead of $(\text{dollar volume}) / (\text{mcap})$. Tests whether the result is driven by a few large trades or by the broader frequency of activity.</li>
+      <li><strong>R2 — Unwinsorized velocity.</strong> Use raw IHS velocity without 99th-percentile winsorization. Tests sensitivity to outliers.</li>
+      <li><strong>R3 — Two-part hurdle model.</strong> Decompose effect into Probit on "any trade" + OLS on "log volume | trade". Reports extensive and intensive margins separately.</li>
+    </ul>
+
+    <h3>Category B: Sensitivity to the treatment definition</h3>
+    <ul>
+      <li><strong>R4 — Alt threshold ($50k TVL).</strong> Tighter definition of "AMM listed".</li>
+      <li><strong>R5 — Continuous treatment.</strong> Replace binary with $\log(\text{AMM TVL})$ (already in main table as Table 4).</li>
+    </ul>
+
+    <h3>Category C: Sensitivity to the sample</h3>
+    <ul>
+      <li><strong>R6 — Drop BENJI.</strong> Removes the multi-chain confound. Tests whether the result depends on this token.</li>
+      <li><strong>R7 — Drop first 30 days post-launch.</strong> Removes the "newly-launched token" weeks where velocity is volatile for non-treatment reasons.</li>
+      <li><strong>R8 — Monthly panel.</strong> Re-aggregate to monthly, run CS again. Tests whether the weekly granularity is creating spurious noise.</li>
+    </ul>
+
+    <h3>Category D: Sensitivity to the estimator</h3>
+    <ul>
+      <li><strong>R9 — Not-yet-treated control group.</strong> Switch from never-treated to not-yet-treated. Tests whether the four never-treated tokens differ from the treated tokens in concerning ways.</li>
+      <li><strong>R10 — Sun-Abraham comparison.</strong> Already in Table 4.</li>
+      <li><strong>R11 — HonestDiD bounds.</strong> Reports the CI under assumed PT violations at relative-magnitude bound $\bar M \in \{0.5, 1, 2\}$.</li>
+    </ul>
+
+    <p>
+      The exact column count in Table 5 depends on which of these we want to highlight
+      — typically 6 columns, with the rest moved to an appendix.
+    </p>
+
+    <h2>What "passing" robustness looks like</h2>
+
+    <p>
+      The result we want to see in Table 5 is: across all robustness columns, the point
+      estimate stays within ±25% of the main spec's value, the sign is always the same,
+      and the standard errors are similar. That pattern says "the headline finding is
+      not a fluke of one specific choice the analyst made."
+    </p>
+
+    <p>
+      What does <em>not</em> count as passing: one column where the estimate is much
+      smaller or where the sign flips. If R7 (drop first 30 days post-launch) cuts the
+      effect in half, that suggests the headline is partly driven by post-launch noise
+      rather than AMM listing per se — and the paper has to address that in the text.
+    </p>
+
+    <h2>The placebo test</h2>
+
+    <p>
+      Robustness checks ask "is the result stable to choices I made?" The placebo test
+      asks a deeper question: "is the result distinguishable from the kind of pattern
+      that would appear under no effect?"
+    </p>
+
+    <p>
+      The procedure:
+    </p>
+
+    <ol>
+      <li>For each of 500 iterations, randomly re-assign each treated token a fake "first AMM listing date" drawn uniformly from a per-token eligible window — specifically, from week (launch + 8) to week (T_max − 12), so that every fake cohort has at least 8 pre-period weeks and at least 12 post-period weeks of data within the token's actual sample lifetime.</li>
+      <li>Re-run the CS estimator with these fake treatment dates.</li>
+      <li>Record the placebo ATT estimate.</li>
+      <li>Compare the actual ATT to the distribution of 500 placebo ATTs. The placebo p-value is the fraction of placebos with absolute value as large or larger than the actual.</li>
+    </ol>
+
+    <p>
+      Under the null hypothesis of no treatment effect, the actual ATT should look like
+      a random draw from the placebo distribution. If the actual is in the top 5% (or
+      bottom 5%, in absolute value), we can reject the null at the 5% level — and this
+      rejection is robust to all the assumptions about parametric inference that the
+      bootstrap requires.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        

@@ -1,0 +1,296 @@
+<h2 class="section-title"><span class="sec-num">16.2</span>Triton in Anger</h2>
+        <p class="section-subtitle">A complete tiled GEMM in 35 lines of Python</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 16.2-A: Triton GEMM (Python embedded)">import triton
+import triton.language as tl
+
+@triton.jit
+def gemm_kernel(
+    A, B, C, M, N, K,
+    stride_am, stride_ak, stride_bk, stride_bn, stride_cm, stride_cn,
+    BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr,
+):
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
+
+    offs_m = pid_m * BM + tl.arange(0, BM)
+    offs_n = pid_n * BN + tl.arange(0, BN)
+    offs_k = tl.arange(0, BK)
+
+    a_ptrs = A + offs_m[:, None] * stride_am + offs_k[None, :] * stride_ak
+    b_ptrs = B + offs_k[:, None] * stride_bk + offs_n[None, :] * stride_bn
+
+    acc = tl.zeros((BM, BN), dtype=tl.float32)
+    for k in range(0, K, BK):
+        a = tl.load(a_ptrs, mask=offs_k[None, :] &lt; K - k, other=0.0)
+        b = tl.load(b_ptrs, mask=offs_k[:, None] &lt; K - k, other=0.0)
+        acc += tl.dot(a, b)                    # Tensor Core mma
+        a_ptrs += BK * stride_ak
+        b_ptrs += BK * stride_bk
+
+    c_ptrs = C + offs_m[:, None] * stride_cm + offs_n[None, :] * stride_cn
+    tl.store(c_ptrs, acc, mask=(offs_m[:, None] &lt; M) &amp; (offs_n[None, :] &lt; N))
+</pre>
+
+        <div class="atomic" id="A16.2.1-triton-model">
+            <div class="atomic-head">
+                <span class="atomic-id">[A16.2.1]</span>
+                <h3 class="atomic-title">What Triton Does for You</h3>
+                <span class="atomic-tag">triton</span>
+            </div>
+            <div class="atomic-body">
+                <ul>
+                    <li>Lowers <code>tl.dot</code> directly to <code>mma.sync</code> on Tensor Cores.</li>
+                    <li>Coalesces global loads automatically based on the layout of your tile.</li>
+                    <li>Picks the shared-memory swizzle that avoids bank conflicts for your tile shape.</li>
+                    <li>Pipelines load/MMA stages with double-buffered shared memory.</li>
+                    <li>Runs an autotune search over <code>(BM, BN, BK, num_warps, num_stages)</code> when you use <code>@triton.autotune</code>.</li>
+                </ul>
+                <p>What you give up: fine control over per-instruction scheduling, advanced Hopper features (cluster, TMA descriptors before 2024), and the ability to read the exact SASS without compiling and disassembling.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-16-3">
+        <h2 class="section-title"><span class="sec-num">16.3</span>CUTLASS Architecture</h2>
+        <p class="section-subtitle">The five-level hierarchy that builds every GEMM kernel</p>
+
+        <div class="atomic" id="A16.3.1-cutlass-levels">
+            <div class="atomic-head">
+                <span class="atomic-id">[A16.3.1]</span>
+                <h3 class="atomic-title">Device → Kernel → Threadblock → Warp → MMA Atom</h3>
+                <span class="atomic-tag">cutlass</span>
+            </div>
+            <div class="atomic-body">
+                <ol>
+                    <li><strong>Device API</strong> — what you call from host code; chooses defaults.</li>
+                    <li><strong>Kernel</strong> — schedules grid, splits work, handles split-K, stream-K.</li>
+                    <li><strong>Threadblock</strong> — owns one output tile, runs the K-loop with shared-memory tiles.</li>
+                    <li><strong>Warp</strong> — owns a fraction of the threadblock tile; issues <code>mma.sync</code>.</li>
+                    <li><strong>MMA Atom</strong> — one Tensor-Core instruction (<code>m16n8k16</code> etc.), defined by a <code>cute::MMA_Atom</code>.</li>
+                </ol>
+                <p>Each level is a template specialization. You configure them from the outside; the compiler stitches a kernel that is essentially identical to one a hand-tuner would write — but in 30 lines instead of 1500.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 16.3-A: A CUTLASS GEMM declaration">#include &lt;cutlass/gemm/device/gemm.h&gt;
+
+using Gemm = cutlass::gemm::device::Gemm&lt;
+    cutlass::half_t, cutlass::layout::RowMajor,    // A
+    cutlass::half_t, cutlass::layout::ColumnMajor, // B
+    float,           cutlass::layout::RowMajor,    // C
+    float,                                          // accumulator
+    cutlass::arch::OpClassTensorOp,                 // use Tensor Cores
+    cutlass::arch::Sm80,                            // Ampere
+    cutlass::gemm::GemmShape&lt;128, 128, 32&gt;,         // threadblock tile
+    cutlass::gemm::GemmShape&lt; 64,  64, 32&gt;,         // warp tile
+    cutlass::gemm::GemmShape&lt; 16,   8, 16&gt;          // MMA atom
+&gt;;
+
+Gemm gemm_op;
+Gemm::Arguments args{ {M,N,K}, {A,lda}, {B,ldb}, {C,ldc}, {C,ldc}, {1.0f, 0.0f} };
+gemm_op(args);
+</pre>
+    </section>
+
+    <section class="section" id="sec-16-4">
+        <h2 class="section-title"><span class="sec-num">16.4</span>CuTe Layouts</h2>
+        <p class="section-subtitle">An algebra for any memory layout, finally</p>
+
+        <div class="atomic" id="A16.4.1-cute">
+            <div class="atomic-head">
+                <span class="atomic-id">[A16.4.1]</span>
+                <h3 class="atomic-title">Shape + Stride = Layout</h3>
+                <span class="atomic-tag">cute</span>
+            </div>
+            <div class="atomic-body">
+                <p>CuTe (introduced in CUTLASS 3.0) describes any tensor layout as a pair of nested integer tuples: a <strong>shape</strong> and a <strong>stride</strong>. Example:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:8px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+Layout&lt;Shape&lt;_8, _4&gt;, Stride&lt;_1, _8&gt;&gt;        // 8 rows × 4 cols, row-major
+Layout&lt;Shape&lt;_8, _4&gt;, Stride&lt;_4, _1&gt;&gt;        // col-major
+
+// 8 rows × (4 inner × 2 outer) columns — hierarchical:
+Layout&lt;Shape&lt;_8, Shape&lt;_4,_2&gt;&gt;, Stride&lt;_8, Stride&lt;_1, _32&gt;&gt;&gt;
+                </pre>
+                <p>Layouts compose: <code>layout1 ∘ layout2</code> is functional composition. Tiling, partitioning, swizzling, and gather/scatter are all just layout transformations. The whole CUTLASS 3 codebase is built on this algebra — once you grok it, you can express any access pattern your kernel needs without writing index math by hand.</p>
+            </div>
+        </div>
+
+        <div class="callout tip">
+            <div class="callout-label">Learning resource</div>
+            <p>The CuTe documentation has a 50-page tutorial that is the best single resource on GPU tensor algebra in existence. Reading it makes every other CUDA paper easier to follow.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-16-5">
+        <h2 class="section-title"><span class="sec-num">16.5</span>Choosing Your Abstraction</h2>
+        <p class="section-subtitle">A decision tree</p>
+
+        <div class="figure">
+            <div class="figure-label">Figure 16.5</div>
+            <div class="figure-title">Pick the right tool</div>
+            <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="11">
+                <g fill="#111214">
+                    <rect x="280" y="10" width="200" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="380" y="35" text-anchor="middle">"new kernel needed"</text>
+
+                    <rect x="60" y="80" width="200" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="160" y="98" text-anchor="middle">Is it a GEMM variant?</text>
+                    <text x="160" y="113" text-anchor="middle" font-size="9" fill="#52545a">(GEMV, batched GEMM, conv)</text>
+
+                    <rect x="500" y="80" width="200" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="600" y="98" text-anchor="middle">Will you ship it long-term?</text>
+
+                    <rect x="20" y="160" width="160" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="100" y="185" text-anchor="middle">CUTLASS</text>
+
+                    <rect x="200" y="160" width="160" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="280" y="185" text-anchor="middle">Triton (autotune)</text>
+
+                    <rect x="380" y="160" width="160" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="460" y="185" text-anchor="middle">Triton (quick)</text>
+
+                    <rect x="560" y="160" width="180" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="650" y="185" text-anchor="middle">Raw CUDA + CUTLASS</text>
+
+                    <rect x="280" y="250" width="200" height="40" fill="#f5f5ef" stroke="#111214" rx="4"/>
+                    <text x="380" y="275" text-anchor="middle">PTX / SASS (last 5%)</text>
+                </g>
+                <g stroke="#52545a">
+                    <line x1="380" y1="50" x2="160" y2="80"/>
+                    <line x1="380" y1="50" x2="600" y2="80"/>
+                    <line x1="120" y1="120" x2="100" y2="160"/>
+                    <line x1="200" y1="120" x2="280" y2="160"/>
+                    <line x1="560" y1="120" x2="460" y2="160"/>
+                    <line x1="640" y1="120" x2="650" y2="160"/>
+                    <line x1="100" y1="200" x2="380" y2="250"/>
+                    <line x1="650" y1="200" x2="380" y2="250"/>
+                </g>
+            </svg>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 16</div>
+            <div class="checkpoint-sub">Abstraction selection</div>
+            <ul>
+                <li>Read the Triton GEMM listing and identify every line that picks Tensor Cores.</li>
+                <li>Name the five layers of the CUTLASS template hierarchy.</li>
+                <li>Write a CuTe <code>Layout&lt;Shape, Stride&gt;</code> for a 32×32 column-major tile.</li>
+                <li>Pick the right abstraction for: a new fused norm-bias-act kernel; a one-off research experiment; a permanent inference path.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-15"><span class="label">← Previous</span>Convolution Kernels</a>
+            <a href="#chapter-17" class="next"><span class="label">Next →</span>Debugging &amp; Correctness</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 17 — DEBUGGING & CORRECTNESS
+     ===================================================================== -->
+<article class="chapter" id="chapter-17">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">17</div>
+        <div class="chapter-eyebrow">Chapter 17</div>
+        <h1 class="chapter-title">Debugging &amp; Correctness:<br>The Tools That Find What Profilers Can't</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> A fast wrong kernel is worse than a slow right one. This chapter equips you with every diagnostic the CUDA toolkit ships: <code>compute-sanitizer</code> (memcheck, racecheck, initcheck, synccheck), <code>cuda-gdb</code>, kernel asserts, device-side printf, and the numerical validation harness you should keep on every kernel from day one.</p>
+    </header>
+
+    <section class="section" id="sec-17-1">
+        <h2 class="section-title"><span class="sec-num">17.1</span>The <code>compute-sanitizer</code> Suite</h2>
+        <p class="section-subtitle">Four tools, run them all on every new kernel</p>
+
+        <div class="atomic" id="A17.1.1-memcheck">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.1.1]</span>
+                <h3 class="atomic-title">memcheck — Out-of-Bounds &amp; Misaligned</h3>
+                <span class="atomic-tag">memcheck</span>
+            </div>
+            <div class="atomic-body">
+                <p>Reports any global, shared, or local memory access that goes past an allocation or violates alignment. Each launch is slower (5–50×) but the report is exact: PC, thread, address, allocation that "owns" the area.</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:8px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+compute-sanitizer --tool memcheck ./my_program
+                </pre>
+                <p>If your kernel passes memcheck in debug builds, ship it. If it fails, fix it before anything else — performance work on a UB'd kernel is wasted.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A17.1.2-racecheck">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.1.2]</span>
+                <h3 class="atomic-title">racecheck — Shared-Memory Races</h3>
+                <span class="atomic-tag">racecheck</span>
+            </div>
+            <div class="atomic-body">
+                <p>Catches a thread writing a shared-memory location while another thread reads/writes the same location without an intervening barrier. Most common cause: forgot a <code>__syncthreads()</code> between the smem load and the smem read for a tiled GEMM.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A17.1.3-initcheck">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.1.3]</span>
+                <h3 class="atomic-title">initcheck — Reading Uninitialized Memory</h3>
+                <span class="atomic-tag">initcheck</span>
+            </div>
+            <div class="atomic-body">
+                <p>Reports reads of memory the kernel never wrote. Common cause: forgot to zero an accumulator before the K-loop. Also catches the failing edge of an early-return when masking is incomplete.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A17.1.4-synccheck">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.1.4]</span>
+                <h3 class="atomic-title">synccheck — Divergent Barriers</h3>
+                <span class="atomic-tag">synccheck</span>
+            </div>
+            <div class="atomic-body">
+                <p>Catches <code>__syncthreads()</code> reached by a non-uniform subset of the warp — undefined behavior since Volta's independent thread scheduling. Especially insidious because the bug may only manifest under specific scheduling.</p>
+            </div>
+        </div>
+
+        <div class="callout tip">
+            <div class="callout-label">CI workflow</div>
+            <p>Run all four sanitizers on a small test suite as part of CI. Slow, yes, but it catches the entire class of bugs that profilers will never surface. Set <code>--check-cache-control yes</code> for additional load/store policy checks.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-17-2">
+        <h2 class="section-title"><span class="sec-num">17.2</span>cuda-gdb Workflow</h2>
+        <p class="section-subtitle">Set a breakpoint inside a kernel and inspect every thread</p>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 17.2-A: A typical cuda-gdb session"># Compile with debug info (-G) — disables optimization.
+nvcc -G -g -arch=sm_80 kernel.cu -o kernel
+
+# Start the debugger.
+cuda-gdb ./kernel
+
+(cuda-gdb) break gemm_kernel
+(cuda-gdb) run
+# Hit the breakpoint. List threads:
+(cuda-gdb) info cuda threads
+# Switch focus:
+(cuda-gdb) cuda block (0,0) thread (3,2)
+# Inspect registers and locals:
+(cuda-gdb) print row
+(cuda-gdb) print As[3][7]
+# Step through:
+(cuda-gdb) next
+(cuda-gdb) continue
+</pre>
+
+        <div class="pitfall">
+            <div class="pitfall-label">Trade-off</div>
+            <p><code>-G</code> generates unoptimized device code — usually 3–10× slower. It's diagnostic only. For profiling, use <code>-lineinfo</code> which keeps optimization but preserves the source-line mapping.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-17-3">
+        <h2 class="section-title"><span class="sec-num">17.3</span>Race Conditions &amp; Memory Ordering</h2>
+        <p class="section-subtitle">When the bug only appears under load</p>
+
+        <div class="atomic" id="A17.3.1-mempool">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.3.1]</span>
+                

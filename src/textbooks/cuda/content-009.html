@@ -1,0 +1,132 @@
+<h3>Registers</h3>
+        <p>Every thread has private access to the register file. On Ampere, the per-thread register limit is <strong>255 32-bit registers</strong>; the per-SM register file is <strong>65,536 32-bit registers</strong>. Register allocation is done by the compiler at compile time — you do not allocate registers; you write code, and <code>nvcc</code> decides.</p>
+
+        <p>If your kernel uses too many registers per thread, two things happen, both bad. First, occupancy drops, because fewer threads' worth of registers fit in the SM (covered in §1.5). Second, the compiler can <strong>spill</strong> excess values to <strong>local memory</strong>, which despite its name is a per-thread region of global memory. A register spill is catastrophic — what should be a single-cycle read is now a 400+ cycle global memory load. You can see spills in the compiler output by passing <code>-Xptxas -v</code> to <code>nvcc</code>.</p>
+
+        <h3>Shared memory</h3>
+        <p>Shared memory is your primary optimization lever. It is <strong>software-managed cache</strong> — you decide what goes in and when. On Ampere, 128 KB per SM is shared between the L1 cache and shared memory; you can request a particular split. A single thread block can request up to about 99 KB of shared memory on sm_86 (and up to roughly 163 KB on sm_80, the A100) via the <code>cudaFuncSetAttribute</code> opt-in.</p>
+
+        <p>Shared memory has approximately the same latency as L1 and an aggregate bandwidth measured in TB/s per SM. That is roughly <strong>100× the latency advantage</strong> over global memory and roughly <strong>20× the bandwidth advantage</strong>. The reason tiling works is that every element of a tile is loaded from global memory <em>once</em> into shared memory and then re-read from shared memory many times.</p>
+
+        <h4>Bank conflicts</h4>
+        <p>Shared memory is organized into <strong>32 banks</strong>, each handling 4 bytes per cycle. If 32 threads in a warp access 32 different banks in one cycle (one address per bank), they all complete in parallel — peak throughput. If two or more threads access different addresses on the <em>same</em> bank, the hardware serializes them — a <strong>bank conflict</strong>, and your shared-memory throughput drops in proportion to the conflict count.</p>
+
+        <p>The classic example is loading a tile of <code>float</code> with stride 32. If you index <code>smem[threadIdx.x * 32]</code>, every thread hits the same bank — a 32-way bank conflict, and your kernel runs 32× slower on that load. The classic fix is <strong>padding</strong>: declare <code>__shared__ float smem[32][33]</code> (one extra column) so that consecutive rows fall on different banks.</p>
+
+        <h3>Global memory coalescing</h3>
+        <p>When a warp issues a load from global memory, the memory subsystem services it in <strong>sector transactions</strong> &mdash; 32-byte sectors on Ampere, grouped into 128-byte cache lines.<sup>[6]</sup> If all 32 threads of the warp request addresses within a single 128-byte aligned region, the request becomes <strong>one</strong> 128-byte transaction. If each thread reaches into a different 128-byte region, the warp issues <strong>32</strong> transactions — 32× the bus traffic for the same FLOPs.</p>
+
+        <p>This is <strong>coalescing</strong>, and it is the single most-checked thing in a CUDA code review. The rule, almost universal: thread <code>i</code> in a warp should access address <code>base + i</code>. Indexing patterns that follow <code>base + i</code> get coalesced; patterns like <code>base + i * stride</code> for any stride greater than 1 do not.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 1.4-A: Coalesced vs uncoalesced access">// Assume float A[N]. tid = threadIdx.x in [0, 32).
+// 'base' is the warp-wide starting offset.
+
+// =================== COALESCED (1 transaction) ===================
+// Consecutive threads -&gt; consecutive 4-byte slots
+// -&gt; one 128-byte aligned segment fully covered.
+float x = A[base + tid];
+
+// ================== UNCOALESCED (up to 32 trx) ==================
+// Each thread reads with stride 32 floats = 128 bytes.
+// Every thread lands in a DIFFERENT 128-byte segment.
+float y = A[base + tid * 32];
+
+// ============ NEAR-COALESCED, OFFSET BUT CONTIGUOUS ============
+// Misaligned by 4 bytes -&gt; 2 transactions instead of 1.
+// Penalty depends on how much spills across the 128-byte boundary.
+float z = A[base + tid + 1];
+</pre>
+
+        <h3>L2 cache</h3>
+        <p>L2 sits between every SM and the DRAM controllers. It is the only cache that is shared across all SMs. On the RTX 3090 it is 6 MB; on the A100, 40 MB; on the H100, 50 MB. If two thread blocks running on different SMs happen to load the same data, the second one hits L2 instead of DRAM.</p>
+
+        <p>L2 hit rate is one of the most diagnostic metrics in Nsight Compute. A high L2 hit rate means your workload's working set fits — you are getting effective reuse across SMs. A low L2 hit rate means each block is pulling new data from DRAM, and the only knob you have is to <em>reuse data within an SM</em> via shared memory.</p>
+
+        <h3>Global memory (HBM / GDDR)</h3>
+        <p>This is the chip's off-chip memory — HBM2e on data-center parts, GDDR6X on consumer cards. The RTX 3090 has 24 GB GDDR6X on a 384-bit bus at 19.5 Gbps, yielding <strong>936 GB/s</strong> of peak bandwidth.<sup>[2]</sup> The A100 80GB has roughly 2 TB/s of HBM2e bandwidth; the H100 SXM, around 3.35 TB/s of HBM3.</p>
+
+        <p>The latency, however, is brutal: 400&ndash;800 clock cycles. The GPU hides this latency by switching warps — while one warp waits on its load, another runs. This works only if there are enough warps; that is the next section.</p>
+
+        <div class="figure">
+            <div class="figure-label">Figure 1.4 — Reference</div>
+            <div class="figure-title">The memory hierarchy as a pyramid</div>
+            <svg viewBox="0 0 720 340" role="img" aria-label="Memory hierarchy pyramid">
+                <!-- bands -->
+                <g font-family="JetBrains Mono" font-size="11">
+                    <!-- registers -->
+                    <g data-tip="**Registers** — fastest tier, ~1 cycle latency, ~20 TB/s aggregate per SM. Max 255 per thread; allocated at compile time. Spills go to 'local memory' (DRAM-backed) and are catastrophic.">
+                    <polygon points="320,30 400,30 420,60 300,60" fill="#111214"/>
+                    <text x="360" y="50" text-anchor="middle" font-weight="700" fill="#f5f5ef">REGISTERS</text>
+                    <text x="440" y="50" fill="#111214">~1 cycle · 20 TB/s · 255 regs/thread</text>
+                    </g>
+                    <!-- shared / L1 -->
+                    <g data-tip="**Shared Memory / L1 (128 KB/SM)** — on-chip, software-managed. ~20-30 cycle latency, ~19 TB/s aggregate per SM. Visible to all threads in a block. The reuse tier that makes tiled GEMMs viable.">
+                    <polygon points="300,60 420,60 450,100 270,100" fill="#52545a"/>
+                    <text x="360" y="86" text-anchor="middle" font-weight="700" fill="#f5f5ef">SHARED MEMORY / L1</text>
+                    <text x="470" y="86" fill="#52545a">~20–30 cyc · 19 TB/s · 128 KB/SM</text>
+                    </g>
+                    <!-- L2 -->
+                    <g data-tip="**L2 Cache (6 MB on RTX 3090)** — shared by every SM, ~200 cycles, 5-7 TB/s. The only place cross-SM reuse happens for free. Ampere adds `cudaAccessPolicyWindow` to hint persistence.">
+                    <polygon points="270,100 450,100 490,150 230,150" fill="#111214"/>
+                    <text x="360" y="130" text-anchor="middle" font-weight="700" fill="#f5f5ef">L2 CACHE</text>
+                    <text x="510" y="130" fill="#111214">~200 cyc · 5–7 TB/s · 6 MB</text>
+                    </g>
+                    <!-- Global -->
+                    <g data-tip="**Global Memory (GDDR6X 24 GB on RTX 3090)** — off-chip, 384-bit bus × 19.5 Gbps = 936 GB/s peak. ~500 cycle latency, hidden by warp switching. Every kernel reads and writes through this tier.">
+                    <polygon points="230,150 490,150 540,210 180,210" fill="#111214"/>
+                    <text x="360" y="184" text-anchor="middle" font-weight="700" fill="#f5f5ef">GLOBAL MEMORY (GDDR6X / HBM)</text>
+                    <text x="560" y="184" fill="#111214">~500 cyc · 936 GB/s · 24 GB</text>
+                    </g>
+                    <!-- Host -->
+                    <g data-tip="**PCIe ↔ Host DRAM** — PCIe Gen4 x16 ≈ 32 GB/s peak. Microsecond-scale latency. The cliff edge of every CUDA program — minimize H2D/D2H crossings, use pinned memory + streams to overlap transfers with compute.">
+                    <polygon points="180,210 540,210 600,280 120,280" fill="#111214"/>
+                    <text x="360" y="248" text-anchor="middle" font-weight="700" fill="#f5f5ef">PCIE ↔ HOST DRAM</text>
+                    <text x="620" y="248" fill="#111214">~µs · 32 GB/s · system RAM</text>
+                    </g>
+                </g>
+                <!-- axis labels -->
+                <text x="40" y="50" font-family="JetBrains Mono" font-size="10" fill="#111214">FAST · SMALL</text>
+                <text x="40" y="270" font-family="JetBrains Mono" font-size="10" fill="#111214">SLOW · LARGE</text>
+                <line x1="40" y1="60" x2="40" y2="260" stroke="#52545a" stroke-width="1" marker-end="url(#arr)"/>
+                <defs>
+                    <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                        <path d="M0,0 L0,8 L8,4 z" fill="#52545a"/>
+                    </marker>
+                </defs>
+                <text x="360" y="316" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#52545a">Numbers are characteristic values for the RTX 3090 (Ampere, sm_86)</text>
+            </svg>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 1.4-B: A shared-memory tile load pattern (preview of §2.4)">__shared__ float As[32][32];
+__shared__ float Bs[32][32];
+
+// 1. Cooperative load: each of the 32x32 = 1024 threads in the block
+//    loads ONE element from global into SMEM.
+//    Indexing chosen so consecutive threadIdx.x values hit consecutive
+//    addresses in A and B -&gt; coalesced.
+As[threadIdx.y][threadIdx.x] = A[ globalRowA * K + globalColA ];
+Bs[threadIdx.y][threadIdx.x] = B[ globalRowB * N + globalColB ];
+
+// 2. Barrier. NEEDED — otherwise some threads read As/Bs before
+//    other threads have filled them.
+__syncthreads();
+
+// 3. Compute. Each thread reads many As/Bs elements (reuse!) and
+//    accumulates a partial dot product in a register.
+float acc = 0.f;
+for (int k = 0; k &lt; 32; k++) {
+    acc += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+}
+
+// 4. Barrier. NEEDED — so no thread starts overwriting As/Bs in
+//    the next iteration before its peers have finished reading them.
+__syncthreads();
+</pre>
+
+        <div class="callout tip">
+            <div class="callout-label">The single most important sentence in this chapter</div>
+            Every GEMM optimization in this book — tiling, register accumulation, vectorized loads, Tensor Cores, <code>cp.async</code> pipelining — is a different way of squeezing more <em>arithmetic</em> out of each global-memory byte you spend. That ratio has a name (arithmetic intensity, §1.6) and a graph (the roofline). Internalize that, and every optimization slots into one of two buckets: <strong>move my workload right on the roofline</strong> (more reuse) or <strong>move it up</strong> (better instruction mix).
+        </div>
+
+        <!-- §1.4 atomic-note deep dive -->
+        

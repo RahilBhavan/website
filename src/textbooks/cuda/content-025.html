@@ -1,0 +1,155 @@
+<h2 class="section-title"><span class="sec-num">6.3</span>Nsight Compute Metrics Glossary</h2>
+        <div class="section-subtitle">Every metric used in chapter 4, in one place</div>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Metric</th><th>Means</th><th>High</th><th>Low</th><th>Lever</th></tr></thead>
+            <tbody>
+                <tr><td><code>sm__throughput.avg.pct_of_peak_sustained_active</code></td><td>Compute SOL — fraction of SM throughput vs peak.</td><td>Compute-bound; near peak.</td><td>Memory- or latency-bound.</td><td>Cross-check Memory SOL and warp-state.</td></tr>
+                <tr><td><code>dram__throughput.avg.pct_of_peak_sustained_elapsed</code></td><td>DRAM bandwidth utilization.</td><td>Memory-bound.</td><td>Either cache-friendly or latency-bound.</td><td>Tile bigger; coalesce; vectorize.</td></tr>
+                <tr><td><code>l1tex__throughput.avg.pct_of_peak_sustained_active</code></td><td>L1/SMEM throughput.</td><td>SMEM-bandwidth-bound — possibly bank conflicts.</td><td>Headroom for more SMEM work.</td><td>Reduce per-load conflicts; widen loads.</td></tr>
+                <tr><td><code>lts__throughput.avg.pct_of_peak_sustained_elapsed</code></td><td>L2 cache throughput.</td><td>L2-bound — working set thrashing.</td><td>Either L1 catches it or DRAM-bound.</td><td>Smaller tiles per block; persistent kernels.</td></tr>
+                <tr><td><code>l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum</code></td><td>L1 sector loads from global.</td><td>—</td><td>—</td><td>Divide by request count for coalescing diagnosis.</td></tr>
+                <tr><td><code>smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct</code></td><td>% time warps stall on global-memory loads.</td><td>Memory-latency-bound.</td><td>Good.</td><td>More occupancy or ILP; tile to reduce LD count.</td></tr>
+                <tr><td><code>smsp__warp_issue_stalled_short_scoreboard_per_warp_active.pct</code></td><td>% time waiting on MIO ops (SMEM dominant).</td><td>SMEM-traffic-heavy.</td><td>Good.</td><td>Move work to registers; reduce SMEM accesses.</td></tr>
+                <tr><td><code>smsp__warp_issue_stalled_mio_throttle_per_warp_active.pct</code></td><td>MIO pipeline queue saturated.</td><td>Reduce SMEM/SFU pressure.</td><td>Good.</td><td>Replace SMEM ops with register reuse.</td></tr>
+                <tr><td><code>smsp__warp_issue_stalled_not_selected_per_warp_active.pct</code></td><td>Warp ready but scheduler picked another.</td><td><strong>Good signal</strong> — issue slack.</td><td>Means scheduler always finds eligible warps elsewhere too.</td><td>Nothing — high values are healthy.</td></tr>
+                <tr><td><code>sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active</code></td><td>Tensor-Core pipe utilization.</td><td>You are using TCs.</td><td>You are not — even if you wrote WMMA, check SASS for <code>HMMA</code>.</td><td>Switch to <code>mma.sync</code>; reduce stalls feeding the TC.</td></tr>
+                <tr><td><code>sm__pipe_fma_cycles_active.avg.pct_of_peak_sustained_active</code></td><td>FP32 FMA pipe utilization.</td><td>You are running CUDA-core FP32 math.</td><td>—</td><td>If you intended TC and see this high, your kernel fell back to FFMA.</td></tr>
+                <tr><td>L1/TEX Hit Rate</td><td>Fraction of global loads served by L1.</td><td>Reuse working.</td><td>Coalescing or sizing problem.</td><td>Coalesce; reorder loads; smaller working set.</td></tr>
+                <tr><td>L2 Hit Rate</td><td>Fraction of L1-misses served by L2.</td><td>Cross-SM reuse.</td><td>DRAM-bound or evicting own data.</td><td>Tile; persistent kernel; reorder block schedule.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p style="font-size:12px;color:var(--text-tertiary)">Metric names follow NVIDIA's <em>PerfWorks</em> naming convention. The exact suffix (<code>.pct</code> vs <code>.ratio</code>) and prefix (<code>dram__</code> vs <code>gpu__dram_</code>) drift between Nsight Compute versions; consult <code>ncu --query-metrics</code> on your installed version to get the authoritative list.<sup>[2]</sup></p>
+    </section>
+
+    <!-- 6.4 -->
+    <section class="section" id="sec-6-4">
+        <h2 class="section-title"><span class="sec-num">6.4</span>The CUTLASS Connection</h2>
+        <div class="section-subtitle">The library that does what you just did, in templates</div>
+
+        <p>Every pattern in this textbook — tiled blocking, register accumulators, vectorized loads, <code>mma.sync</code>, <code>ldmatrix</code>, <code>cp.async</code> pipelining — is implemented in NVIDIA's open-source <strong>CUTLASS</strong> library. CUTLASS is an aggressively templated C++ header collection that lets you compose GEMMs and convolutions out of reusable tile- and warp-level pieces.</p>
+
+        <p>If your goal is shipping a fast GEMM in production rather than learning, CUTLASS is your starting point. If your goal is learning, you have done the hard part already, and reading CUTLASS source becomes legible — every <code>WarpMma</code>, <code>ThreadblockMma</code>, and <code>PipelinedMma</code> template you encounter is a name for a pattern this book just walked you through.</p>
+
+        <h3>What to look at first</h3>
+        <ol>
+            <li><strong><code>cutlass/include/cutlass/gemm/device/gemm.h</code></strong> — the high-level entry point, parametrized by tile shapes, dtypes, and pipeline stages. Reading the template parameters is half the education.</li>
+            <li><strong><code>cutlass/include/cutlass/gemm/warp/mma_tensor_op.h</code></strong> — the warp-level <code>mma.sync</code> wrapper. Compare against your Listing 3.4-B.</li>
+            <li><strong><code>cutlass/include/cutlass/arch/mma_sm80.h</code></strong> — per-architecture <code>mma.sync</code> intrinsics. Read this and the matching PTX side-by-side.</li>
+            <li><strong>The <code>cute</code> sub-library (CUTLASS 3.x).</strong> A layout algebra that lets you describe register/SMEM/global mappings as composable tensors. The mental model is more powerful than anything in CUTLASS 2.x and is the right next investment if you intend to write production kernels.</li>
+            <li><strong>The CUTLASS profiler</strong> — runs every internal kernel against your shape and reports TFLOPS, giving you instant comparable numbers across hundreds of tile configurations.</li>
+        </ol>
+
+        <p>Repository: <a href="https://github.com/NVIDIA/cutlass" target="_blank" rel="noopener">github.com/NVIDIA/cutlass</a>. The accompanying NVIDIA Developer Blog posts give a guided tour.<sup>[3]</sup></p>
+    </section>
+
+    <!-- 6.5 -->
+    <section class="section" id="sec-6-5">
+        <h2 class="section-title"><span class="sec-num">6.5</span>What Comes Next</h2>
+        <div class="section-subtitle">Five projects, each one a credible follow-up</div>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Project</th><th>Why it's a good next step</th><th>Key references</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Flash Attention</strong></td>
+                    <td>Apply the same IO-aware tiling philosophy to attention. The S = Q·K<sup>T</sup> matrix is never materialized; softmax, masking, and Q·K → P·V fuse into a single kernel. The result was a ~3× wall-clock speedup over PyTorch attention and is now standard in every modern transformer stack.</td>
+                    <td>Dao et al., FlashAttention (NeurIPS 2022); FlashAttention-2 (2023); FlashAttention-3 (2024).</td>
+                </tr>
+                <tr>
+                    <td><strong>Quantized GEMM (INT8, FP8, INT4)</strong></td>
+                    <td>Modern LLM inference runs in INT4/INT8; the cuBLAS/cuDNN paths are less mature than FP16. Plenty of room to win, and the techniques (per-channel scaling, group quantization, lookup-table mul) generalize.</td>
+                    <td>SmoothQuant, GPTQ, AWQ papers; <code>llama.cpp</code> CUDA backend; bitsandbytes.</td>
+                </tr>
+                <tr>
+                    <td><strong>Stream-K GEMM</strong></td>
+                    <td>An alternative work decomposition: tile along K instead of M/N, so all SMs share the K-reduction and stay busy on awkward shapes where M/N tiling leaves SMs idle. CUTLASS implements it. Worth reading and reimplementing.</td>
+                    <td>Osama et al., "Stream-K" (PPoPP 2023); CUTLASS Stream-K examples.</td>
+                </tr>
+                <tr>
+                    <td><strong>Persistent kernels</strong></td>
+                    <td>Instead of launching a fresh kernel per work item, launch one kernel that loops over work items pulled from a queue. Amortizes launch cost; enables cross-kernel state in registers/SMEM.</td>
+                    <td>Triton and CUTLASS persistent-kernel docs.</td>
+                </tr>
+                <tr>
+                    <td><strong>Multi-GPU GEMM (NCCL, NVLink)</strong></td>
+                    <td>Sharding a GEMM across 8 GPUs requires reasoning about communication overlap, ring/all-reduce primitives, and NVLink bandwidth. The tile-level mental model from this book transfers; the systems-level concerns are new.</td>
+                    <td>NCCL documentation; Megatron-LM tensor parallelism; PyTorch FSDP source.</td>
+                </tr>
+                <tr>
+                    <td><strong>Triton kernels</strong></td>
+                    <td>OpenAI Triton lets you write GPU kernels in a Python DSL that compiles to PTX. The performance ceiling is close to hand-written CUTLASS for many shapes. Once you know what good PTX looks like, reading Triton-generated code becomes diagnostic rather than mysterious.</td>
+                    <td>Triton tutorials at <a href="https://triton-lang.org" target="_blank" rel="noopener">triton-lang.org</a>; the <code>flash-attn</code> Triton reference.</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p>None of these are a step backward in difficulty from the cuBLAS project. Pick the one whose application area you care about (attention if you care about LLMs, quantized GEMM if you care about inference deployment, multi-GPU if you care about training infrastructure) and execute it with the same protocol discipline as chapter 5. The point of this textbook is not just to ship one fast kernel — it is to give you the toolset to ship the next ten.</p>
+
+        <div class="callout tip">
+            <div class="callout-label">A useful career-shaped observation</div>
+            The community of people who can write production GPU kernels is small enough that one credible, reproducible, well-documented kernel project changes how interviewers, collaborators, and senior engineers treat you. The leverage is real. Ship the repo.
+        </div>
+    </section>
+
+    <!-- REFS -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 6</div>
+        <ol>
+            <li>NVIDIA. <em>Parallel Thread Execution (PTX) ISA.</em> <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">docs.nvidia.com/cuda/parallel-thread-execution/</a> — the authoritative instruction reference. Updated with every CUDA toolkit.</li>
+            <li>NVIDIA. <em>Nsight Compute Profiling Guide — Metrics Reference.</em> <a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metrics-reference" target="_blank" rel="noopener">docs.nvidia.com/nsight-compute/ProfilingGuide/#metrics-reference</a></li>
+            <li>NVIDIA. <em>CUTLASS.</em> <a href="https://github.com/NVIDIA/cutlass" target="_blank" rel="noopener">github.com/NVIDIA/cutlass</a> — code, docs, profiler. The accompanying NVIDIA Developer Blog series ("CUTLASS 2.x", "CUTLASS 3.x and CuTe") is the best guided tour.</li>
+            <li>NVIDIA. <em>CUDA C++ Programming Guide.</em> <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cuda-c-programming-guide/</a> — the reference doc; the architecture-capability appendices are gold for register/SMEM/warp limits per <code>sm_*</code>.</li>
+            <li>NVIDIA. <em>CUDA C++ Best Practices Guide.</em> <a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cuda-c-best-practices-guide/</a> — coalescing, occupancy, latency-hiding patterns in prose.</li>
+            <li>Dao, T. <em>FlashAttention.</em> arXiv:2205.14135 (2022). <em>FlashAttention-2</em> arXiv:2307.08691 (2023). <em>FlashAttention-3</em> arXiv:2407.08608 (2024).</li>
+            <li>Osama, M. et al. <em>Stream-K: Work-centric Parallel Decomposition for Dense Matrix-Matrix Multiplication on the GPU.</em> PPoPP 2023.</li>
+            <li>Williams, S., Waterman, A., Patterson, D. <em>Roofline.</em> CACM 2009 — the model used throughout chapters 1, 4, and 5.</li>
+            <li>Jia, Z. et al. <em>Dissecting the NVIDIA Ampere GPU Architecture through Microbenchmarking.</em> arXiv:2106.10499 — hard numbers for SM, cache, and Tensor-Core throughput.</li>
+            <li>He, H. <em>Making Deep Learning Go Brrrr From First Principles.</em> <a href="https://horace.io/brrr_intro.html" target="_blank" rel="noopener">horace.io/brrr_intro.html</a> — best one-essay summary of the compute-vs-memory perspective.</li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-5"><span class="label">← Previous</span>Beating cuBLAS</a>
+        <a href="#chapter-7" class="next"><span class="label">Next →</span>Building-Block Kernels</a>
+    </nav>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 7 — REDUCTIONS, SCANS, AND BUILDING-BLOCK KERNELS
+     ===================================================================== -->
+<article class="chapter" id="chapter-7">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">07</div>
+        <div class="chapter-eyebrow">Chapter 07</div>
+        <h1 class="chapter-title">Reductions, Scans, and<br>Building-Block Kernels</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> GEMM is the headline event, but the supporting cast — reductions, scans, transposes, histograms, sorts, and split-K dispatchers — is what makes a real kernel library. This chapter atomically breaks down each pattern: warp reduction, block reduction, grid reduction, Hillis-Steele scan, Blelloch scan, decoupled-lookback, privatized histograms, radix sort, and the persistent-kernel idiom. Every pattern is one node in the dependency graph and is used by a real production kernel.</p>
+    </header>
+
+    <div class="learning-path">
+        <div class="learning-path-label">Order of operations</div>
+        <div class="learning-path-track">
+            <a class="learning-path-step" href="#sec-7-1">7.1 Warp reduce</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-2">7.2 Block reduce</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-3">7.3 Grid reduce</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-4">7.4 Scans</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-5">7.5 Histograms</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-6">7.6 Sort &amp; transpose</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-7-7">7.7 Persistent &amp; split-K</a>
+        </div>
+    </div>
+
+    <!-- ============== 7.1 ============== -->
+    <section class="section" id="sec-7-1">
+        

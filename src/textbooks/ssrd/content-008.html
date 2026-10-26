@@ -1,0 +1,40 @@
+<h2 id="appB-h">Glossary</h2>
+  <dl class="gloss">
+    <dt>ASN</dt><dd>Autonomous System Number: the ID of a network operator on the internet. Your building's ISP is AS22768. Used for the egress check, and as a weak (D) signal.</dd>
+    <dt>Base rate</dt><dd>How common the thing you're looking for is in the population you test. It sets how far false positives drag precision down.</dd>
+    <dt>Checkpoint</dt><dd>A CT log's signed statement of its current size and root hash.</dd>
+    <dt>Cloaking / decoy</dt><dd>Showing a harmless page to visitors who don't look like victims. Labeled <code>decoy-cloaked</code>; never evaded.</dd>
+    <dt>Containment</dt><dd>Shared items ÷ the size of the smaller set. Used for the copy fingerprint.</dd>
+    <dt>CT (certificate transparency)</dt><dd>Public, append-only logs of TLS certificates. SSRD's source of newly certified names.</dd>
+    <dt>DNS rebinding</dt><dd>Making a name resolve to a public address when it's checked and a private one when it's used.</dd>
+    <dt>eTLD+1 / registrable domain</dt><dd>The public suffix plus one label, such as <code>quantum-invest.co.uk</code>. The unit SSRD dedupes and visits.</dd>
+    <dt>Family (A/B/C/D)</dt><dd>A group of signals that measure the same kind of thing: content, assets, page features, infrastructure.</dd>
+    <dt>Jaccard similarity</dt><dd>|A ∩ B| ÷ |A ∪ B| for two sets.</dd>
+    <dt>Kappa (Cohen's κ)</dt><dd>Agreement between two labelers beyond what chance alone would give.</dd>
+    <dt>Kit</dt><dd>Reused scam-site software (templates, scripts, copy). A kit match means the same software, never the same people.</dd>
+    <dt>MinHash</dt><dd>A short signature whose agreement rate estimates Jaccard similarity.</dd>
+    <dt>mmh3</dt><dd>MurmurHash3, a fast non-cryptographic hash. Used for favicons (Shodan recipe), n-gram buckets and copy shingles.</dd>
+    <dt>Names tile</dt><dd>A compact JSONL tile listing just the DNS names of 256 log entries. A non-core extension some static-CT logs serve.</dd>
+    <dt>p90</dt><dd>The value 90% of observations fall at or below.</dd>
+    <dt>Pass rate</dt><dd>The share of all new names the filter sends to the fetch queue. A measure of workload.</dd>
+    <dt>Precertificate</dt><dd>A logged copy of a certificate, made before issuance so proofs can be embedded. It's why CT entries can come before the site.</dd>
+    <dt>Precision / recall</dt><dd>Precision: the share of alerts that are real. Recall: the share of real cases that alert.</dd>
+    <dt>PSL</dt><dd>Public Suffix List: where registrable names begin, including private suffixes such as <code>vercel.app</code>.</dd>
+    <dt>Punycode (<code>xn--</code>)</dt><dd>The ASCII encoding of internationalized domain labels.</dd>
+    <dt>Shingle</dt><dd>A run of k consecutive items (tags or words) used to compare documents as sets.</dd>
+    <dt>SSRF</dt><dd>Server-side request forgery: tricking a fetcher into requesting internal addresses.</dd>
+    <dt>Static CT / tiles</dt><dd>Logs published as cacheable files in 256-entry tiles instead of an API.</dd>
+    <dt>TLSH</dt><dd>Trend Micro locality-sensitive hash. Similar inputs give hashes with a small distance.</dd>
+    <dt>Union-find</dt><dd>A data structure that tracks which items are in the same group as links are added.</dd>
+    <dt>Wilson interval</dt><dd>A confidence interval for a proportion that behaves well at small n and near 0% or 100%.</dd>
+  </dl>
+</section>
+
+      <nav class="chapter-turn" aria-label="Continue reading"><a id="previous-chapter" href="#plan">← Previous</a><a id="next-chapter" href="#ch1">Next chapter →</a></nav>
+    </main>
+  </div>
+  <footer class="footer">
+    <p>SSRD textbook · draft, agent-written, not reviewed · rahil-design@3.3.0 · Anton and IBM Plex Sans under the SIL Open Font License. Kit matches mean "same software", never "same people".</p>
+  </footer>
+</div>
+

@@ -1,0 +1,182 @@
+<section class="section" id="sec-1-3">
+        <h2 class="section-title"><span class="sec-num">1.3</span>Threads, Warps, Blocks, and Grids</h2>
+        <div class="section-subtitle">The execution hierarchy you write code against</div>
+
+        <p>CUDA exposes four nested concepts. They map onto hardware in very specific ways. Get the mapping wrong and your kernel will be slow for reasons that are not obvious from the source code.</p>
+
+        <h3>Thread</h3>
+        <p>A <strong>thread</strong> is the atomic unit of execution. One thread runs one instance of your kernel function from start to finish. It has its own program counter, its own slice of the register file, and its own values of <code>threadIdx</code> and <code>blockIdx</code>. You will routinely launch tens of millions of threads.</p>
+
+        <h3>Warp</h3>
+        <p>A <strong>warp</strong> is a group of <strong>32 threads</strong> that the hardware schedules and executes together. This is the most important number in CUDA. <strong>Warp size has been 32 on every NVIDIA GPU shipped to date.</strong> The 32 threads in a warp share a single instruction stream — when the warp scheduler issues an instruction, all 32 lanes execute it on their own data. NVIDIA calls this <strong>SIMT</strong> (Single Instruction, Multiple Thread), which is essentially SIMD with a per-lane predicate and a per-lane register file.</p>
+
+        <p>You do not control warps directly. You set a block size, and the hardware partitions the block into warps of 32 threads in linear order: threads 0&ndash;31 are warp 0, 32&ndash;63 are warp 1, and so on (using row-major order over the multi-dimensional <code>threadIdx</code>).</p>
+
+        <h3>Warp divergence</h3>
+        <p>Because all 32 threads in a warp share a program counter, an <code>if</code>/<code>else</code> that splits the warp is expensive. The hardware <em>serializes</em> the two paths: it runs the <code>if</code> branch with the <em>else</em> threads masked off, then runs the <code>else</code> branch with the <em>if</em> threads masked off. Both branches contribute to runtime; only the active threads contribute to useful work.</p>
+
+        <p>The rule that follows: <strong>keep all 32 threads of a warp on the same execution path.</strong> Branches that depend on <code>threadIdx.x / 32</code> (i.e. on the warp ID) are free; branches that depend on <code>threadIdx.x % 32</code> are the worst case.</p>
+
+        <h3>Thread block</h3>
+        <p>A <strong>thread block</strong> is a programmer-defined group of up to 1024 threads. The hardware promises three things about a block:</p>
+        <ol>
+            <li>All threads in the block run on the <em>same</em> SM. They never migrate.</li>
+            <li>They share a single allocation of that SM's shared memory.</li>
+            <li>They can synchronize with <code>__syncthreads()</code> — every thread in the block must reach the barrier before any thread can proceed past it.</li>
+        </ol>
+
+        <p>Block size is the lever you use to trade off occupancy, shared-memory tile size, and per-thread register budget. Common values are 128, 256, or 512 threads per block (i.e. 4, 8, or 16 warps). 1024 is the hardware maximum.</p>
+
+        <h3>Grid</h3>
+        <p>The <strong>grid</strong> is the collection of all thread blocks launched by one kernel call. The grid can be 1D, 2D, or 3D. The runtime distributes blocks across SMs in an order you do not control. <strong>You cannot assume any ordering of block execution and you cannot synchronize between blocks within a kernel launch</strong> (with the exception of cooperative-grid kernels and grid-wide barriers introduced later in CUDA, which are out of scope here).</p>
+
+        <h3>Launch syntax</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 1.3-A: Launch configuration">// Launch 256 blocks of 128 threads each. Total: 32,768 threads.
+myKernel&lt;&lt;&lt;256, 128&gt;&gt;&gt;(args...);
+
+// 2D launch for a matmul. One block computes one TILE x TILE
+// output tile. Each thread in the block computes one element of that tile.
+const int TILE = 32;
+dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
+dim3 block(TILE, TILE);                       // 1024 threads = 32 warps
+matmulKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(A, B, C, M, N, K);
+
+// Inside the kernel:
+//   threadIdx.x in [0, TILE)
+//   threadIdx.y in [0, TILE)
+//   blockIdx.x  in [0, gridDim.x)
+//   blockIdx.y  in [0, gridDim.y)
+//   blockDim.{x,y} == TILE
+//   gridDim.{x,y} == ceil(N/TILE), ceil(M/TILE)
+//
+// Global thread coordinates for the (i,j) output element:
+//   int j = blockIdx.x * blockDim.x + threadIdx.x;   // col
+//   int i = blockIdx.y * blockDim.y + threadIdx.y;   // row
+</pre>
+
+        <div class="figure">
+            <div class="figure-label">Figure 1.3 — Interactive</div>
+            <div class="figure-title">Grid → Block → Warp: the execution hierarchy</div>
+            <div id="th-hier-controls" class="chart-controls" style="margin-bottom:14px">
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Grid (block.x × block.y)</span>
+                    <span id="th-hier-grid-info" class="ctrl-value">4 × 4 blocks = 16</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Block (threads)</span>
+                    <span id="th-hier-block-info" class="ctrl-value">8 × 8 = 64 threads</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Warps / block</span>
+                    <span id="th-hier-warp-info" class="ctrl-value">2 warps × 32</span>
+                </div>
+                <div class="ctrl-group">
+                    <span class="ctrl-label">Total threads</span>
+                    <span id="th-hier-total" class="ctrl-value">1,024</span>
+                </div>
+                <div class="ctrl-group" style="flex:1">
+                    <span class="ctrl-label">Divergence (warp 0)</span>
+                    <div>
+                        <button class="ctrl-btn" id="th-hier-conv">Convergent</button>
+                        <button class="ctrl-btn active" id="th-hier-div">Divergent if</button>
+                    </div>
+                </div>
+            </div>
+            <svg viewBox="0 0 760 320" id="th-hier-svg" role="img" aria-label="Thread hierarchy">
+                <!-- Grid -->
+                <g transform="translate(20,40)">
+                    <text x="0" y="-14" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">GRID — 4 × 4 blocks</text>
+                    <g id="grid-blocks"></g>
+                </g>
+                <!-- Selected Block -->
+                <g transform="translate(260,40)">
+                    <text x="0" y="-14" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">BLOCK — 8 × 8 threads (2 warps)</text>
+                    <g id="block-threads"></g>
+                </g>
+                <!-- Warp lane -->
+                <g transform="translate(500,40)">
+                    <text x="0" y="-14" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">WARP — 32 lanes lock-stepped</text>
+                    <g id="warp-lanes"></g>
+                </g>
+            </svg>
+            <div class="figure-caption">Click "Convergent" to see all 32 lanes executing the same instruction. Click "Divergent if" to see the 32 lanes split across two branches — only the active lanes contribute to useful work in each phase.</div>
+        </div>
+
+        <div class="callout warn">
+            <div class="callout-label">Rule of thumb</div>
+            Pick a block size that is a multiple of 32. Otherwise the last warp of every block has dead lanes from the start, and you waste hardware on every cycle. 128 or 256 is almost always the right default before any tuning.
+        </div>
+
+        <!-- §1.3 atomic-note deep dive -->
+        <h3 id="sec-1-3-deep">Atomic-note deep dive — §1.3</h3>
+        <div class="atomic" id="A1.3.1-simt-model">
+            <div class="atomic-head"><span class="atomic-id">[[A1.3.1]]</span><h4 class="atomic-title">SIMT in practice — one program counter, 32 lanes</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p>Pre-Volta, a warp shared a single program counter across all 32 lanes; a divergent branch <em>serialized</em> the two sides under a hardware mask. Volta (sm_70) introduced <em>independent thread scheduling</em>: each lane has its own PC and call stack, and the scheduler tracks reconvergence explicitly. The programmer-visible consequence is that you can no longer assume warp-lockstep behavior at byte-level granularity — you must call <code>__syncwarp()</code> when one branch of a warp publishes a value the other branch reads. This is the silent cause of "it works on my Pascal but breaks on my Ampere" bugs.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.4.2-flynn">[[A0.4.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A1.3.3-divergence-cost">[[A1.3.3]]</a> <a class="rel-chip rel-usedby" href="#sec-3-3">[[§3.3 PTX]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.3.2-issue">
+            <div class="atomic-head"><span class="atomic-id">[[A1.3.2]]</span><h4 class="atomic-title">Warp scheduler — picks one ready warp per cycle per partition</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p>Each SM sub-partition (4 per Ampere SM) owns a warp scheduler. Every cycle each scheduler examines its pool of resident warps — typically 16 — and picks <em>one</em> warp that has at least one instruction whose operands are all ready, then issues that one instruction to the appropriate functional unit (FP32 ALU, FP64 ALU, Tensor Core, LSU, SFU). Because the scheduler only "fires" when there is a ready warp, the entire latency-hiding game reduces to: keep at least one warp ready per cycle. That single sentence is the unifying explanation for occupancy, ILP, <code>cp.async</code>, double-buffering, and software pipelining.</p>
+                <div class="tldr">A warp scheduler does not wait; it idles. Your job is to make sure it never has to.</div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.4.1-latency-throughput">[[A0.4.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-5">[[§1.5 Occupancy]]</a> <a class="rel-chip rel-usedby" href="#sec-3-5">[[§3.5 cp.async]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.3.3-divergence-cost">
+            <div class="atomic-head"><span class="atomic-id">[[A1.3.3]]</span><h4 class="atomic-title">Warp divergence — the lane-mask tax</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p>When threads in a warp take different branches of a conditional, the hardware executes both paths sequentially with a <em>predicate mask</em>: lanes not on the active path are predicated off (their results are discarded) but they still consume a cycle. Worst case: 32 lanes take 32 different paths, the warp takes 32× longer. Two redemption modes: (1) <em>data-dependent</em> divergence on data sorted ahead of time so warp boundaries align with branch boundaries; (2) <em>predicated</em> short branches the compiler fuses into a single <code>selp</code> instruction. The <code>nvcc</code> diagnostic <code>--ptxas-options=-v</code> tells you when a branch was predicated vs branched.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A1.3.1-simt-model">[[A1.3.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A1.3.3-divergence-cost">[[branch vs predicate]]</a></div>
+            </div>
+        </div>
+        <div class="atomic" id="A1.3.4-launch-cost">
+            <div class="atomic-head"><span class="atomic-id">[[A1.3.4]]</span><h4 class="atomic-title">Kernel launch cost — the constant you cannot amortize away</h4><span class="atomic-tag">execution</span></div>
+            <div class="atomic-body">
+                <p>A <code>&lt;&lt;&lt;grid, block&gt;&gt;&gt;</code> launch costs ≈ 5–20 µs on the host side and ≈ 1–5 µs on the device side. For a kernel that does 100 µs of real work the overhead is invisible; for one that does 2 µs of real work the overhead <em>dominates</em>. Mitigations, in order of preference: batch small kernels into bigger ones; use CUDA Graphs (one record-and-replay per pipeline) to fold launches into a single submission; keep persistent kernels running across iterations. <a href="#chapter-2" class="note-ref">Ch 2 — streams &amp; graphs</a> covers the API.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A0.5.1-amdahl">[[A0.5.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-4">[[§5.4 Benchmark]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 1.4 — MEMORY HIERARCHY
+         ============================================================ -->
+    <section class="section" id="sec-1-4">
+        <h2 class="section-title"><span class="sec-num">1.4</span>The Memory Hierarchy</h2>
+        <div class="section-subtitle">The most important section in this textbook</div>
+
+        <p>If you remember one thing from this chapter, remember this: <strong>kernel optimization is memory hierarchy management</strong>. Compute on GPUs is comparatively cheap; getting data to the compute units is comparatively expensive. The hierarchy below is the entire physical reason your naive kernel is slow and your optimized kernel is fast.</p>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr>
+                <th>Level</th><th>Location</th><th>Latency</th><th>Aggregate BW</th><th>Size</th><th>Scope</th>
+            </tr></thead>
+            <tbody>
+                <tr><td>Registers</td><td>On-chip, per-thread</td><td class="num">~1 cycle</td><td class="num">~20 TB/s</td><td class="num">255 regs/thread max</td><td>per-thread</td></tr>
+                <tr><td>Shared / L1</td><td>On-chip, per-SM</td><td class="num">~20–30 cyc</td><td class="num">~19 TB/s</td><td class="num">128 KB / SM</td><td>per-block</td></tr>
+                <tr><td>L2 Cache</td><td>On-chip, GPU-wide</td><td class="num">~200 cyc</td><td class="num">~5–7 TB/s</td><td class="num">6 MB (3090)</td><td>GPU-wide</td></tr>
+                <tr><td>Global (DRAM)</td><td>Off-chip HBM/GDDR</td><td class="num">~400–800 cyc</td><td class="num">936 GB/s (3090)</td><td class="num">24 GB</td><td>GPU-wide</td></tr>
+                <tr><td>PCIe ↔ Host DRAM</td><td>Off-chip, host</td><td class="num">tens of µs</td><td class="num">~32 GB/s (PCIe 4.0 x16)</td><td class="num">system RAM</td><td>host</td></tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="font-size: 12px; color: var(--text-tertiary); margin-top: -8px;">
+            Latencies and aggregate bandwidths are characteristic values for an Ampere consumer card and are commonly cited in NVIDIA documentation, the CUDA C Programming Guide's Performance Guidelines, and microbenchmark studies such as Jia et&nbsp;al. (2021).<sup>[5]</sup> Exact numbers vary by clock and chip variant.
+        </p>
+
+        

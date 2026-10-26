@@ -1,0 +1,171 @@
+<h2 class="section-title"><span class="sec-num">0.4</span>Computer Architecture Primer</h2>
+        <p class="section-subtitle">Latency, throughput, and the memory wall</p>
+
+        <div class="atomic" id="A0.4.1-latency-throughput">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.1]]</span>
+                <h4 class="atomic-title">Latency vs throughput — the two costs of every operation</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p><strong>Latency</strong> is "how long does <em>one</em> of these take?" — measured in cycles or nanoseconds. <strong>Throughput</strong> is "how many can finish per unit time?" — measured in operations/cycle or operations/second. A long-latency unit can still have high throughput if the hardware <em>pipelines</em> it. Example: a Tensor Core <code>mma.sync</code> on Ampere has latency ≈ 16 cycles, but an SM can <em>issue</em> a new one every 4 cycles per scheduler → throughput is 4× higher than latency suggests. CPUs hide latency with out-of-order execution and branch prediction; <em>GPUs hide latency with thread-level parallelism</em>. Same physics, opposite micro-architectures.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.4.6-little">[[A0.4.6]]</a> <a class="rel-chip rel-usedby" href="#sec-1-5">[[§1.5 Occupancy]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.4.2-flynn">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.2]]</span>
+                <h4 class="atomic-title">Flynn's taxonomy — SISD, SIMD, MIMD, and where SIMT fits</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p>Michael Flynn (1966): classify processors by how many <em>instructions</em> and <em>data items</em> they handle per cycle. SISD = one of each (the classical von Neumann CPU). SIMD = single instruction, multiple data lanes (AVX-512, NEON). MIMD = multiple instructions, multiple data streams (multicore CPUs). NVIDIA coined <em>SIMT</em> — single instruction, <em>multiple threads</em> — to describe the GPU model: 32 threads (a warp) execute one PTX instruction together, but each thread has its own register state, program counter (post-Volta), and conditional-execution mask. SIMT looks like MIMD to the programmer and like SIMD to the hardware. <strong>This is the single most useful framing for everything in <a href="#sec-1-3" class="note-ref">§1.3</a>.</strong></p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-3">[[§1.3 Warps]]</a> <a class="rel-chip rel-usedby" href="#A1.3.1-simt-model">[[A1.3.1 SIMT]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.4.3-cache">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.3]]</span>
+                <h4 class="atomic-title">Cache fundamentals — line size, associativity, and locality</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p>A cache trades capacity for speed by storing copies of recently used memory close to the compute unit. Three numbers describe one: capacity (how much), line size (how much it fetches per miss — almost always 32, 64, or 128 bytes — never one byte), and associativity (how many places a given address can live). A cache "hit" returns in 1–10s of cycles; a "miss" punts the request down to the next level and costs orders of magnitude more. <em>Spatial locality</em> says "addresses near a hit are likely to hit too"; <em>temporal locality</em> says "an address that just hit is likely to hit again soon." Coalesced loads (<a href="#sec-1-4" class="note-ref">§1.4</a>) are the GPU's way of forcing spatial locality at the warp level.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-4">[[§1.4 Memory hierarchy]]</a> <a class="rel-chip rel-usedby" href="#sec-2-3">[[§2.3 Coalescing]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.4.4-memwall">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.4]]</span>
+                <h4 class="atomic-title">The memory wall — why bandwidth gets harder, not easier</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p>Compute has grown ~50%/year for decades; DRAM bandwidth has grown ~7%/year. The ratio of FLOPs to bytes a chip can supply rose roughly two orders of magnitude over the 2000s and 2010s. Every algorithmic technique in this book — tiling, shared memory, register reuse, <code>cp.async</code>, software pipelining, TMA — is some flavor of "do more arithmetic with the bytes I already paid to move." The memory wall is the meta-reason the rooflines tilt the way they do.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-6">[[§1.6 Roofline]]</a> <a class="rel-chip rel-usedby" href="#sec-2-4">[[§2.4 Tiling]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.4.5-pipeline-ilp">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.5]]</span>
+                <h4 class="atomic-title">Pipelining and ILP — overlapping work in time</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p>A modern functional unit is a <em>pipeline</em>: instruction <em>i</em> is in stage 4 while <em>i+1</em> is in stage 3 and <em>i+2</em> is in stage 2 — all in the same cycle. The throughput is one instruction per cycle even though the latency is 4 cycles. Instruction-Level Parallelism (ILP) extends this by issuing <em>multiple independent</em> instructions in the same cycle when no two depend on the same register. On GPUs ILP is one of two latency-hiding strategies (the other is TLP, thread-level parallelism). The compiler discovers ILP by reordering independent instructions in the SASS; you help it by writing inner loops that have multiple independent accumulators.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A0.4.1-latency-throughput">[[A0.4.1]]</a> <a class="rel-chip rel-related" href="#A0.5.4-work-span">[[A0.5.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-5">[[§1.5 Occupancy]]</a> <a class="rel-chip rel-usedby" href="#sec-3-5">[[§3.5 cp.async]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.4.6-little">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.4.6]]</span>
+                <h4 class="atomic-title">Little's Law — the universal latency-hiding equation</h4>
+                <span class="atomic-tag">arch</span>
+            </div>
+            <div class="atomic-body">
+                <p>In steady state for any system: <em>in-flight requests = throughput × latency</em>. On a GPU memory subsystem with 936 GB/s bandwidth and ~500 ns DRAM latency, the number of bytes that must be "in flight" to keep DRAM saturated is ≈ 936·10<sup>9</sup> · 500·10<sup>−9</sup> ≈ 468 KB. That number — not "more threads is better" — is the reason occupancy matters: you need enough threads, each making enough outstanding loads, to cover that 468 KB. Little's Law is the equation behind every "why is my kernel slow even though it has lots of threads?" diagnosis.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.4.1-latency-throughput">[[A0.4.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-5">[[§1.5 Occupancy]]</a> <a class="rel-chip rel-usedby" href="#sec-4-5">[[§4.5 Memory analysis]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 0.5 Parallelism Laws ============== -->
+    <section class="section" id="sec-0-5">
+        <h2 class="section-title"><span class="sec-num">0.5</span>The Laws of Parallel Speedup</h2>
+        <p class="section-subtitle">Amdahl, Gustafson, work-span, and the synchronization tax</p>
+
+        <div class="atomic" id="A0.5.1-amdahl">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.5.1]]</span>
+                <h4 class="atomic-title">Amdahl's Law — the serial fraction is your ceiling</h4>
+                <span class="atomic-tag">parallelism</span>
+            </div>
+            <div class="atomic-body">
+                <p>If a fraction <em>s</em> of a program is inherently serial and the rest is perfectly parallelizable across <em>p</em> processors, total speedup is bounded by <em>1 / (s + (1−s)/p)</em>. As <em>p → ∞</em> the speedup approaches <em>1/s</em>. A 5% serial section caps you at 20× speedup no matter how many cores you throw at it. On GPUs the "serial section" usually hides in: launch overhead, host↔device copies, kernel-to-kernel barriers, single-threaded prologue/epilogue code. <strong>The first thing to optimize on a slow GPU pipeline is almost never the kernel — it is the serial glue.</strong></p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.5.2-gustafson">[[A0.5.2-gustafson]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-2">[[Ch2 — streams/graphs]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.5.2-gustafson">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.5.2]]</span>
+                <h4 class="atomic-title">Gustafson's Law — bigger problems are easier to parallelize</h4>
+                <span class="atomic-tag">parallelism</span>
+            </div>
+            <div class="atomic-body">
+                <p>Amdahl assumes the problem size is fixed. Gustafson observed that in practice we make the problem <em>larger</em> as we get more cores: the serial section's runtime is roughly constant while the parallel section's runtime scales with problem size. So scaled speedup = <em>p − s·(p−1)</em>, which grows linearly with <em>p</em>. This is why GPUs feel so productive on training: doubling the batch size doubles the parallel work but keeps the serial bookkeeping flat.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.5.1-amdahl">[[A0.5.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.5.3-strong-weak">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.5.3]]</span>
+                <h4 class="atomic-title">Strong vs weak scaling</h4>
+                <span class="atomic-tag">parallelism</span>
+            </div>
+            <div class="atomic-body">
+                <p><strong>Strong scaling</strong> = fixed total work, varying core count. Bounded by Amdahl. <strong>Weak scaling</strong> = work per core fixed, varying core count. Bounded mostly by communication. For GEMM at fixed shape (the question this book asks) we care about <em>strong</em> scaling. For training across many GPUs we care about <em>weak</em> scaling, which is why <a href="#chapter-8" class="note-ref">multi-GPU</a> is its own chapter.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.5.1-amdahl">[[A0.5.1]]</a> <a class="rel-chip rel-builds" href="#A0.5.2-gustafson">[[A0.5.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-8">[[Ch8]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.5.4-work-span">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.5.4]]</span>
+                <h4 class="atomic-title">Work, span, and parallelism</h4>
+                <span class="atomic-tag">parallelism</span>
+            </div>
+            <div class="atomic-body">
+                <p>Two complexity measures of a parallel algorithm, ignoring the hardware: <strong>work</strong> <em>T<sub>1</sub></em> is total operations across all processors; <strong>span</strong> <em>T<sub>∞</sub></em> is the longest dependency chain — the critical path. Their ratio <em>T<sub>1</sub>/T<sub>∞</sub></em> is the <em>parallelism</em>, an upper bound on the speedup any scheduler can ever achieve. A parallel reduction over <em>n</em> elements has work <em>O(n)</em> and span <em>O(log n)</em> → parallelism <em>n / log n</em>. GEMM has work <em>O(n³)</em> and span <em>O(log n)</em> → parallelism <em>O(n³ / log n)</em>, which is essentially unbounded for any <em>n</em> a real GPU runs.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7 — reductions]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.5.5-race">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.5.5]]</span>
+                <h4 class="atomic-title">Race condition vs data race vs benign race</h4>
+                <span class="atomic-tag">concurrency</span>
+            </div>
+            <div class="atomic-body">
+                <p>A <em>data race</em> is two unsynchronized accesses to the same memory location where at least one is a write. C++ and CUDA both say it is undefined behavior. A <em>race condition</em> is a broader notion: the program's result depends on a timing nondeterminism, even when no memory access is racy in the C++-language sense (e.g., who completes an atomic first decides which value sticks). A <em>benign race</em> is one the programmer has analyzed and decided is safe — for example, all threads writing the same value to the same address. Compilers and tools (compute-sanitizer's racecheck) don't know which of your races are benign; they flag them all. <strong>Treat every flagged race as real until you've written down why it isn't.</strong></p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-2">[[Ch2 — sync]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 0.6 GPU Lineage ============== -->
+    <section class="section" id="sec-0-6">
+        

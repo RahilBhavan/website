@@ -1,0 +1,286 @@
+function makeModel({ universe = UNIVERSE, wheels = WHEELS, seed = SET_SEED } = {}) {
+  const rank = ranks(universe, seed);
+  const seeds = Array.from({ length: wheels }, (_, j) => seedOf(j));
+  // Precompute hashes once: table[j][item].
+  const table = seeds.map((s) => Array.from({ length: universe }, (_, item) => hashOf(item, s)));
+
+  const membership = (shared) => {
+    const inA = new Array(universe);
+    const inB = new Array(universe);
+    for (let item = 0; item < universe; item++) {
+      const r = rank[item];
+      const both = r < shared;
+      inA[item] = both || r % 2 === 0;
+      inB[item] = both || r % 2 === 1;
+    }
+    return { inA, inB };
+  };
+
+  // shared: number of items in both sets (0..universe).
+  function at(shared) {
+    const I = Math.max(0, Math.min(universe, Math.round(shared)));
+    const { inA, inB } = membership(I);
+    let sizeA = 0;
+    let sizeB = 0;
+    for (let item = 0; item < universe; item++) {
+      if (inA[item]) sizeA++;
+      if (inB[item]) sizeB++;
+    }
+    const union = sizeA + sizeB - I;
+    const rows = table.map((hashes) => {
+      let minA = Infinity;
+      let minB = Infinity;
+      let argA = -1;
+      let argB = -1;
+      for (let item = 0; item < universe; item++) {
+        const h = hashes[item];
+        if (inA[item] && h < minA) [minA, argA] = [h, item];
+        if (inB[item] && h < minB) [minB, argB] = [h, item];
+      }
+      return { minA, minB, argA, argB, agree: minA === minB };
+    });
+    const agree = rows.filter((row) => row.agree).length;
+    const jaccard = I / union;
+    const estimate = agree / rows.length;
+    return {
+      shared: I,
+      union,
+      sizeA,
+      sizeB,
+      jaccard,
+      rows,
+      agree,
+      wheels: rows.length,
+      estimate,
+      passes: estimate >= THRESHOLD - 1e-12,
+      truePasses: jaccard >= THRESHOLD - 1e-12,
+    };
+  }
+
+  return { at, universe, wheels, seeds, rank };
+}
+
+// Standard error of the MinHash estimate for a true Jaccard j with n hash functions.
+const spread = (j, n) => Math.sqrt((j * (1 - j)) / n);
+
+// Shingle id as the two hex digits a wheel shows (ids 0..199 -> 00..C7, distinct).
+const symbolOf = (item) => item.toString(16).toUpperCase().padStart(2, "0");
+
+// Self-check, run by build.mjs: the facts the caption and readout rely on.
+function check(model = makeModel()) {
+  const problems = [];
+  for (let I = 0; I <= model.universe; I++) {
+    const s = model.at(I);
+    if (s.union !== model.universe) problems.push(`union ${s.union} at I=${I}`);
+    if (Math.abs(s.jaccard - I / model.universe) > 1e-12) problems.push(`jaccard at I=${I}`);
+    for (const row of s.rows) {
+      if (row.agree !== (row.argA === row.argB)) problems.push(`hash collision at I=${I}`);
+    }
+  }
+  for (const hashes of model.seeds.map((seed) => Array.from({ length: model.universe }, (_, i) => hashOf(i, seed)))) {
+    if (new Set(hashes).size !== hashes.length) problems.push("duplicate hash within a wheel");
+  }
+  const ends = [model.at(0), model.at(model.universe)];
+  if (ends[0].agree !== 0) problems.push("disjoint sets agree");
+  if (ends[1].agree !== model.wheels) problems.push("identical sets disagree");
+  return problems;
+}
+
+// ---- live code for Fig 5.3 (inlined after the kit and model.mjs) ----
+const DATA = {"P":{"origin":[306.2717720328926,147.07738659138903],"scale":1.13106694718368,"azimuth":64,"elevation":30},"W":600,"N":32,"universe":200,"step":2,"threshold":0.8,"jx":[-138,82],"carY":48.5,"carZ":7,"jRest":0.8,"pinStroke":7.5,"roll":4.8,"dial":{"x":148,"y":10,"r":19,"top":21,"from":3.473205211468716,"span":4.71238898038469}};
+const MH = makeModel();
+const stage = document.querySelector(".iso-stage");
+const svgEl = stage.querySelector("svg");
+const carEl = svgEl.querySelector('[data-part="carriage"]');
+const needleEl = svgEl.querySelector('[data-part="needle"]');
+const counterEl = svgEl.querySelector("[data-counter]");
+const readoutEl = document.querySelector("[data-readout]");
+const statusEl = stage.querySelector("[data-status]");
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+const P = DATA.P;
+const N = DATA.N;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const xOfJ = (j) => DATA.jx[0] + j * (DATA.jx[1] - DATA.jx[0]);
+const snapJ = (j) => (Math.round((clamp(j, 0, 1) * DATA.universe) / DATA.step) * DATA.step) / DATA.universe;
+const sharedOf = (j) => Math.round((clamp(j, 0, 1) * DATA.universe) / DATA.step) * DATA.step;
+const ease = (t) => t * t * (3 - 2 * t);
+
+const pins = Array.from({ length: N }, (_, j) => {
+  const el = svgEl.querySelector(`[data-pin="${j}"]`);
+  return { el, solids: [...el.querySelectorAll(".iso-solid")], up: 1, want: 1, lit: true };
+});
+const rolls = [];
+for (const bank of ["a", "b"]) {
+  for (let j = 0; j < N; j++) {
+    const el = svgEl.querySelector(`[data-roll="${bank}${j}"]`);
+    const texts = el.querySelectorAll("text");
+    rolls.push({ bank, j, el, texts, shown: texts[0].textContent, target: texts[0].textContent, p: -1 });
+  }
+}
+
+let jx = DATA.jRest;
+let target = jx;
+let state = MH.at(sharedOf(jx));
+const needle = { x: state.estimate, v: 0 };
+let frame = 0, last = 0, clock = 0, visible = false, idleTimer = 0, sayTimer = 0;
+let touring = !still.matches;
+let tourStart = 1.4;
+let tourFrom = DATA.jRest;
+let dragging = false;
+
+const textOf = (s) => `J ${s.jaccard.toFixed(2)} · agree ${s.agree}/${N} → ${s.estimate.toFixed(2)} · ${s.passes ? "passes" : "under"} 0.80`;
+const wordsOf = (s) => `True overlap ${s.jaccard.toFixed(2)}; ${s.agree} of ${N} wheel pairs agree; estimate ${s.estimate.toFixed(2)}, ${s.passes ? "at or above" : "below"} the 0.80 alert line`;
+
+function needleAt(est) {
+  const { x, y, r, top, from, span } = DATA.dial;
+  const a = from + clamp(est, 0, 1) * span;
+  return lineOnTop([x - Math.sin(a) * 3.4, y + Math.cos(a) * 3.4], [x + Math.sin(a) * (r - 2.5), y - Math.cos(a) * (r - 2.5)], top + 0.2, P);
+}
+
+// Apply a model state: wheels, pins, counter, readout.
+function apply(s, calm) {
+  state = s;
+  for (const roll of rolls) {
+    const row = s.rows[roll.j];
+    const want = symbolOf(roll.bank === "a" ? row.argA : row.argB);
+    if (want === roll.target) continue;
+    if (roll.p >= 0) finish(roll);
+    if (want === roll.shown) continue;
+    roll.target = want;
+    roll.texts[1].textContent = want;
+    roll.p = 0;
+    if (calm) finish(roll);
+  }
+  s.rows.forEach((row, j) => {
+    const pin = pins[j];
+    pin.want = row.agree ? 1 : 0;
+    if (calm) pin.up = pin.want;
+    if (row.agree !== pin.lit) {
+      pin.lit = row.agree;
+      for (const el of pin.solids) row.agree ? el.setAttribute("data-lit", "") : el.removeAttribute("data-lit");
+    }
+  });
+  const count = `${String(s.agree).padStart(2, "0")}/${N}`;
+  if (counterEl.textContent !== count) counterEl.textContent = count;
+  const text = textOf(s);
+  if (readoutEl.textContent !== text) readoutEl.textContent = text;
+}
+function finish(roll) {
+  roll.texts[0].textContent = roll.target;
+  roll.shown = roll.target;
+  roll.el.removeAttribute("transform");
+  roll.p = -1;
+}
+
+const unitZ = axisVector(P, [0, 0, 1]);
+function draw() {
+  carEl.setAttribute("transform", translateAlong(P, [xOfJ(jx) - xOfJ(DATA.jRest), 0, 0]));
+  needleEl.setAttribute("d", needleAt(needle.x));
+  for (const pin of pins) {
+    const dz = -DATA.pinStroke * (1 - pin.up);
+    const off = [unitZ[0] * dz, unitZ[1] * dz];
+    if (Math.abs(dz) < 1e-3) pin.el.removeAttribute("transform");
+    else pin.el.setAttribute("transform", `translate(${off[0].toFixed(2)} ${off[1].toFixed(2)})`);
+    holdStill(pin.el, Math.abs(dz) < 1e-3 ? [0, 0] : off);
+  }
+}
+
+const tourAt = (t) => 0.5 - 0.47 * Math.cos((2 * Math.PI * t) / 24);
+function tourPhaseFor(j) {
+  const c = clamp((0.5 - j) / 0.47, -1, 1);
+  return (Math.acos(c) / (2 * Math.PI)) * 24;
+}
+
+function tick(now) {
+  const dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
+  last = now;
+  const calm = still.matches;
+  if (touring && !calm) {
+    clock += dt;
+    if (clock > tourStart) target = tourAt(clock - tourStart + tourPhaseFor(tourFrom));
+  }
+  jx = calm ? target : jx + (target - jx) * (1 - Math.exp(-dt / 0.22));
+  if (Math.abs(target - jx) < 1e-4) jx = target;
+  const shared = sharedOf(jx);
+  if (shared !== state.shared) apply(MH.at(shared), calm);
+  // needle: critically damped toward the estimate
+  const want = state.estimate;
+  if (calm) { needle.x = want; needle.v = 0; }
+  else {
+    const w = 1 / 0.16;
+    for (let i = 0; i < 4; i++) { needle.v += (w * w * (want - needle.x) - 2 * w * needle.v) * (dt / 4); needle.x += needle.v * (dt / 4); }
+    if (Math.abs(want - needle.x) < 1e-4 && Math.abs(needle.v) < 1e-4) { needle.x = want; needle.v = 0; }
+  }
+  let busy = false;
+  for (const pin of pins) {
+    if (pin.up === pin.want) continue;
+    pin.up = calm ? pin.want : pin.up + (pin.want - pin.up) * (1 - Math.exp(-dt / 0.09));
+    if (Math.abs(pin.want - pin.up) < 2e-3) pin.up = pin.want;
+    busy = true;
+  }
+  for (const roll of rolls) {
+    if (roll.p < 0) continue;
+    roll.p += dt / 0.26;
+    if (roll.p >= 1 || calm) { finish(roll); continue; }
+    roll.el.setAttribute("transform", `translate(0 ${(-DATA.roll * ease(roll.p)).toFixed(3)})`);
+    busy = true;
+  }
+  draw();
+  const settled = !(touring && !calm) && jx === target && needle.v === 0 && needle.x === want && !busy;
+  frame = visible && !settled ? requestAnimationFrame(tick) : 0;
+}
+const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
+
+function describe(j) {
+  const s = MH.at(sharedOf(j));
+  stage.setAttribute("aria-valuenow", s.jaccard.toFixed(2));
+  stage.setAttribute("aria-valuetext", wordsOf(s));
+  clearTimeout(sayTimer);
+  sayTimer = setTimeout(() => { statusEl.textContent = wordsOf(s); }, 700);
+}
+function steer(next) {
+  if (touring) { touring = false; }
+  target = snapJ(next);
+  describe(target);
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (!still.matches && !dragging) { touring = true; clock = 0; tourStart = 0; tourFrom = target; run(); } }, 3600);
+  run();
+}
+// Tour resumes from wherever the reader left the slide: rebase its phase on the current target.
+const jFromClient = (clientX) => {
+  const box = svgEl.getBoundingClientRect();
+  const vb = ((clientX - box.left) / box.width) * DATA.W;
+  const s0 = iso([xOfJ(0), DATA.carY, DATA.carZ], P)[0];
+  const s1 = iso([xOfJ(1), DATA.carY, DATA.carZ], P)[0];
+  return clamp((vb - s0) / (s1 - s0), 0, 1);
+};
+stage.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  dragging = true;
+  try { stage.setPointerCapture(event.pointerId); } catch {}
+  steer(jFromClient(event.clientX));
+});
+stage.addEventListener("pointermove", (event) => { if (dragging) steer(jFromClient(event.clientX)); });
+const release = (event) => { dragging = false; try { stage.releasePointerCapture(event.pointerId); } catch {} steer(target); };
+stage.addEventListener("pointerup", release);
+stage.addEventListener("pointercancel", release);
+stage.addEventListener("keydown", (event) => {
+  const from = touring ? snapJ(jx) : target;
+  const big = event.shiftKey ? 0.1 : 0.01;
+  let to = null;
+  if (event.key === "ArrowRight" || event.key === "ArrowUp") to = from + big;
+  if (event.key === "ArrowLeft" || event.key === "ArrowDown") to = from - big;
+  if (event.key === "PageUp") to = from + 0.1;
+  if (event.key === "PageDown") to = from - 0.1;
+  if (event.key === "Home") to = 0;
+  if (event.key === "End") to = 1;
+  if (to === null) return;
+  event.preventDefault();
+  steer(to);
+});
+stage.addEventListener("focus", () => { statusEl.textContent = wordsOf(state); });
+new IntersectionObserver((entries) => { visible = entries[entries.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
+still.addEventListener?.("change", () => { touring = !still.matches; run(); });
+apply(state, true);
+draw();
+</script></body></html>

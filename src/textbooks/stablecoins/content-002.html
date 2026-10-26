@@ -1,0 +1,119 @@
+<h3>From blocks to weeks</h3>
+<p>A log knows its block number, not its date. The script fetches the real timestamp of a block every 25,000 blocks and <strong>interpolates</strong> (draws a straight line) between those anchors. The error is under an hour. Weeks start Monday 00:00 UTC. The newest, partial week is dropped.</p>
+</div>
+<figure class="figure" id="fig-pipeline">
+<p class="fig-title">Two scripts write dated snapshots; one library does all the arithmetic; two pages draw it.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 226" role="img" aria-label="Pipeline diagram from Ethereum logs, DefiLlama and FRED through two backfill scripts and JSON files into a library and two pages."><defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<rect x="0" y="20" width="170" height="56" rx="6" class="box"/><text x="85" y="44" text-anchor="middle" class="strong"><tspan x="85" dy="0">Ethereum node</tspan><tspan x="85" dy="17">(Tenderly RPC)</tspan></text>
+<path d="M174 48 H206" class="arrow" marker-end="url(#ar4)"/>
+<rect x="210" y="20" width="170" height="56" rx="6" class="box"/><text x="295" y="44" text-anchor="middle" class="strong"><tspan x="295" dy="0">backfill-</tspan><tspan x="295" dy="17">issuance.mjs</tspan></text>
+<path d="M384 48 H416" class="arrow" marker-end="url(#ar4)"/>
+<rect x="420" y="20" width="150" height="56" rx="6" class="box"/><text x="495" y="44" text-anchor="middle" class="strong"><tspan x="495" dy="0">issuance.json</tspan><tspan x="495" dy="17">weekly rows</tspan></text>
+<path d="M574 48 H606" class="arrow" marker-end="url(#ar4)"/>
+<rect x="610" y="20" width="120" height="56" rx="6" class="box"/><text x="670" y="44" text-anchor="middle" class="strong"><tspan x="670" dy="0">issuance.ts</tspan><tspan x="670" dy="17">maths</tspan></text>
+<path d="M734 48 H766" class="arrow" marker-end="url(#ar4)"/>
+<rect x="770" y="20" width="110" height="56" rx="6" class="box"/><text x="825" y="44" text-anchor="middle" class="strong"><tspan x="825" dy="0">/issuance</tspan><tspan x="825" dy="17">/summary</tspan></text>
+<text x="190" y="102" text-anchor="middle" class="small">eth_getLogs, 100,000 blocks at a time</text>
+<rect x="0" y="130" width="170" height="56" rx="6" class="box"/><text x="85" y="154" text-anchor="middle" class="strong"><tspan x="85" dy="0">DefiLlama</tspan><tspan x="85" dy="17">and FRED</tspan></text>
+<path d="M174 158 H206" class="arrow" marker-end="url(#ar4)"/>
+<rect x="210" y="130" width="170" height="56" rx="6" class="box"/><text x="295" y="154" text-anchor="middle" class="strong"><tspan x="295" dy="0">backfill-</tspan><tspan x="295" dy="17">context.mjs</tspan></text>
+<path d="M384 158 H416" class="arrow" marker-end="url(#ar4)"/>
+<rect x="420" y="130" width="150" height="56" rx="6" class="box"/><text x="495" y="154" text-anchor="middle" class="strong"><tspan x="495" dy="0">supply-by-chain</tspan><tspan x="495" dy="17">rates .json</tspan></text>
+<path d="M574 158 H606 M570 158 H640 V82" class="arrow" marker-end="url(#ar4)"/>
+<text x="190" y="212" text-anchor="middle" class="small">circulating supply by chain, fed funds target</text></svg></div>
+<figcaption>Read left to right. Nothing on the pages calls the network at render time; the snapshots are the evidence. That is why the data carry a date and why a rerun is needed before sending anything.</figcaption>
+</figure>
+<div class="body">
+<h3>The traps</h3>
+<h4>1. The silent truncation</h4>
+<p>A single wide <code>eth_getLogs</code> call over the whole history returned 22 USDC mints out of about 100,000. It did not raise an error. The server just stopped. The fix was to ask in windows of 100,000 blocks and to halve the window whenever a call fails or returns the server's 20,000-result cap. <em>Lesson:</em> a total that looks plausible can still be wrong. Always reconcile against a second source.</p>
+<h4>2. The wrong decimal place</h4>
+<p>The first decode of Ondo's dollar value read the wrong data word. Totals were off by a lot, which made the error findable. It was fixed by matching the totals to the dashboard's existing live pipeline (2,416 events on both).</p>
+<h4>3. Outliers that are errors</h4>
+<p>The 300 trillion PYUSD mistake would have made PYUSD look larger than the world economy. Two transactions are excluded by hash, and the check script asserts that PYUSD stays plausible.</p>
+<h4>4. Free RPC limits</h4>
+<p>One free endpoint blocked the project's IP after about ten calls. Another timed out on USDC's huge history. The script uses a public gateway that tolerates windowed calls. Public infrastructure has rate limits, so design for retries.</p>
+
+<h3>How we know it is right</h3>
+<ul>
+<li><strong>Spot checks.</strong> Three transactions (a USDC mint of $50,000, a USDT issue of $1 billion, a BUIDL burn of $350,000) were decoded by hand and matched Blockscout's own decoding.</li>
+<li><strong>Reconciliation.</strong> Ethereum mints minus burns land within 16% of DefiLlama's Ethereum supply change for USDC and 5% for PYUSD. The gap is explained by timing and by supply moves that are not mints.</li>
+<li><strong>Assertions.</strong> <code>src/lib/issuance.check.ts</code> fails if the totals or the claims in the summary drift.</li>
+</ul>
+
+<div class="callout"><h4>Limit</h4><p>Logs on Ethereum only. A mint on Solana never appears, and Tron USDT is a separate series, not part of the totals. Chain coverage comes from supply (DefiLlama), which is a different kind of evidence than logs.</p></div>
+</div>
+
+<div class="repo"><b>In this repo:</b> <code>scripts/backfill-issuance.mjs</code> (constants <code>CHUNK</code>, <code>LOG_CAP</code>, <code>EXCLUDED_TX</code>), <code>scripts/backfill-context.mjs</code>, <code>src/lib/issuance.check.ts</code>.</div>
+
+<div class="check"><h3>Check yourself</h3>
+<details><summary>What does topics[0] tell you?</summary><p>Which event this log is. It is the hash of the event's name and argument types.</p></details>
+<details><summary>A USDC mint's data field is 50,000,000,000. How many dollars?</summary><p>$50,000. USDC has 6 decimals, so divide by 1,000,000.</p></details>
+<details><summary>Why query 100,000 blocks at a time?</summary><p>A wide query silently returned a tiny part of the data. Small windows stay under the server's result cap, and the script halves a window that fails.</p></details>
+<details><summary>How do you turn a block number into a week?</summary><p>Look up the timestamps of anchor blocks every 25,000 blocks, interpolate linearly between them, then bucket by Monday 00:00 UTC.</p></details>
+<details><summary>Name two independent ways the numbers were validated.</summary><p>Hand-decoded spot checks against an explorer, and reconciliation of mints minus burns against DefiLlama supply changes (also the 2,416-event match with the live Ondo pipeline).</p></details>
+</div>
+</section>
+<section class="chapter" id="c5"><div class="ch-head"><div class="ch-num" aria-hidden="true">5</div><h2>Measuring flows without fooling yourself</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>Gross flow is plumbing traffic. Net issuance is growth. The "$1 trillion" is gross.</li>
+<li>Logs can double count (cross-chain moves) and miss (other chains). The study fixes both on purpose.</li>
+<li>A "standard deviation" puts a small fund and a huge stablecoin on one axis. Two episodes still prove nothing.</li>
+</ul></div>
+
+<div class="body">
+<h3>Gross versus net</h3>
+</div>
+<figure class="figure" id="fig-grossnet">
+<p class="fig-title">The same $100 mint counts as $200 of gross activity or $100 of new money, depending on what came back. <span class="tag">Illustration</span></p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 284" role="img" aria-label="Two bar panels in toy dollars: a market maker mints and burns 100 for gross 200 and net 0; an investor mints 100 for gross 100 and net 100."><defs><marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><text x="0" y="22" text-anchor="start" class="strong">Market maker round trip</text><line x1="0" x2="360" y1="120" y2="120" class="zero"/><rect x="20" y="50" width="70" height="70" class="seg" style="fill:#A9AAA2"/><text x="55" y="44" text-anchor="middle" class="strong">+100</text><text x="55" y="236" text-anchor="middle" class="muted">Mon: mint</text><rect x="130" y="120" width="70" height="70" class="seg" style="fill:#A9AAA2"/><text x="165" y="208" text-anchor="middle" class="strong">−100</text><text x="165" y="236" text-anchor="middle" class="muted">Wed: burn</text><text x="0" y="268" text-anchor="start" class="strong">Gross 200   ·   Net +0</text><text x="460" y="22" text-anchor="start" class="strong">Fund investor adds money</text><line x1="460" x2="820" y1="120" y2="120" class="zero"/><rect x="480" y="50" width="70" height="70" class="seg-hi" style=""/><text x="515" y="44" text-anchor="middle" class="strong">+100</text><text x="515" y="236" text-anchor="middle" class="muted">Mon: mint</text><text x="460" y="268" text-anchor="start" class="strong">Gross 100   ·   Net +100</text></svg></div>
+<figcaption>Toy numbers on one scale. Gross activity measures how busy the plumbing is. Net issuance measures whether the stock of tokens grew. The "$1 trillion" headline is gross; the rate study uses net.</figcaption>
+</figure>
+<div class="body">
+<p>A market maker mints $100 on Monday and burns $100 on Wednesday. Gross activity is $200. Net new money is zero. Large stablecoins have a lot of this round-tripping, which is why <strong>85% of the $1.01 trillion gross total is USDC</strong> even though USDC's net on Ethereum is −$22.8B.</p>
+<p>When you say the headline number, say what it is: "gross mints and redemptions on Ethereum." It is a true statement about how much passed through the issuers' windows. It is not a statement about how much money entered crypto.</p>
+
+<h3>Double counting: the cross-chain trap</h3>
+</div>
+<figure class="figure" id="fig-cctp">
+<p class="fig-title">Moving USDC between chains burns it on one chain and mints it on the other. Supply is unchanged.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 296" role="img" aria-label="Diagram of a cross-chain USDC transfer: a burn on Ethereum and a mint on another chain, and the reverse."><defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<text x="0" y="22" text-anchor="start" class="strong">Ethereum: the cross-chain minter</text><text x="560" y="22" text-anchor="start" class="strong">Another chain (Base, Solana, …)</text>
+<rect x="0" y="36" width="300" height="74" rx="6" class="box"/><text x="150" y="62" text-anchor="middle" class="strong"><tspan x="150" dy="0">Burns 1,000,000 USDC</tspan><tspan x="150" dy="19">log: Burn 1,000,000</tspan></text>
+<rect x="560" y="36" width="300" height="74" rx="6" class="box"/><text x="710" y="62" text-anchor="middle" class="strong"><tspan x="710" dy="0">Mints 1,000,000 USDC</tspan><tspan x="710" dy="19">not in Ethereum logs</tspan></text>
+<path d="M304 73 H556" class="arrow" marker-end="url(#ar6)"/><text x="430" y="64" text-anchor="middle" class="small">Circle signs the message</text>
+<rect x="0" y="150" width="300" height="74" rx="6" class="box"/><text x="150" y="176" text-anchor="middle" class="strong"><tspan x="150" dy="0">Mints 1,000,000 USDC</tspan><tspan x="150" dy="19">log: Mint 1,000,000</tspan></text>
+<rect x="560" y="150" width="300" height="74" rx="6" class="box"/><text x="710" y="176" text-anchor="middle" class="strong"><tspan x="710" dy="0">Burns 1,000,000 USDC</tspan><tspan x="710" dy="19">not in Ethereum logs</tspan></text>
+<path d="M556 187 H304" class="arrow" marker-end="url(#ar6)"/><text x="430" y="178" text-anchor="middle" class="small">Circle signs the message</text>
+<text x="0" y="258" text-anchor="start" class="small"><tspan x="0" dy="0">Row 1 moves USDC off Ethereum. Row 2 moves it back. Global supply never changes.</tspan><tspan x="0" dy="19">A naive sum of Ethereum logs would count $2M of activity.</tspan></text></svg></div>
+<figcaption>In the real data this is $189B of USDC Ethereum volume. The tracker counts it separately and removes it from issuance (ADR-009).</figcaption>
+</figure>
+<div class="body">
+<p>Moving USDC from Ethereum to another chain burns it on Ethereum and mints it on the other. An Ethereum-only count would call that a redemption. The tracker finds mints and burns by Circle's cross-chain minter contracts and sets them aside ($189B in total). They are real events but they are not issuance.</p>
+
+<h3>Under-counting: the missing chains</h3>
+<p>A log-based net for USDT on Ethereum would show almost only mints, because Tether redeems rarely on Ethereum, and it would miss Tron entirely. So for USDC, USDT and PYUSD the rate study uses the <strong>change in circulating supply on all chains</strong> from DefiLlama. For BUIDL, OUSG and USDY, which are issued on Ethereum, it uses Ethereum mints minus redemptions.</p>
+<p>That is two data sources inside one comparison. Say so when asked. The reconciliation check (16% for USDC, 5% for PYUSD) is the evidence that they agree where they overlap.</p>
+
+<h3>Standard deviations: putting assets on one axis</h3>
+<p>USDC changes by billions a week. OUSG changes by millions. A chart in dollars would show only USDC. Instead, for each asset we take its own average weekly net issuance over the whole sample, and its own <strong>standard deviation</strong> (a typical size of deviation from that average). Then:</p>
+<p><code>z = (mean weekly net in the window − the asset's overall mean) ÷ the asset's standard deviation</code></p>
+<p>A z of +0.5 means "half a typical deviation above this asset's usual week". It is unitless, so you can compare it across assets. It is not a statistical test.</p>
+</div>
+<figure class="figure" id="fig-window">
+<p class="fig-title">One easing episode is a 12-week baseline against a measurement window that starts at the first cut.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 240" role="img" aria-label="Timeline of the first easing episode showing a twelve week baseline in gray and the during window in yellow, with each cut marked."><defs><marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<line x1="20" x2="860" y1="110" y2="110" class="zero"/>
+<rect x="20" y="120" width="347.58620689655174" height="22" class="seg" style="fill:#A9AAA2"/>
+<text x="193.79310344827587" y="160" text-anchor="middle" class="strong">12 weeks before (the baseline)</text>
+<rect x="367.58620689655174" y="120" width="492.41379310344826" height="22" class="seg-hi"/>
+<text x="613.7931034482758" y="160" text-anchor="middle" class="strong">During: first cut to 4 weeks after the last</text>
+<line x1="367.58620689655174" x2="367.58620689655174" y1="70" y2="110" class="event"/><text x="367.58620689655174" y="62" text-anchor="middle" class="small">Sep 19  −50 bp</text><line x1="574.4827586206897" x2="574.4827586206897" y1="70" y2="110" class="event"/><text x="574.4827586206897" y="62" text-anchor="middle" class="small">Nov 8  −25 bp</text><line x1="744.1379310344827" x2="744.1379310344827" y1="70" y2="110" class="event"/><text x="744.1379310344827" y="62" text-anchor="middle" class="small">Dec 19  −25 bp</text>
+<text x="20" y="100" text-anchor="start" class="muted">week −12</text><text x="860" y="100" text-anchor="end" class="muted">+4 weeks</text>
+<text x="440" y="214" text-anchor="middle" class="small"><tspan x="440" dy="0">Question: is the average weekly net issuance in the yellow window unusual, compared with the gray window</tspan><tspan x="440" dy="19">and with every other window of the same length in the sample?</tspan></text></svg></div>
+<figcaption>Sep 2024 to Dec 2024 drawn to scale in weeks. The same two windows are built for the second episode and for every asset. Then each asset’s during-mean is converted to standard deviations of its own weekly net issuance so assets can share an axis.</figcaption>
+</figure>
+<div class="body">
+<h3>The percentile</h3>
+<p>For each asset and episode the study also asks: of all other windows of the same length (ignoring the episode and its baseline), what share had a lower mean? A percentile near 50% is ordinary. Near 95% or 5% is unusual. With roughly three years of weekly data there are only a few dozen non-overlapping windows, so the percentile is rough.</p>
+

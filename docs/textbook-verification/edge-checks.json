@@ -1,0 +1,114 @@
+{
+  "readers": [
+    {
+      "slug": "strategy",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 33,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "tokenization",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 38,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "ctrm",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 16,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "riscv",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 35,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "cortex-m",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 0,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "ssrd",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 12,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "stablecoins",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 12,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "mev",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 14,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "rwa-regression",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 0,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "ib27",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 0,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "cuda",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 21,
+        "clippedPages": 0
+      }
+    },
+    {
+      "slug": "strategy-bitcoin",
+      "no_js_text": true,
+      "no_js_contents": true,
+      "print": {
+        "visibleSections": 5,
+        "clippedPages": 0
+      }
+    }
+  ],
+  "d3_keyboard_activation": true,
+  "library_without_js": 11
+}

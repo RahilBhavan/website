@@ -1,0 +1,105 @@
+
+<nav class="nav" aria-label="Chapters"><div class="nav-in"><a class="home" href="#top">Textbook</a><a href="#c1"><b>1</b>How a stablecoin is made and destroyed</a><a href="#c2"><b>2</b>The five issuers and six assets</a><a href="#c3"><b>3</b>Tokenized Treasury funds and Ondo Nexus</a><a href="#c4"><b>4</b>Reading the blockchain</a><a href="#c5"><b>5</b>Measuring flows without fooling yourself</a><a href="#c6"><b>6</b>Interest rates and why they might move flows</a><a href="#c7"><b>7</b>Runs, depegs and news events</a><a href="#c8"><b>8</b>What the tracker found</a><a href="#c9"><b>9</b>Talking to the professors</a><a href="#glossary"><b>A</b>Glossary</a><a href="#reading-list"><b>B</b>Reading list</a><a href="#seven-day-study-plan"><b>C</b>Seven-day study plan</a></div></nav>
+<main class="page" id="top">
+<header class="cover">
+<p class="kicker">A student trynna learn · Ondo Nexus flows tracker</p>
+<h1>Stablecoin flows, <em>explained</em></h1>
+<p class="lede">What you need to know to defend the tracker: how stablecoins are made and destroyed, who issues them, how to read the chain, how to measure flows without fooling yourself, and what a finance professor will ask.</p>
+<p class="who">Written for Rahil before emailing professors Rajan, Adriaens and Wu. Numbers come from the dashboard's own snapshots (data read Oct 17, 2026); they are rebuilt from the repository by <code>docs/textbook/build.ts</code>. Study notes, not investment advice.</p>
+</header>
+<section class="howto" aria-label="How to use this book">
+<div><h3>Read in order, once</h3><p>Chapters 1 to 3 are the money. 4 and 5 are the measurement. 6 and 7 are the economics. 8 is your result. 9 is the conversation.</p></div>
+<div><h3>Answer before you open</h3><p>Every chapter ends with check-yourself questions. Say the answer aloud, then open it. If you can't, reread that section.</p></div>
+<div><h3>Trust the limits</h3><p>Each chapter says what the tracker cannot show. A professor will respect a stated limit more than a bold claim.</p></div>
+</section>
+<section class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#c1"><span class="n">1</span><span><span class="t">How a stablecoin is made and destroyed</span><span class="d">Mint, redeem, par and why quantity is the signal</span></span></a></li><li><a href="#c2"><span class="n">2</span><span><span class="t">The five issuers and six assets</span><span class="d">Who they are, what backs them, and how they earn money</span></span></a></li><li><a href="#c3"><span class="n">3</span><span><span class="t">Tokenized Treasury funds and Ondo Nexus</span><span class="d">NAV, yield, instant mint and what Nexus actually is</span></span></a></li><li><a href="#c4"><span class="n">4</span><span><span class="t">Reading the blockchain</span><span class="d">Blocks, logs, events, decimals and the traps that bit this project</span></span></a></li><li><a href="#c5"><span class="n">5</span><span><span class="t">Measuring flows without fooling yourself</span><span class="d">Gross vs net, double counting, standard deviations and windows</span></span></a></li><li><a href="#c6"><span class="n">6</span><span><span class="t">Interest rates and why they might move flows</span><span class="d">The Fed's target, opportunity cost and two competing channels</span></span></a></li><li><a href="#c7"><span class="n">7</span><span><span class="t">Runs, depegs and news events</span><span class="d">SVB and USDC, the GENIUS Act, and how to read an event window</span></span></a></li><li><a href="#c8"><span class="n">8</span><span><span class="t">What the tracker found</span><span class="d">The results, in the order you should state them, with what each does and does not show</span></span></a></li><li><a href="#c9"><span class="n">9</span><span><span class="t">Talking to the professors</span><span class="d">The email line, the questions to expect and the answers that hold up</span></span></a></li><li><a href="#glossary"><span class="n">A</span><span><span class="t">Glossary</span><span class="d">Every term used in this book, in plain words</span></span></a></li><li><a href="#reading-list"><span class="n">B</span><span><span class="t">Reading list</span><span class="d">Primary sources and papers, in the order to read them</span></span></a></li><li><a href="#seven-day-study-plan"><span class="n">C</span><span><span class="t">Seven-day study plan</span><span class="d">One session a day, each ending in something you can say or show</span></span></a></li></ol></section>
+<section class="chapter" id="c1"><div class="ch-head"><div class="ch-num" aria-hidden="true">1</div><h2>How a stablecoin is made and destroyed</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>A mint creates tokens against dollars. A redemption destroys tokens and returns dollars.</li>
+<li>Only approved parties deal with the issuer. Everyone else trades on markets.</li>
+<li>Because the price stays near $1, the information is in the quantity, so we count mints and redemptions.</li>
+</ul></div>
+
+<div class="body">
+<h3>The promise</h3>
+<p>A stablecoin is a token that a company promises to swap for one US dollar. The company is the <strong>issuer</strong>. It holds <strong>reserves</strong> (cash and short-term government debt) worth at least as much as the tokens it has put into circulation.</p>
+<p>Three words carry most of the field. <strong>Mint</strong> means the issuer creates new tokens. <strong>Redeem</strong> means a holder hands tokens back and gets dollars. <strong>Burn</strong> is the on-chain name for destroying the tokens that were handed back. A redemption on the books is a burn on the chain.</p>
+
+<h3>Two markets</h3>
+<p>The <strong>primary market</strong> is the issuer's own window. Only approved customers use it (they pass identity checks and often meet a minimum size). They pay $1.00 and receive one token, or return one token and receive $1.00. The <strong>secondary market</strong> is any exchange where holders sell tokens to each other. You and I almost always buy there.</p>
+</div>
+<figure class="figure" id="fig-mintloop">
+<p class="fig-title">The issuer creates tokens only against dollars and destroys them only against dollars. Everyone else just trades. <span class="tag">Illustration</span></p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 346" role="img" aria-label="Diagram of the primary market, where an approved buyer mints and redeems with the issuer at $1.00, and the secondary market, where tokens trade on an exchange."><defs><marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<rect x="20" y="70" width="190" height="170" rx="6" class="box"/><text x="115" y="100" text-anchor="middle" class="strong"><tspan x="115" dy="0">Authorized buyer</tspan><tspan x="115" dy="19">(market maker,</tspan><tspan x="115" dy="19">exchange, institution)</tspan></text>
+<rect x="345" y="70" width="190" height="170" rx="6" class="box"/><text x="440" y="100" text-anchor="middle" class="strong"><tspan x="440" dy="0">Issuer</tspan><tspan x="440" dy="19">Circle, Tether, Paxos,</tspan><tspan x="440" dy="19">BlackRock, Ondo</tspan></text>
+<rect x="700" y="70" width="160" height="170" rx="6" class="box"/><text x="780" y="100" text-anchor="middle" class="strong"><tspan x="780" dy="0">Exchange</tspan><tspan x="780" dy="19">order book</tspan></text>
+<text x="277" y="108" text-anchor="middle" class="muted">MINT</text>
+<path d="M214 122 H340" class="arrow" marker-end="url(#ar1)"/><text x="277" y="140" text-anchor="middle" class="small">$1.00 per token</text>
+<path d="M340 152 H214" class="arrow" marker-end="url(#ar1)"/><text x="277" y="170" text-anchor="middle" class="small">1 new token</text>
+<text x="277" y="196" text-anchor="middle" class="muted">REDEEM</text>
+<path d="M214 206 H340" class="arrow" marker-end="url(#ar1)"/><text x="277" y="224" text-anchor="middle" class="small">1 token</text>
+<path d="M340 236 H214" class="arrow" marker-end="url(#ar1)"/><text x="277" y="256" text-anchor="middle" class="small">$1.00 back</text>
+<path d="M115 244 V300 H780 V246" class="arrow" marker-end="url(#ar1)"/>
+<text x="447" y="322" text-anchor="middle" class="small"><tspan x="447" dy="0">Holders trade tokens with anyone here. The price can drift to $0.998 or $1.002.</tspan></text>
+<text x="440" y="50" text-anchor="middle" class="strong">Primary market: only approved parties, at $1.00</text>
+<text x="780" y="50" text-anchor="middle" class="strong">Secondary market</text></svg></div>
+<figcaption>A mint event is a left-to-right dollar arrow on the top row. A redemption is the bottom row. If the exchange price falls to $0.998, an approved buyer can buy there and redeem at $1.00; that trade pulls the price back up. This chapter-1 loop is what the tracker counts.</figcaption>
+</figure>
+<div class="body">
+<h3>Why the price stays near $1</h3>
+<p>Suppose the token trades at $0.998 on an exchange. An approved buyer can buy it there for $0.998 and redeem it with the issuer for $1.00. That earns $0.002 per token, so buyers keep doing it until the price rises. The same logic works in reverse above $1.00. This is <strong>arbitrage</strong>, and it is the force that pins the price.</p>
+<p>The pin is only as strong as the window. If the issuer pauses redemptions, if banks are closed, or if the buyer doubts the reserves, the arbitrage stops and the price can fall below $1. That is a <strong>depeg</strong>. Chapter 7 covers one.</p>
+
+<h3>Why we count quantities</h3>
+<p>For a stock, the price changes when beliefs change. For a stablecoin the price barely moves, so price carries little information. What moves is the <strong>amount in circulation</strong>. People who want more dollar-like tokens cause mints. People who want out cause redemptions. So the useful data are the weekly mints and redemptions. This is the whole idea of the tracker.</p>
+<p>Two measures follow, and you must never mix them up:</p>
+<ul>
+<li><strong>Gross flow</strong> = mints + redemptions. It tells you how busy the window is.</li>
+<li><strong>Net issuance</strong> = mints − redemptions. It tells you whether the amount in circulation grew.</li>
+</ul>
+
+<h3>Why anyone mints or redeems</h3>
+<p>People mint to trade other crypto assets, to move dollars across borders, to pay, or to post collateral. They redeem to cash out or to reduce risk. This book makes <em>no</em> claim about which reason dominates in the data. That is something the logs cannot tell you.</p>
+
+<div class="callout"><h4>Limit</h4><p>The tracker sees tokens created and destroyed. It does not see who the buyer is or why. A mint by a market maker and a mint by a corporate treasurer look the same on the chain.</p></div>
+</div>
+
+<div class="repo"><b>In this repo:</b> the six assets and their issuers are listed in <code>ASSETS</code> in <code>src/lib/issuance.ts</code>. ADR-009 in <code>docs/DECISIONS.md</code> records why mint and redeem are counted this way.</div>
+
+<div class="check"><h3>Check yourself</h3>
+<details><summary>Why is a redemption a "burn" on the chain?</summary><p>The tokens a holder returns are destroyed so that the number in circulation matches the dollars in reserve. The issuer logs a Burn event instead of keeping the tokens.</p></details>
+<details><summary>A token trades at $0.995. Who profits, and what does that do to the price?</summary><p>An approved buyer who can redeem at $1.00. Buying at $0.995 and redeeming at $1.00 earns $0.005 per token. The buying pushes the price up toward $1.</p></details>
+<details><summary>Why count quantities and not prices for a stablecoin?</summary><p>The price is held near $1 by arbitrage, so it hides what people want. Mints and redemptions show demand directly.</p></details>
+<details><summary>A market maker mints $100M and burns $100M the same week. What are gross flow and net issuance?</summary><p>Gross is $200M. Net is $0. Nothing new was added to circulation.</p></details>
+</div>
+</section>
+<section class="chapter" id="c2"><div class="ch-head"><div class="ch-num" aria-hidden="true">2</div><h2>The five issuers and six assets</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>Issuers earn the interest on reserves. Holders of a payment stablecoin earn nothing.</li>
+<li>The study covers five issuers (Circle, Tether, Paxos for PayPal, BlackRock, Ondo) and six assets.</li>
+<li>Payment stablecoins and Treasury funds are different products. A rate cut should not affect them the same way.</li>
+</ul></div>
+
+<div class="body">
+<h3>How an issuer makes money</h3>
+<p>The issuer takes in $100 and puts it into reserves, mostly short-term US Treasury bills and cash-like holdings. Those reserves earn interest. The issuer pays the token holder none of it. The difference is the issuer's income. At a 4% yield, $100 of reserves earns $4.00 a year.</p>
+</div>
+<figure class="figure" id="fig-reserve">
+<p class="fig-title">A 1-point rate cut takes a quarter of an issuer’s income away, with the same $100 of tokens outstanding. <span class="tag">Illustration</span></p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 270" role="img" aria-label="Balance sheet of $100 of reserves against $100 of tokens, and a bar chart showing yearly interest income falling from $4.00 to $3.00 after a one point cut."><defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<text x="0" y="22" text-anchor="start" class="strong">Issuer balance sheet</text>
+<rect x="0" y="36" width="150" height="190" rx="6" class="box"/><text x="75" y="70" text-anchor="middle" class="strong"><tspan x="75" dy="0">ASSETS</tspan><tspan x="75" dy="24">T-bills and cash</tspan><tspan x="75" dy="24">$100</tspan></text>
+<rect x="170" y="36" width="150" height="190" rx="6" class="box"/><text x="245" y="70" text-anchor="middle" class="strong"><tspan x="245" dy="0">LIABILITIES</tspan><tspan x="245" dy="24">Tokens in</tspan><tspan x="245" dy="24">circulation</tspan><tspan x="245" dy="24">$100</tspan></text>
+<text x="0" y="252" text-anchor="start" class="muted">Always $100 against $100 (par)</text>
+<path d="M326 130 H390" class="arrow" marker-end="url(#ar2)"/><text x="358" y="122" text-anchor="middle" class="small">earns</text>
+<text x="400" y="22" text-anchor="start" class="strong">Yearly interest income on the $100</text>
+<line x1="400" x2="640" y1="230" y2="230" class="zero"/>
+<rect x="420" y="118" width="70" height="112" class="seg" style="fill:#A9AAA2"/><text x="455" y="110" text-anchor="middle" class="strong">$4.00</text><text x="455" y="252" text-anchor="middle" class="muted">Rates at 4%</text>
+<rect x="540" y="146" width="70" height="84" class="seg-hi" style=""/><text x="575" y="138" text-anchor="middle" class="strong">$3.00</text><text x="575" y="252" text-anchor="middle" class="muted">After a 1-point cut</text>
+<text x="680" y="120" text-anchor="start" class="small"><tspan x="680" dy="0">Holders of USDC,</tspan><tspan x="680" dy="22">USDT or PYUSD</tspan><tspan x="680" dy="22">receive $0 of it.</tspan><tspan x="680" dy="22">The issuer keeps it.</tspan></text></svg></div>
+<figcaption>Toy numbers. Bars start at zero. This is why issuers care about the rate path, and why a cut is not neutral for them even if user demand is unchanged. Real reserves are mostly T-bills and repo; real yields differ by issuer.</figcaption>
+</figure>
+<div class="body">
+<p>Two consequences matter for this project. First, issuer income <strong>moves with interest rates</strong>, so a rate cut hurts the issuer even if nobody changes behavior. Second, a holder who wants to <em>earn</em> the yield has to hold something else, such as a Treasury fund. That is why we place payment stablecoins and Treasury-backed products side by side.</p>
+

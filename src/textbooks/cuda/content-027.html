@@ -1,0 +1,192 @@
+<h2 class="section-title"><span class="sec-num">7.7</span>Persistent Kernels, Split-K, and Stream-K</h2>
+
+        <div class="atomic" id="A7.7.1-persistent">
+            <div class="atomic-head"><span class="atomic-id">[[A7.7.1]]</span><h4 class="atomic-title">Persistent kernel — launch once, work forever</h4><span class="atomic-tag">scheduling</span></div>
+            <div class="atomic-body">
+                <p>A persistent kernel launches enough blocks to fill the GPU exactly (<em>numSMs × max blocks/SM</em>) and each block loops over work items pulled from a work queue. The pattern eliminates per-iteration launch overhead and lets blocks dynamically rebalance load. The cost: you give up the GPU's scheduler — you have to write your own work-stealing loop and worry about fairness. Use for: latency-critical inference, fine-grained per-iteration solvers, anywhere the launch overhead is a measurable fraction of runtime.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A1.3.4-launch-cost">[[A1.3.4]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A7.7.2-splitk">
+            <div class="atomic-head"><span class="atomic-id">[[A7.7.2]]</span><h4 class="atomic-title">Split-K — extra parallelism for skinny GEMMs</h4><span class="atomic-tag">scheduling</span></div>
+            <div class="atomic-body">
+                <p>Standard GEMM parallelism is over the (M, N) output tile grid. When M and N are small but K is huge (the canonical "wide GEMM" of a fully-connected layer's tall input), few output tiles exist and the GPU sits idle. Split-K cuts the K dimension into <em>s</em> chunks, launches <em>s</em> times more blocks, and reduces the partial outputs into the final tile via either a second-kernel reduction or atomic accumulation. The work doubles slightly (the reduction); occupancy quadruples. cuBLAS picks split-K automatically when the shape calls for it; in custom kernels you have to plan for it.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.4-gemm">[[A0.3.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-2">[[§5.2 cuBLAS]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A7.7.3-streamk">
+            <div class="atomic-head"><span class="atomic-id">[[A7.7.3]]</span><h4 class="atomic-title">Stream-K — work-stealing scheduling for GEMM</h4><span class="atomic-tag">scheduling</span></div>
+            <div class="atomic-body">
+                <p>Stream-K (Osama et al., 2023; landed in CUTLASS 2.10) merges split-K and persistent: each SM processes a continuous range of the K dimension across multiple output tiles, dynamically picking up the next chunk. The scheduler avoids the "last wave" inefficiency where a few stragglers finish long after the rest of the GPU is idle. On highly variable-shape workloads it can be 1.5–2× faster than the best static split-K. The implementation is non-trivial; for a portfolio GEMM kernel, CUTLASS's stream-K is the reference to study.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A7.7.1-persistent">[[A7.7.1]]</a> <a class="rel-chip rel-builds" href="#A7.7.2-splitk">[[A7.7.2]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 7 Checkpoint</div>
+        <ul>
+            <li>Write a warp-reduce in 4 lines that does not use shared memory.</li>
+            <li>Explain why two-pass grid reduce is safer than atomic grid reduce on huge arrays.</li>
+            <li>State the work and span of Hillis-Steele vs Blelloch scans.</li>
+            <li>Diagnose: a histogram kernel is 100× slower than a copy of the same data — what is the first thing you check?</li>
+            <li>Explain when split-K helps and the price you pay for it.</li>
+        </ul>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-6"><span class="label">← Previous</span>Reference &amp; Roadmap</a>
+        <a href="#chapter-8" class="next"><span class="label">Next →</span>Multi-GPU CUDA</a>
+    </nav>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 8 — MULTI-GPU AND DISTRIBUTED CUDA
+     ===================================================================== -->
+<article class="chapter" id="chapter-8">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">08</div>
+        <div class="chapter-eyebrow">Chapter 08</div>
+        <h1 class="chapter-title">Multi-GPU and<br>Distributed CUDA</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Understand the physical topology that connects two or more GPUs, what NCCL actually does behind one <code>ncclAllReduce</code> call, and how training-scale parallelism (data, tensor, pipeline, sequence) maps to those wires. The atomic notes below give you the vocabulary and the trade-offs without committing to one framework.</p>
+    </header>
+
+    <section class="section" id="sec-8-1">
+        <h2 class="section-title"><span class="sec-num">8.1</span>Physical Topology — PCIe, NVLink, NVSwitch</h2>
+
+        <div class="atomic" id="A8.1.1-pcie-vs-nvlink">
+            <div class="atomic-head"><span class="atomic-id">[[A8.1.1]]</span><h4 class="atomic-title">Bandwidth tiers — PCIe Gen4 vs NVLink vs NVSwitch</h4><span class="atomic-tag">interconnect</span></div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">PCIe Gen4 x16</span> ≈ 32 GB/s per direction. The fallback path between any GPU and the CPU.</li>
+                    <li><span class="def-term">PCIe Gen5 x16</span> ≈ 64 GB/s per direction (H100 and later).</li>
+                    <li><span class="def-term">NVLink 3.0</span> 12 lanes per A100 → 600 GB/s aggregated per GPU.</li>
+                    <li><span class="def-term">NVLink 4.0</span> 18 lanes per H100 → 900 GB/s aggregated.</li>
+                    <li><span class="def-term">NVSwitch</span> An on-PCB switch that lets every GPU talk to every other at full NVLink rate. The difference between "DGX" (NVSwitched) and "HGX" (point-to-point) topologies.</li>
+                </ul>
+                <p>One sentence to remember: <em>NVLink is ~20× faster than PCIe</em>. The first sanity check when scaling across GPUs is which path your transfers actually take — <code>nvidia-smi topo -m</code> prints the topology matrix.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A8.2.1-allreduce">[[A8.2.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A8.1.2-p2p">
+            <div class="atomic-head"><span class="atomic-id">[[A8.1.2]]</span><h4 class="atomic-title">Peer-to-peer (P2P) — letting one GPU read another's HBM directly</h4><span class="atomic-tag">interconnect</span></div>
+            <div class="atomic-body">
+                <p>With <code>cudaDeviceEnablePeerAccess</code>, GPU A can issue load/store instructions to addresses mapped to GPU B's memory. The traffic goes over NVLink if available, PCIe otherwise. P2P is the foundation under NCCL: it lets a single GPU's kernel pull data straight from a neighbor without bouncing through host memory. NVSwitch makes P2P uniform; on multi-socket PCIe-only systems some P2P paths cross NUMA nodes and are slower.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A8.1.1-pcie-vs-nvlink">[[A8.1.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-8-2">
+        <h2 class="section-title"><span class="sec-num">8.2</span>Collective Operations — What NCCL Does</h2>
+
+        <div class="atomic" id="A8.2.1-allreduce">
+            <div class="atomic-head"><span class="atomic-id">[[A8.2.1]]</span><h4 class="atomic-title">All-reduce — the operation that consumes most distributed-training time</h4><span class="atomic-tag">collective</span></div>
+            <div class="atomic-body">
+                <p>All-reduce takes one tensor per GPU and combines them with a reduction op (typically sum), leaving every GPU with the same result. Three classical algorithms in NCCL:</p>
+                <ul class="def-list">
+                    <li><span class="def-term">Ring</span> Each of N GPUs holds 1/N of the tensor; N−1 reduce-scatter steps, then N−1 all-gather steps. Bandwidth-optimal: every GPU sends and receives at full link rate.</li>
+                    <li><span class="def-term">Tree</span> A binary tree of reductions on the way up, then a broadcast on the way down. Lower latency (log N steps) but uses bandwidth less efficiently than ring.</li>
+                    <li><span class="def-term">2D / 3D rings</span> On NVSwitched systems, NCCL builds rings along multiple dimensions to exploit the fully-connected topology.</li>
+                </ul>
+                <p>NCCL chooses between them automatically based on message size and topology. The relevant performance number is <em>busBw</em>, NCCL's effective per-GPU bandwidth across the collective; for an all-reduce, busBw ≈ algoBw × (N−1)/N.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A8.1.1-pcie-vs-nvlink">[[A8.1.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A8.3.1-data-parallel">[[A8.3.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A8.2.2-other-coll">
+            <div class="atomic-head"><span class="atomic-id">[[A8.2.2]]</span><h4 class="atomic-title">All-gather, reduce-scatter, broadcast, all-to-all</h4><span class="atomic-tag">collective</span></div>
+            <div class="atomic-body">
+                <p>NCCL ships these and more. <strong>All-gather</strong> concatenates one shard per GPU into a full copy on every GPU. <strong>Reduce-scatter</strong> reduces along GPUs and leaves each with a shard. (All-reduce = reduce-scatter then all-gather.) <strong>Broadcast</strong> copies from one GPU to all. <strong>All-to-all</strong> sends a different shard from every GPU to every other; the workhorse of expert-parallel MoE. The collective you reach for tells you the parallelism strategy you implicitly chose.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A8.2.1-allreduce">[[A8.2.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-8-3">
+        <h2 class="section-title"><span class="sec-num">8.3</span>Parallelism Strategies</h2>
+
+        <div class="atomic" id="A8.3.1-data-parallel">
+            <div class="atomic-head"><span class="atomic-id">[[A8.3.1]]</span><h4 class="atomic-title">Data parallelism — replicate the model, split the batch</h4><span class="atomic-tag">parallelism</span></div>
+            <div class="atomic-body">
+                <p>Every GPU holds the full model, processes its own micro-batch, and after backward they all-reduce gradients. Simple, scales to "the model fits on one GPU." Overhead = one all-reduce per step. With ZeRO sharding, the model state itself is partitioned and an all-gather is inserted before each forward pass — trades extra communication for memory savings.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A8.2.1-allreduce">[[A8.2.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A8.3.2-tensor-parallel">
+            <div class="atomic-head"><span class="atomic-id">[[A8.3.2]]</span><h4 class="atomic-title">Tensor parallelism — split a matrix multiply across GPUs</h4><span class="atomic-tag">parallelism</span></div>
+            <div class="atomic-body">
+                <p>A linear layer <em>Y = X·W</em> can be split by column: each GPU holds <em>W</em>'s slice and computes its slice of <em>Y</em>; an all-gather assembles the full <em>Y</em>. Or by row: each GPU holds the right <em>W</em> slice and computes a partial product; an all-reduce finishes it. Megatron's transformer layout uses column-then-row to merge two communications into one all-reduce per attention block and one per MLP. The collective cost is per <em>layer</em>; communication therefore scales with depth.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.3.4-gemm">[[A0.3.4]]</a> <a class="rel-chip rel-prereq" href="#A8.2.2-other-coll">[[A8.2.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A8.3.3-pipeline-parallel">
+            <div class="atomic-head"><span class="atomic-id">[[A8.3.3]]</span><h4 class="atomic-title">Pipeline parallelism — slice the model depthwise</h4><span class="atomic-tag">parallelism</span></div>
+            <div class="atomic-body">
+                <p>Stage 1 of the model lives on GPU 0, stage 2 on GPU 1, etc. Micro-batches stream through. Communication is point-to-point (only adjacent stages talk), bandwidth-light, latency-sensitive. The pipeline has a <em>bubble</em>: at the start and end of each batch the GPUs at the far ends idle. GPipe, 1F1B, and interleaved 1F1B (Megatron) are schedules that shrink the bubble. The right size of pipeline parallelism is "as many stages as you need to fit one micro-batch in GPU memory, no more."</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A8.3.2-tensor-parallel">[[A8.3.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A8.3.4-sequence-parallel">
+            <div class="atomic-head"><span class="atomic-id">[[A8.3.4]]</span><h4 class="atomic-title">Sequence parallelism — split the sequence axis</h4><span class="atomic-tag">parallelism</span></div>
+            <div class="atomic-body">
+                <p>For very long contexts, the activation tensors get too big for one GPU's HBM even at modest batch sizes. Sequence parallelism splits the sequence dimension across GPUs and synchronizes only at operations that mix tokens (attention's softmax row). Ring-attention is the formulation that does this with overlapping communication. Used in 100K-token+ training of modern LLMs.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A8.2.2-other-coll">[[A8.2.2]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 8 Checkpoint</div>
+        <ul>
+            <li>Quote the bandwidth ratio between PCIe Gen4 and NVLink 3.0.</li>
+            <li>Sketch the ring all-reduce on 4 GPUs and explain why it is bandwidth-optimal.</li>
+            <li>Pick a parallelism strategy for a 70 B-parameter model on 8 H100s and justify the choice.</li>
+            <li>Diagnose: training throughput dropped 3× when you scaled from 1 to 2 GPUs — what is your first hypothesis?</li>
+        </ul>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-7"><span class="label">← Previous</span>Building-Block Kernels</a>
+        <a href="#chapter-9" class="next"><span class="label">Next →</span>Knowledge Graph</a>
+    </nav>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 9 — ATOMIC-NOTES INDEX & KNOWLEDGE GRAPH
+     ===================================================================== -->
+<article class="chapter" id="chapter-9">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">09</div>
+        <div class="chapter-eyebrow">Chapter 09</div>
+        

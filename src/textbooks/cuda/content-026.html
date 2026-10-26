@@ -1,0 +1,139 @@
+<h2 class="section-title"><span class="sec-num">7.1</span>Warp Reduce — Sub-Microsecond Sums</h2>
+        <div class="section-subtitle">The fastest 32-lane primitive a GPU can do</div>
+
+        <div class="atomic" id="A7.1.1-warp-shfl-reduce">
+            <div class="atomic-head"><span class="atomic-id">[[A7.1.1]]</span><h4 class="atomic-title">Butterfly reduction with <code>__shfl_xor_sync</code></h4><span class="atomic-tag">reduction</span></div>
+            <div class="atomic-body">
+                <p>Reduce 32 values held in lane registers to a single scalar in 5 steps with the XOR-butterfly pattern: each step swaps with the lane <em>k</em> bits away and accumulates. No shared memory, no barriers, ~5 cycles per step. The idiom every CUDA programmer must memorize:</p>
+                <div class="formula"><span class="op">for</span> (<span class="num">int</span> offset = <span class="num">16</span>; offset &gt; <span class="num">0</span>; offset /= <span class="num">2</span>)
+    val += __shfl_xor_sync(<span class="num">0xFFFFFFFF</span>, val, offset);</div>
+                <p>After the loop, every lane in the warp holds the same total. To turn a warp-reduce into a <em>warp-broadcast</em>, the answer is already broadcast. To get only one lane to write it out, gate with <code>if (laneIdx() == 0)</code>.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.9.2-warp-prims">[[A2.9.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A7.2.1-block-reduce">[[A7.2.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.2 ============== -->
+    <section class="section" id="sec-7-2">
+        <h2 class="section-title"><span class="sec-num">7.2</span>Block Reduce — Compose Warp Reduces with Shared Memory</h2>
+
+        <div class="atomic" id="A7.2.1-block-reduce">
+            <div class="atomic-head"><span class="atomic-id">[[A7.2.1]]</span><h4 class="atomic-title">Two-stage block reduction</h4><span class="atomic-tag">reduction</span></div>
+            <div class="atomic-body">
+                <p>Stage 1: every warp reduces its 32 lanes to one value via <a href="#A7.1.1-warp-shfl-reduce" class="note-ref">[[A7.1.1]]</a>. Stage 2: lane 0 of each warp writes its result to <code>__shared__ float warp_sums[32]</code>; one <code>__syncthreads</code>; then warp 0 reads the 32 partial sums (one per warp), does <em>another</em> warp reduction, and lane 0 of warp 0 owns the block total. Total cost: 2 warp reductions plus one barrier. For a 1024-thread block that is ~10 cycles of math plus the barrier latency — orders of magnitude faster than a shared-memory tree.</p>
+                <div class="pitfall">
+                    <div class="pitfall-label">Trap</div>
+                    <p style="margin:0">If your block has fewer than 32 warps (block size &lt; 1024), the warp-0 reduction at stage 2 must guard inactive lanes — they hold garbage, not zero. Either zero-initialize <code>warp_sums</code>, or pass an identity value, or gate the second reduce by <code>laneIdx() &lt; numWarps</code>.</p>
+                </div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A7.1.1-warp-shfl-reduce">[[A7.1.1]]</a> <a class="rel-chip rel-builds" href="#A2.9.1-syncthreads">[[A2.9.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A7.3.1-grid-reduce">[[A7.3.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.3 ============== -->
+    <section class="section" id="sec-7-3">
+        <h2 class="section-title"><span class="sec-num">7.3</span>Grid Reduce — Three Strategies</h2>
+
+        <div class="atomic" id="A7.3.1-grid-reduce">
+            <div class="atomic-head"><span class="atomic-id">[[A7.3.1]]</span><h4 class="atomic-title">Atomic vs two-pass vs cooperative-grid</h4><span class="atomic-tag">reduction</span></div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">Atomic add</span> Each block does its own reduction, then lane 0 calls <code>atomicAdd</code> to a single device-side accumulator. Simple, fast for ≤ a few hundred blocks; serializes for thousands.</li>
+                    <li><span class="def-term">Two-pass</span> Kernel 1: each block writes its reduction to <code>out[blockIdx.x]</code>. Kernel 2: a small launch reduces the partial results. Standard portable pattern; one extra launch.</li>
+                    <li><span class="def-term">Cooperative grid</span> <code>cg::this_grid().sync()</code> after stage 1, then stage 2 inside the same kernel. Eliminates the second launch but requires a cooperative launch and bounds your grid to "fits on the device."</li>
+                </ul>
+                <p>For a 4 GB tensor on an A100, all three reach &gt; 90% of peak bandwidth. Pick atomic for small grids, two-pass for portability, cooperative for tight per-step kernels (e.g., per-iteration norm-of-residual in a numerical solver).</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A7.2.1-block-reduce">[[A7.2.1]]</a> <a class="rel-chip rel-builds" href="#A2.9.5-cg">[[A2.9.5]]</a> <a class="rel-chip rel-builds" href="#A2.9.3-atomics">[[A2.9.3]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A7.5.1-histogram">[[A7.5.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.4 ============== -->
+    <section class="section" id="sec-7-4">
+        <h2 class="section-title"><span class="sec-num">7.4</span>Prefix Sums — Hillis-Steele, Blelloch, Decoupled-Lookback</h2>
+
+        <div class="atomic" id="A7.4.1-hillis-steele">
+            <div class="atomic-head"><span class="atomic-id">[[A7.4.1]]</span><h4 class="atomic-title">Hillis-Steele — O(n log n) work, O(log n) span, simple</h4><span class="atomic-tag">scan</span></div>
+            <div class="atomic-body">
+                <p>At step <em>k</em>, every thread reads the value at offset <em>2<sup>k</sup></em> behind it and accumulates. After <code>log₂ n</code> steps, every position holds the prefix sum. Work is <em>n log n</em> — suboptimal — but span is <em>log n</em> and the implementation is one warp-shuffle per step. Right answer for small problems (a single block) where the constant matters more than the asymptotic work.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.9.2-warp-prims">[[A2.9.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A7.4.2-blelloch">[[A7.4.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A7.4.2-blelloch">
+            <div class="atomic-head"><span class="atomic-id">[[A7.4.2]]</span><h4 class="atomic-title">Blelloch — O(n) work, two-phase up/down sweep</h4><span class="atomic-tag">scan</span></div>
+            <div class="atomic-body">
+                <p>Phase 1 (up-sweep): build a binary tree of partial sums in place, like a heap. Phase 2 (down-sweep): propagate prefixes back down. Total work is exactly <em>2n − 2</em> — work-optimal — and the span is still <em>O(log n)</em>. Standard library scans (CUB <code>BlockScan</code>, Thrust <code>inclusive_scan</code>) use Blelloch variants for the within-block stage.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A7.4.1-hillis-steele">[[A7.4.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A7.4.3-lookback">
+            <div class="atomic-head"><span class="atomic-id">[[A7.4.3]]</span><h4 class="atomic-title">Decoupled lookback — single-pass grid-wide scan</h4><span class="atomic-tag">scan</span></div>
+            <div class="atomic-body">
+                <p>A textbook grid-wide scan needs two passes: compute block partials, then offset each block by the prefix of its partials. Decoupled lookback (Merrill &amp; Garland, 2016) fuses both into one pass. Each block, after its local scan, publishes a status flag and waits for the previous block's flag, then aggregates the previous block's prefix. With careful memory-fencing this runs at near-peak HBM bandwidth in a single kernel. CUB's <code>DeviceScan</code> uses it; it is the production-grade primitive.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.9.6-memory-model">[[A2.9.6]]</a></div>
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A7.4.2-blelloch">[[A7.4.2]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.5 ============== -->
+    <section class="section" id="sec-7-5">
+        <h2 class="section-title"><span class="sec-num">7.5</span>Histograms — Privatization Beats Atomics</h2>
+
+        <div class="atomic" id="A7.5.1-histogram">
+            <div class="atomic-head"><span class="atomic-id">[[A7.5.1]]</span><h4 class="atomic-title">Privatized histogram — per-block bins in shared memory</h4><span class="atomic-tag">building-block</span></div>
+            <div class="atomic-body">
+                <p>Naive histogram: every thread does <code>atomicAdd(&amp;hist[bin], 1)</code> in global memory. For a highly skewed distribution every thread targets the same bin → 32-way serialization → 100×-slow kernel. Privatized fix: each block keeps its own histogram in shared memory (<code>atomicAdd</code> on shared is ~10× faster), then once at the end the block reduces its private histogram into the global histogram with one atomic per bin. Memory traffic equals the input size and a small constant. This is the canonical "atomics ≠ slow, atomics on global ≠ atomics on shared" lesson.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.9.3-atomics">[[A2.9.3]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.6 ============== -->
+    <section class="section" id="sec-7-6">
+        <h2 class="section-title"><span class="sec-num">7.6</span>Transpose and Sort — Memory Stories</h2>
+
+        <div class="atomic" id="A7.6.1-transpose">
+            <div class="atomic-head"><span class="atomic-id">[[A7.6.1]]</span><h4 class="atomic-title">Tile-based transpose with padded shared memory</h4><span class="atomic-tag">building-block</span></div>
+            <div class="atomic-body">
+                <p>Naive transpose has half-coalesced loads <em>or</em> half-coalesced stores — whichever dimension you stride. The standard fix: load a 32×32 tile into shared memory with row-major coalescing, <code>__syncthreads</code>, then store it out column-major. Without padding the store is a 32-way bank conflict; pad to <code>[32][33]</code> (see <a href="#A1.4.1-bank-conflict-math" class="note-ref">[[A1.4.1]]</a>) and the conflict disappears. This is the canonical bank-conflict teaching example.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A1.4.1-bank-conflict-math">[[A1.4.1]]</a> <a class="rel-chip rel-builds" href="#A1.4.2-coalesce-formal">[[A1.4.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A7.6.2-radix">
+            <div class="atomic-head"><span class="atomic-id">[[A7.6.2]]</span><h4 class="atomic-title">Radix sort — scan-based, the fast GPU sort</h4><span class="atomic-tag">building-block</span></div>
+            <div class="atomic-body">
+                <p>Comparison sorts have a hard <em>n log n</em> lower bound; radix sort doesn't, because it pre-commits to a fixed bit-width. Per pass: count keys by their k-bit digit (histogram), compute the per-digit offsets (scan), scatter keys into their new positions (memcpy by index). Each pass is two memory-bound kernels; for 32-bit keys, 4 passes of 8-bit radix = 8 kernels total. CUB <code>DeviceRadixSort</code> is the reference implementation; for a 1 G-element array it hits ~80% of HBM bandwidth on an A100.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A7.4.3-lookback">[[A7.4.3]]</a> <a class="rel-chip rel-builds" href="#A7.5.1-histogram">[[A7.5.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 7.7 ============== -->
+    <section class="section" id="sec-7-7">
+        

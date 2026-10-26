@@ -1,0 +1,157 @@
+{
+  "source": {
+    "repo": "https://github.com/RahilBhavan/spine",
+    "commit": "aad435ade406569c55fac2a43bd63e3b1f67e1a6",
+    "file": "data/backtest.json",
+    "bookDate": "2026-09-19",
+    "backtestGeneratedAt": "2026-10-25T17:08:41.000Z",
+    "market": "cbBTC/USDC, Morpho on Base, 86% LLTV today",
+    "path": "March 2020, replayed at 5-minute steps from the pre-crash peak"
+  },
+  "behaviour": {
+    "respondingShare": 0.7,
+    "reactionMinutes": 120,
+    "bonus": "4.38%"
+  },
+  "supplyUsd": 1584842885.2859473,
+  "oneDayCapUsd": 101100000,
+  "lltv": [
+    0.77,
+    0.8,
+    0.86
+  ],
+  "capital": [
+    {
+      "id": "x1",
+      "scenario": "AB",
+      "label": "1×",
+      "multiple": 1
+    },
+    {
+      "id": "x3",
+      "scenario": "AB",
+      "label": "3×",
+      "multiple": 3
+    },
+    {
+      "id": "x10",
+      "scenario": "AB",
+      "label": "10×",
+      "multiple": 10
+    },
+    {
+      "id": "none",
+      "scenario": "AB",
+      "label": "No limit",
+      "multiple": null
+    },
+    {
+      "id": "backstop",
+      "scenario": "ABC",
+      "label": "Backstop",
+      "multiple": 1
+    }
+  ],
+  "cells": {
+    "x1": {
+      "0.77": {
+        "lossUsd": 2391584.3871519184,
+        "unservedUsd": 133460503.14295128,
+        "lossShare": 0.0015090356333463386,
+        "unservedShare": 0.08421055764077932
+      },
+      "0.8": {
+        "lossUsd": 4041715.938104924,
+        "unservedUsd": 143032906.41835606,
+        "lossShare": 0.0025502313040801465,
+        "unservedShare": 0.09025052751052301
+      },
+      "0.86": {
+        "lossUsd": 9218112.523645451,
+        "unservedUsd": 158448190.37583125,
+        "lossShare": 0.005816420422004331,
+        "unservedShare": 0.09997722288240769
+      }
+    },
+    "x3": {
+      "0.77": {
+        "lossUsd": 1069858.3765016089,
+        "unservedUsd": 88718017.63124035,
+        "lossShare": 0.0006750564276335685,
+        "unservedShare": 0.05597906168170941
+      },
+      "0.8": {
+        "lossUsd": 704969.8400711147,
+        "unservedUsd": 91809711.55129889,
+        "lossShare": 0.0004448200175652867,
+        "unservedShare": 0.057929850588775554
+      },
+      "0.86": {
+        "lossUsd": 2207836.8468659455,
+        "unservedUsd": 97688768.33816667,
+        "lossShare": 0.0013930950931250157,
+        "unservedShare": 0.0616394023944784
+      }
+    },
+    "x10": {
+      "0.77": {
+        "lossUsd": 1535810.769012676,
+        "unservedUsd": 38041675.859884225,
+        "lossShare": 0.000969061844092877,
+        "unservedShare": 0.024003436689574758
+      },
+      "0.8": {
+        "lossUsd": 1211753.2934510822,
+        "unservedUsd": 54087841.67796069,
+        "lossShare": 0.0007645889095387838,
+        "unservedShare": 0.03412820424038552
+      },
+      "0.86": {
+        "lossUsd": 2077765.1933139726,
+        "unservedUsd": 75185733.89548907,
+        "lossShare": 0.0013110228228958413,
+        "unservedShare": 0.04744049684264039
+      }
+    },
+    "none": {
+      "0.77": {
+        "lossUsd": 1535810.769012676,
+        "unservedUsd": 38041675.859884225,
+        "lossShare": 0.000969061844092877,
+        "unservedShare": 0.024003436689574758
+      },
+      "0.8": {
+        "lossUsd": 1211753.2934510822,
+        "unservedUsd": 54087841.67796069,
+        "lossShare": 0.0007645889095387838,
+        "unservedShare": 0.03412820424038552
+      },
+      "0.86": {
+        "lossUsd": 2077765.1933139726,
+        "unservedUsd": 75185733.89548907,
+        "lossShare": 0.0013110228228958413,
+        "unservedShare": 0.04744049684264039
+      }
+    },
+    "backstop": {
+      "0.77": {
+        "lossUsd": 0,
+        "unservedUsd": 0,
+        "lossShare": 0,
+        "unservedShare": 0
+      },
+      "0.8": {
+        "lossUsd": 2502533.7142035426,
+        "unservedUsd": 2502533.7142035426,
+        "lossShare": 0.0015790421482392053,
+        "unservedShare": 0.0015790421482392053
+      },
+      "0.86": {
+        "lossUsd": 13120031.339455001,
+        "unservedUsd": 13120031.339455001,
+        "lossShare": 0.008278442905138702,
+        "unservedShare": 0.008278442905138702
+      }
+    }
+  }
+}

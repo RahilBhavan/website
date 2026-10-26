@@ -1,0 +1,117 @@
+<h3>4.2 Layer 1: resolve it yourself, then pin it</h3>
+  <p>A naive fetcher checks the IP, then hands the hostname to an HTTP library, which resolves it <em>again</em>. If an attacker controls the DNS, the second answer can differ. That gap between the check and the use is what <strong>DNS rebinding</strong> exploits.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 4.1</span><p class="fig-title">Rebinding works when the check and the connection resolve separately. Pinning makes them use one answer <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 270" role="img" aria-label="Two panels. Naive: check resolves to a public address, then the library resolves again and gets a private address, so the request reaches the router. SSRD: resolve once, refuse if any answer is private, connect to the pinned public IP with Host and SNI set, and repeat on every redirect.">
+      <text x="20" y="28" class="tl">Naive fetcher</text>
+      <rect class="bx" x="20" y="44" width="400" height="44" rx="6"/><text x="36" y="71">1 · check: resolve → 203.0.113.7 (public) ✓</text>
+      <rect class="bx" x="20" y="104" width="400" height="44" rx="6"/><text x="36" y="131">2 · library resolves again → 10.0.0.1</text>
+      <rect class="bxw" x="20" y="164" width="400" height="44" rx="6" style="stroke:#111214;stroke-width:2"/><text x="36" y="191" class="tb">3 · GET reaches your router ✗</text>
+      <path class="ln" d="M220 88V102" marker-end="url(#ah)"/><path class="ln" d="M220 148V162" marker-end="url(#ah)"/>
+      <text x="20" y="236" class="ts tm">The attacker's DNS answers with a 0-second TTL, so the two lookups can differ.</text>
+      <text x="480" y="28" class="tl">SSRD (safety.resolve_public)</text>
+      <rect class="bx" x="480" y="44" width="400" height="44" rx="6"/><text x="496" y="71">1 · resolve via 1.1.1.1 / 8.8.8.8 → all A records</text>
+      <rect class="bx" x="480" y="104" width="400" height="44" rx="6"/><text x="496" y="131">2 · any non-global answer → refuse the whole name</text>
+      <rect class="acc" x="480" y="164" width="400" height="44" rx="6"/><text x="496" y="191" class="tb">3 · connect to the pinned IP · Host + SNI = name</text>
+      <path class="ln" d="M680 88V102" marker-end="url(#ah)"/><path class="ln" d="M680 148V162" marker-end="url(#ah)"/>
+      <text x="480" y="236" class="ts tm">Repeated on every redirect hop (at most 3), and only ports 80 and 443.</text>
+      <text x="480" y="256" class="ts tm">Literal-IP URLs and user:password@ URLs are refused outright.</text>
+    </svg>
+    </div>
+    <figcaption>Addresses are from documentation ranges, not real hosts. Pinning means SSRD dials the address it checked. The <code>Host</code> header and TLS SNI still carry the hostname, so virtual hosting and certificates work as normal.</figcaption>
+  </div>
+
+  <h3>4.3 Layer 2: a firewall that doesn't trust layer 1</h3>
+  <p>Layer 1 is Python code, and code has bugs. A library might follow a redirect on its own, or a future edit might bypass <code>resolve_public</code>. So the fetcher container installs <code>docker/egress.nft</code> in its <strong>own</strong> network namespace before Python starts. The default policy is drop. It allows DNS only to 1.1.1.1 and 8.8.8.8, and TCP 80/443 only to addresses outside the blocked set. The blocked set is 10/8, 172.16/12, 192.168/16, 100.64/10, 169.254/16, 127/8, the documentation and benchmark ranges, multicast and reserved. All IPv6 is dropped. Either layer alone would stop the router request in Fig 4.1, so both would have to fail together.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 4.2</span><p class="fig-title">Both guards must fail before a request reaches your LAN</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 260" role="img" aria-label="Inside the fetcher container, a request passes the layer 1 IP guard and then the layer 2 nftables firewall before reaching public sites. Requests to private ranges are blocked at both guards. The container itself runs with no capabilities, read-only root and only the data folder mounted.">
+      <rect x="10" y="20" width="600" height="180" rx="10" style="fill:none;stroke:#111214;stroke-width:1.5"/>
+      <text x="26" y="44" class="tb">fetcher container</text><text x="26" y="62" class="ts tm">UID 10001 · read-only root · cap_drop ALL · no-new-privileges · 1 GB · 2 CPUs · only ./data mounted</text>
+      <rect class="bx" x="26" y="92" width="130" height="56" rx="8"/><text x="91" y="116" text-anchor="middle" class="tb">fetch.py</text><text x="91" y="134" text-anchor="middle" class="ts tm">GET only</text>
+      <rect class="acc" x="196" y="92" width="160" height="56" rx="8"/><text x="276" y="116" text-anchor="middle" class="tb">Layer 1</text><text x="276" y="134" text-anchor="middle" class="ts">resolve_public + pin</text>
+      <rect class="acc" x="396" y="92" width="190" height="56" rx="8"/><text x="491" y="116" text-anchor="middle" class="tb">Layer 2</text><text x="491" y="134" text-anchor="middle" class="ts">nftables, default drop</text>
+      <path class="ln" d="M156 120H194" marker-end="url(#ah)"/><path class="ln" d="M356 120H394" marker-end="url(#ah)"/><path class="ln" d="M586 120H668" marker-end="url(#ah)"/>
+      <text x="615" y="140" class="ts">80/443</text>
+      <rect class="bx" x="670" y="92" width="220" height="56" rx="8"/><text x="780" y="116" text-anchor="middle" class="tb">Public sites</text><text x="780" y="134" text-anchor="middle" class="ts tm">global addresses only</text>
+      <path class="lnm" d="M276 148V214M491 148V214"/>
+      <path class="no" d="M268 172l16 16M284 172l-16 16M483 172l16 16M499 172l-16 16"/>
+      <rect class="bxw" x="196" y="214" width="390" height="38" rx="6"/><text x="391" y="238" text-anchor="middle">LAN · Docker host · tailnet · metadata · loopback · IPv6</text>
+    </svg>
+    </div>
+    <figcaption>The two highlighted guards are independent: one is application code, the other is the kernel's packet filter. The entrypoint verifies the firewall is active, writes a marker file, then drops every capability through <code>setpriv</code> before <code>ssrd</code> runs. <code>ssrd safety-check</code> re-tests all of this from inside the container.</figcaption>
+  </div>
+
+  <h3>4.4 The container and the egress check</h3>
+  <ul>
+    <li><strong>Non-root, read-only root filesystem, <code>tmpfs /tmp</code> with noexec.</strong> Even a parser bug can't drop a persistent file or run a downloaded binary.</li>
+    <li><strong><code>cap_drop: ALL</code>.</strong> <code>NET_ADMIN</code> exists only for the entrypoint to install the firewall, and is dropped before Python starts. A compromised process can't change the firewall.</li>
+    <li><strong>Only <code>./data</code> is mounted.</strong> No <code>$HOME</code>, no Docker socket, so nothing to steal or escalate through.</li>
+    <li><strong>Public resolvers, never the LAN router</strong>, so a scam name can't be resolved by your router's view of the network.</li>
+    <li><strong>Egress ASN check.</strong> Before fetching, the container asks Cloudflare which IP its DNS query came from (a CHAOS-class TXT lookup of <code>whoami.cloudflare</code>), maps it to an ASN with Team Cymru, and refuses unless the ASN is in <code>allowed_egress_asns</code> (only AS22768, your building's ISP). On campus (AS36375) the fetcher won't start.</li>
+  </ul>
+
+  <h3>4.5 Limits on every response</h3>
+  <p>Connect within 5 s, read within 10 s, and finish the whole body within <strong>20 s</strong>. The last limit stops slow-drip tarpits that keep a read timeout alive forever. Bodies are streamed and aborted past <strong>2 MB</strong>. The Content-Type must be on an allowlist (HTML, CSS, JS, icon images). At most 3 redirects, http/https only. Binaries are never saved, only their hash and size, and images are never decoded: the favicon is hashed as raw bytes. In <code>passive_visit</code> mode, the favicon and up to 5 same-origin, non-library JS/CSS files are fetched <strong>only if the homepage already has ≥ 3 investment terms</strong>.</p>
+
+  <h3>4.6 Pacing: a pacer, not a bucket</h3>
+  <p><code>SAFETY.md</code> says "token bucket", but <code>fetch.RateLimiter</code> is actually a <strong>pacer</strong>. Every request, from either worker, waits until <code>next_ok</code>, then pushes <code>next_ok</code> 3 seconds later (60 / 20). A token bucket would let up to its capacity go out at once after a quiet spell. The pacer never bursts. That is stricter than the rule requires, which is fine, but the docs should name it correctly (Appendix A).</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 4.3</span><p class="fig-title">At 20 requests a minute the pacer starts one request every 3 s. A bucket could fire five at once <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 190" role="img" aria-label="Request start times over 30 seconds. The pacer used by SSRD starts one request every 3 seconds. A token bucket with capacity 5, not used, would start 5 requests at time 0 and then one every 3 seconds.">
+      <text x="20" y="58" class="tb">Pacer (SSRD)</text>
+      <text x="20" y="118" class="tm">Token bucket, cap 5</text><text x="20" y="136" class="ts tm">not used</text>
+      <path class="lnf" d="M180 52H880M180 112H880"/>
+      <g class="ink">
+        <rect x="178" y="40" width="4" height="24"/><rect x="248" y="40" width="4" height="24"/><rect x="318" y="40" width="4" height="24"/><rect x="388" y="40" width="4" height="24"/><rect x="458" y="40" width="4" height="24"/><rect x="528" y="40" width="4" height="24"/><rect x="598" y="40" width="4" height="24"/><rect x="668" y="40" width="4" height="24"/><rect x="738" y="40" width="4" height="24"/><rect x="808" y="40" width="4" height="24"/><rect x="878" y="40" width="4" height="24"/>
+      </g>
+      <g class="mute">
+        <rect x="178" y="100" width="4" height="24"/><rect x="184" y="100" width="4" height="24"/><rect x="190" y="100" width="4" height="24"/><rect x="196" y="100" width="4" height="24"/><rect x="202" y="100" width="4" height="24"/>
+        <rect x="248" y="100" width="4" height="24"/><rect x="318" y="100" width="4" height="24"/><rect x="388" y="100" width="4" height="24"/><rect x="458" y="100" width="4" height="24"/><rect x="528" y="100" width="4" height="24"/><rect x="598" y="100" width="4" height="24"/><rect x="668" y="100" width="4" height="24"/><rect x="738" y="100" width="4" height="24"/><rect x="808" y="100" width="4" height="24"/><rect x="878" y="100" width="4" height="24"/>
+      </g>
+      <path class="ln" d="M180 150H880"/>
+      <g class="ts tm" text-anchor="middle"><text x="180" y="170">0 s</text><text x="320" y="170">6 s</text><text x="460" y="170">12 s</text><text x="600" y="170">18 s</text><text x="740" y="170">24 s</text><text x="880" y="170">30 s</text></g>
+      <text x="210" y="94" class="ts">5 at once</text>
+    </svg>
+    </div>
+    <figcaption>Each tick is one request start, on the same time scale in both rows. Two workers share one pacer, so concurrency ≤ 2 caps overlap while the pacer caps the rate. Measured throughput was about 250 visits an hour (about 4 a minute), not 20 a minute. One visit can be several requests (homepage, redirects, favicon, assets), and the median visit took 15 s (p90 48 s).</figcaption>
+  </div>
+
+  <h3>4.7 Outcomes, and why cloaking is a result, not a failure</h3>
+  <p>Each capture is classified by <code>fingerprint.classify</code> as <code>content</code>, <code>parked</code>, <code>blank</code>, <code>blocked</code> (401/403/406/429/451/503), <code>error</code> or <code>seized</code>. Parked, blank and error pages get retries at +2 h and +24 h. When you review, a page that shows harmless content to SSRD but matches a scam's infrastructure is labeled <code>decoy-cloaked</code>.</p>
+  <p>Hard rule 3 says a block is recorded, <strong>never</strong> worked around: no proxies, no rotating IPs, no retry from another network, no headless browser. Evading blocks is also where legal risk rises (chapter 7). One method note: your building's residential IP probably sees <em>less</em> cloaking than a datacenter IP would, because cloakers filter datacenters. So SSRD's decoy share isn't comparable to datacenter-based studies. Say so in the README.</p>
+
+  <h3>4.8 Evidence you could hand to someone</h3>
+  <p>Raw bytes are stored gzip-compressed as <code>data/captures/&lt;sha256&gt;.gz</code> (mode 0600), so the file name proves the content. Each visit appends one JSON line to <code>data/manifest/YYYY-MM-DD.jsonl</code>: requested and final URL, redirect chain, fetch time, CT time, resolved IP, ASN, request and response headers, certificate SHA-256, body SHA-256, outcome and the tool's git commit. Each day's file gets a SHA-256 in <code>hashes.txt</code>. Past lines are never rewritten. If the VCU ever relies on a lead, this is what shows what you saw, when, and with which version of the code.</p>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>A scam domain has two A records: 198.51.100.20 and 192.168.1.1. What does SSRD do?</summary><div>It refuses the whole name. <code>resolve_public</code> rejects any name with any non-global answer, because mixing public and private answers is a rebinding trick. (Both addresses are blocked by the firewall too: the first is a documentation range.)</div></details>
+    <details><summary>Why keep the nftables firewall if <code>resolve_public</code> already refuses private IPs?</summary><div>Defense in depth. Layer 1 is code that can have bugs or be bypassed by a library or a future edit. Layer 2 is enforced by the kernel and can't be changed by the unprivileged process.</div></details>
+    <details><summary>A site returns 403 to SSRD. Should you retry from your phone's hotspot?</summary><div>No. Record it as blocked or decoy and move on. Retrying from another IP to get past a block breaks hard rule 3 and raises legal risk.</div></details>
+    <details><summary>Why is the 20 s total cap needed when there's already a 10 s read timeout?</summary><div>A read timeout resets every time a byte arrives. A tarpit sending one byte every 9 s would never trip it. The total cap bounds the whole body.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html">OWASP SSRF prevention cheat sheet</a> · <a href="https://wiki.nftables.org/wiki-nftables/index.php/Quick_reference-nftables_in_10_minutes">nftables in 10 minutes</a> · <a href="https://docs.docker.com/engine/security/">Docker engine security</a> · <a href="https://www.team-cymru.com/ip-asn-mapping">Team Cymru IP-to-ASN mapping</a></div>
+</section>
+
+<section class="chapter" id="ch5" aria-labelledby="ch5-h">
+  <p class="issue-line">Chapter 5 · Wed Oct 21 and Thu Oct 22 · 45 + 60 minutes</p>
+  <h2 id="ch5-h">Hashes that survive a rename</h2>
+  <p class="lede">A kit is re-skinned for every domain: new brand, new prices, new dates. A fingerprint has to stay the same through those changes and still differ between unrelated sites. Each signal in this chapter is a different guess about what an operator won't bother to change.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Normalization, TLSH, shingles and Jaccard, MinHash, copy containment, favicon mmh3, asset hashes and the common-value denylist.</dd></div>
+    <div><dt>Why it matters</dt><dd>Every alert is a claim that two pages share these values. You must be able to say what each value means.</dd></div>
+    <div><dt>In the repo</dt><dd><code>fingerprint.py</code> (pure: bytes in, features out), <code>score.compare</code>, <code>config/ssrd.toml [score]</code>.</dd></div>
+  </dl>
+
+  <h3>5.1 Why SHA-256 of the page doesn't work</h3>
+  <p>A cryptographic hash is built so that changing one byte changes the whole hash. That makes it perfect for proving a file is unchanged, which is how SSRD names its captures. It is useless for "these two pages are nearly the same", because two copies of a kit differ in the brand, a price ticker and a nonce. SSRD needs two kinds of hash: <strong>exact</strong> hashes for parts the operator doesn't touch (icons, JS and CSS files, chat-widget snippets), and <strong>similarity</strong> hashes for parts they edit lightly (the HTML and the copy).</p>
+
+  

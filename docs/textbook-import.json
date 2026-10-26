@@ -1,0 +1,68 @@
+[
+  {
+    "slug": "strategy",
+    "source_sha256": "2ee9b8fbf90dfcb5984cf0d77192dee0e804a98505e0c02c1899c11801f2317b",
+    "html_parts": 12,
+    "largest_html_part": 16977
+  },
+  {
+    "slug": "tokenization",
+    "source_sha256": "cec6e47a88d24b04dfc873fd55d405553873feeb18bd8a98ddd1724d984bcaba",
+    "html_parts": 13,
+    "largest_html_part": 16996
+  },
+  {
+    "slug": "ctrm",
+    "source_sha256": "a07db4e1fd95a4402a24a93958ae8af0ce64e1e0910d9923b8a1e46e1cf5a72c",
+    "html_parts": 8,
+    "largest_html_part": 16975
+  },
+  {
+    "slug": "riscv",
+    "source_sha256": "ba0382328ec6d253039825d61914adc977546c807dbcef3b731b8f0ce34d64e0",
+    "html_parts": 8,
+    "largest_html_part": 199747
+  },
+  {
+    "slug": "cortex-m",
+    "source_sha256": "a39bc99468f3d99d1109e0101978062698e4e11b6e1fdd8731809280a2ebafde",
+    "html_parts": 2,
+    "largest_html_part": 16489
+  },
+  {
+    "slug": "ssrd",
+    "source_sha256": "da98710c254c34fcabb4d6306e1bd0120d3e0df3c49ecd2d9c4b324420c729c8",
+    "html_parts": 9,
+    "largest_html_part": 16750
+  },
+  {
+    "slug": "stablecoins",
+    "source_sha256": "cb7c1bcfda1e0339012d82009854889565c07a18657ef5a3b82dd371d313f0a4",
+    "html_parts": 7,
+    "largest_html_part": 16924
+  },
+  {
+    "slug": "mev",
+    "source_sha256": "bc3bedaf1affb816aebce92785ce3fe0ec155f554b4b52da04e2785b00d61328",
+    "html_parts": 6,
+    "largest_html_part": 16706
+  },
+  {
+    "slug": "rwa-regression",
+    "source_sha256": "14a6b19c0ecd4cf06a0ff858543b9f05042cc7c63335ff1052e89b0b976a669c",
+    "html_parts": 12,
+    "largest_html_part": 16990
+  },
+  {
+    "slug": "cuda",
+    "source_sha256": "65f67a65d477d4328097c72b6adbd2c4184ccddb3a3aff56425aa0aeaa0b5ec0",
+    "html_parts": 41,
+    "largest_html_part": 19802
+  },
+  {
+    "slug": "strategy-bitcoin",
+    "source_sha256": "7830db87dcd0d1c5e2e2b7187aa2871a4e4190a7a96e5286a650709f8ddc8dc5",
+    "html_parts": 4,
+    "largest_html_part": 16687
+  }
+]

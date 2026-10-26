@@ -1,0 +1,144 @@
+<h3 class="atomic-title">Median, CI, and Coefficient of Variation</h3>
+                <span class="atomic-tag">statistics</span>
+            </div>
+            <div class="atomic-body">
+                <ul>
+                    <li><strong>Warm up</strong> for 50 launches; discard those samples.</li>
+                    <li><strong>Sample</strong> N ≥ 200 launches.</li>
+                    <li><strong>Report</strong> the median, not the mean — kernel launches have a heavy right tail.</li>
+                    <li><strong>Coefficient of variation</strong> (CV = stdev/mean) should be &lt; 2%. Higher means your measurement is contaminated by another process, thermal throttling, or driver scheduling. Stop and fix the rig before publishing.</li>
+                    <li><strong>95% confidence interval</strong> via percentile or bootstrap. "Median 38.4 µs (95% CI: 38.1–38.7)" is a real claim. "Mean 41 µs" is not.</li>
+                    <li><strong>Paired test</strong> when comparing two kernels — alternate them launch-by-launch to absorb shared environmental noise. Then use the per-pair difference for the CI.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-5-4">§5.4 Benchmark protocol</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-20-4">
+        <h2 class="section-title"><span class="sec-num">20.4</span>Master Cheat Sheet</h2>
+        <p class="section-subtitle">Every number in the book, on one page</p>
+
+        <h3>Ampere SM (A100 / sm_80)</h3>
+        <ul>
+            <li>108 SMs, 6912 FP32 cores, 432 Tensor Cores (Gen 3).</li>
+            <li>64K × 32-bit registers per SM, 192 KB combined SMEM+L1, 164 KB max SMEM.</li>
+            <li>2048 threads/SM max, 32 warps/SM, 32 banks × 4 bytes shared memory.</li>
+            <li>40 MB L2, 1.6 TB/s HBM2e bandwidth.</li>
+            <li>Tensor Core FP16: 312 TFLOPS · FP32 (FFMA): 19.5 TFLOPS · FP64: 9.7 TFLOPS.</li>
+        </ul>
+        <h3>Hopper SM (H100 / sm_90)</h3>
+        <ul>
+            <li>132 SMs (SXM5), 16896 FP32 cores, 528 Tensor Cores (Gen 4).</li>
+            <li>64K × 32-bit registers per SM, 256 KB combined SMEM+L1, 228 KB max SMEM.</li>
+            <li>50 MB L2, 3.35 TB/s HBM3.</li>
+            <li>Tensor Core FP16: 989 TFLOPS · FP8: 1979 TFLOPS · FP64: 67 TFLOPS.</li>
+            <li>TMA engine per SM, cluster support up to 16 blocks, DSMEM.</li>
+        </ul>
+        <h3>Number formats</h3>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Format</th><th>Bits</th><th>Exp</th><th>Mant</th><th>Range</th><th>Use</th></tr></thead>
+            <tbody>
+                <tr><td>FP64</td><td class="num">64</td><td class="num">11</td><td class="num">52</td><td>±1.8e308</td><td>HPC</td></tr>
+                <tr><td>FP32</td><td class="num">32</td><td class="num">8</td><td class="num">23</td><td>±3.4e38</td><td>Default float</td></tr>
+                <tr><td>TF32</td><td class="num">19</td><td class="num">8</td><td class="num">10</td><td>±3.4e38</td><td>TC ops, drop-in for FP32</td></tr>
+                <tr><td>BF16</td><td class="num">16</td><td class="num">8</td><td class="num">7</td><td>±3.4e38</td><td>Training</td></tr>
+                <tr><td>FP16</td><td class="num">16</td><td class="num">5</td><td class="num">10</td><td>±65504</td><td>Inference / loss-scaled training</td></tr>
+                <tr><td>FP8 E4M3</td><td class="num">8</td><td class="num">4</td><td class="num">3</td><td>±448</td><td>Activations, weights forward</td></tr>
+                <tr><td>FP8 E5M2</td><td class="num">8</td><td class="num">5</td><td class="num">2</td><td>±57344</td><td>Backward gradients</td></tr>
+                <tr><td>INT8</td><td class="num">8</td><td>–</td><td>–</td><td>−128..127</td><td>Quantized inference</td></tr>
+                <tr><td>INT4</td><td class="num">4</td><td>–</td><td>–</td><td>−8..7</td><td>Weight-only LLM quant</td></tr>
+                <tr><td>NVFP4</td><td class="num">4</td><td class="num">2</td><td class="num">1</td><td>2-level scale</td><td>Blackwell low-precision</td></tr>
+            </tbody>
+        </table></div>
+        <h3>Latency table (Ampere, rough)</h3>
+        <ul>
+            <li>Register access: <strong>1 cycle</strong>.</li>
+            <li>Shared mem (no conflict): <strong>~20 cycles</strong>.</li>
+            <li>L1 hit: <strong>~30 cycles</strong>.</li>
+            <li>L2 hit: <strong>~200 cycles</strong>.</li>
+            <li>HBM (L2 miss): <strong>~400–800 cycles</strong>.</li>
+            <li>Atomic on global (uncontended): <strong>~100 cycles</strong>.</li>
+            <li>Kernel launch (host overhead): <strong>~5–10 µs</strong>.</li>
+        </ul>
+    </section>
+
+    <section class="section" id="sec-20-5">
+        <h2 class="section-title"><span class="sec-num">20.5</span>Final Self-Test — 50 Questions</h2>
+        <p class="section-subtitle">If you can answer 45+ without notes, you've earned it</p>
+
+        <ol style="font-family: var(--font-serif); font-size: 15px; color: var(--text-primary); line-height: 1.7;">
+            <li>What is the bit layout of a BF16, and why is it preferable to FP16 for training?</li>
+            <li>Derive the arithmetic intensity of FP16 GEMM(N=N=K).</li>
+            <li>Why is the matrix multiply on a GPU more efficient than on a CPU even when both have similar peak TFLOPS?</li>
+            <li>State Amdahl's law and apply it to a kernel with 95% parallelizable work on 10000 cores.</li>
+            <li>Explain why a warp is 32 threads and what would change if it were 16 or 64.</li>
+            <li>How many shared-memory bank conflicts result from a column-major 32×32 FP32 tile accessed as <code>tile[k][tid]</code>?</li>
+            <li>State the formula for occupancy given registers/thread and shared memory/block.</li>
+            <li>Why doesn't doubling occupancy always double performance?</li>
+            <li>Sketch a 2D-register-tiled GEMM and identify the four sources of arithmetic intensity it exploits.</li>
+            <li>What does <code>cp.async</code> do that a regular global load doesn't?</li>
+            <li>Write the PTX for an Ampere <code>mma.sync.m16n8k16</code> FP16/FP32 instruction.</li>
+            <li>Why does <code>ldmatrix</code> exist; what would the alternative cost?</li>
+            <li>Explain how warp specialization differs from thread specialization.</li>
+            <li>What is the difference between FP16 and TF32 Tensor Core ops?</li>
+            <li>Define ULP and compute the ULP at magnitude 10⁶ for FP32.</li>
+            <li>Why is the result of a parallel reduction non-deterministic by default?</li>
+            <li>Explain Kahan summation in three sentences.</li>
+            <li>How does loss scaling rescue FP16 training from underflow?</li>
+            <li>Why is BF16 robust without loss scaling?</li>
+            <li>Describe per-token vs per-channel vs group-wise quantization.</li>
+            <li>What is the FP8 E4M3 representable range?</li>
+            <li>Explain 2:4 sparsity: pattern, hardware support, throughput gain.</li>
+            <li>Describe the data flow of FlashAttention-1 in 5 sentences.</li>
+            <li>Why does FlashAttention save memory, not compute?</li>
+            <li>Outline implicit-GEMM convolution and contrast it with im2col.</li>
+            <li>When is Winograd F(2,3) the wrong choice?</li>
+            <li>Name the five levels of the CUTLASS template hierarchy.</li>
+            <li>What does a CuTe <code>Layout&lt;Shape, Stride&gt;</code> express?</li>
+            <li>How does Triton choose a tile size?</li>
+            <li>What does <code>compute-sanitizer --tool synccheck</code> catch that memcheck doesn't?</li>
+            <li>List the four Nsight Compute views and what each one is for.</li>
+            <li>Define SOL and OAE.</li>
+            <li>State the speed-of-light ridge of an A100 in FLOPs/byte.</li>
+            <li>Why is the median preferred over the mean when reporting kernel times?</li>
+            <li>What is the CV of a well-conditioned benchmark, and why does it matter?</li>
+            <li>Explain how <code>cudaMallocAsync</code> differs from <code>cudaMalloc</code>.</li>
+            <li>Configure an L2 persistent carveout for a 32 MB tensor.</li>
+            <li>Describe what TMA descriptors encode.</li>
+            <li>Compare <code>mma.sync</code> and <code>wgmma.mma_async</code>.</li>
+            <li>What is DSMEM and why does it matter for big tiles?</li>
+            <li>Outline what the Transformer Engine library does each forward pass.</li>
+            <li>Name the four collectives in NCCL and one use case for each.</li>
+            <li>Why is tensor parallelism communication-heavy but pipeline parallelism communication-light?</li>
+            <li>Describe split-K vs stream-K dispatch.</li>
+            <li>Sketch a warp reduction using <code>__shfl_down_sync</code>.</li>
+            <li>Implement a block reduction in 10 lines of pseudocode.</li>
+            <li>What is decoupled lookback in a single-pass prefix scan?</li>
+            <li>Why are histograms a privatization-friendly workload?</li>
+            <li>Outline the persistent-kernel pattern and one workload that benefits.</li>
+            <li>Give the four-step optimization-loop discipline from §18.1, and apply it to a 35% SOL Memory kernel.</li>
+        </ol>
+
+        <div class="callout tip">
+            <div class="callout-label">Closing</div>
+            <p>The chapters before this one give you the answers. If a question stumped you, return to the relevant chapter — the atomic-note IDs throughout the book mean every concept has a single landing page you can re-read in five minutes.</p>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-19"><span class="label">← Previous</span>Hopper &amp; Blackwell</a>
+            <a href="#cover" class="next"><span class="label">Back to top</span>Front Matter</a>
+        </nav>
+    </section>
+</article>
+
+<footer style="margin-top: 80px; padding: 32px 0; border-top: 1px solid var(--border-subtle); text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">
+    <p>Built as a single self-contained HTML file. No build step. No server. View source if curious.</p>
+    <p style="margin-top: 8px; color: var(--text-muted)">Every hardware claim, instruction name, and metric in this book traces back to a numbered citation. Re-verify against NVIDIA's current documentation before quoting in production work.</p>
+</footer>
+
+</main>
+
+

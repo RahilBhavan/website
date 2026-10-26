@@ -1,0 +1,138 @@
+<h2 class="section-title"><span class="sec-num">2.9</span>Synchronization and Memory Ordering</h2>
+        <div class="section-subtitle">Barriers, fences, atomics, and the CUDA memory model</div>
+
+        <div class="atomic" id="A2.9.1-syncthreads">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.1]]</span><h4 class="atomic-title"><code>__syncthreads()</code> — the all-block barrier with a sneaky guarantee</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p>Three things <code>__syncthreads()</code> does in a single instruction: (1) blocks every thread in the block until <em>all</em> have reached the call, (2) acts as an acquire/release fence for shared memory within the block, (3) flushes any pending shared-memory writes so subsequent reads see them. Calling it inside a divergent region is undefined behavior — if any thread in the block fails to reach the same barrier, the block deadlocks. The compiler will sometimes <em>silently</em> place a <code>__syncthreads()</code> inside an <code>if</code> because it inlined a function for you. Look at the SASS (<code>BAR.SYNC</code>) when in doubt.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.5.5-race">[[A0.5.5]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-2-4">[[§2.4 Tiling]]</a> <a class="rel-chip rel-usedby" href="#A2.9.4-mbarrier">[[A2.9.4]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.9.2-warp-prims">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.2]]</span><h4 class="atomic-title">Warp-level primitives — shuffle, ballot, vote, sync</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p>Within a single warp, threads share data faster than shared memory permits via warp-shuffle intrinsics. Five families to know:</p>
+                <ul class="def-list">
+                    <li><span class="def-term">__shfl_sync</span> Exchange a register value across lanes by lane id. The basis for fast warp reductions.</li>
+                    <li><span class="def-term">__shfl_xor_sync</span> Swap with the lane whose id differs by a fixed XOR mask. The natural butterfly pattern for log-step reductions.</li>
+                    <li><span class="def-term">__ballot_sync</span> Every lane reports a one-bit predicate, returns a 32-bit mask of where the predicate was true. Used to compress sparse data.</li>
+                    <li><span class="def-term">__any_sync / __all_sync</span> Boolean reductions across the warp.</li>
+                    <li><span class="def-term">__syncwarp</span> The warp-only barrier; Volta+ needs it whenever a warp publishes through registers/shared memory and another part of the same warp reads.</li>
+                </ul>
+                <p>All of these take a <em>mask</em> argument — a 32-bit value naming which lanes participate. Passing a wrong mask (a stale one from before a branch) is the #1 source of "intermittent NaNs only on Ampere" bugs.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A1.3.1-simt-model">[[A1.3.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7 — warp reduce]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.9.3-atomics">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.3]]</span><h4 class="atomic-title">Atomics — the only safe shared-write primitive</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p><code>atomicAdd</code>, <code>atomicMax</code>, <code>atomicCAS</code>, and friends. Read-modify-write to a single address that is atomic with respect to <em>every</em> other thread in the device. Two costs to know: (1) atomics on the <em>same</em> address serialize — N threads colliding on one address means N sequential ops; (2) atomics on shared memory are ~10× faster than atomics on global memory because they hit the SM-local L1 alias rather than going out to L2. A privatized histogram (one bin-counter per thread block in shared memory, then one global atomic merge at the end) often turns a 100×-slow naive global-atomics histogram into a ~peak-bandwidth kernel.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.5.5-race">[[A0.5.5]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7 — reductions]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.9.4-mbarrier">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.4]]</span><h4 class="atomic-title">Async barriers (<code>cuda::barrier</code> / <code>mbarrier.*</code> PTX) — the post-Ampere primitive</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p>Ampere introduced an async-friendly barrier that lives in shared memory. Unlike <code>__syncthreads</code>, it counts <em>arrivals</em> and <em>completions</em> separately, so a thread can "arrive" (declare its work is in flight) and then go do unrelated computation while the hardware drains its async copies; only when the thread later "waits" does it block. This is the synchronization primitive behind <code>cuda::pipeline</code> and the production-quality <code>cp.async</code> pipelines covered in <a href="#sec-3-5" class="note-ref">§3.5</a>. Hopper extends this with the TMA's barrier and "elect-one" optimizations.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.9.1-syncthreads">[[A2.9.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-3-5">[[§3.5 cp.async]]</a> <a class="rel-chip rel-usedby" href="#sec-3-7">[[§3.7 Hopper]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.9.5-cg">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.5]]</span><h4 class="atomic-title">Cooperative Groups — typed views of synchronization scopes</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p>The Cooperative Groups header (<code>cooperative_groups.h</code>) wraps the hand-rolled mask-and-shuffle pattern in C++ types: <code>cg::thread_block</code>, <code>cg::coalesced_threads</code>, <code>cg::thread_block_tile&lt;32&gt;</code>, <code>cg::grid_group</code>. Each group has a <code>.sync()</code> method, an <code>.any()</code>, an <code>.reduce(...)</code>. The big win is <em>grid-wide synchronization</em>: with a <code>cudaLaunchCooperativeKernel</code> launch and <code>cg::this_grid().sync()</code>, you can write a single-kernel multi-pass algorithm without going back to the host. The cost is that all blocks must fit on the GPU simultaneously, which caps the grid size.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.9.1-syncthreads">[[A2.9.1]]</a> <a class="rel-chip rel-builds" href="#A2.9.2-warp-prims">[[A2.9.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.9.6-memory-model">
+            <div class="atomic-head"><span class="atomic-id">[[A2.9.6]]</span><h4 class="atomic-title">The CUDA memory model — relaxed by default, scoped on demand</h4><span class="atomic-tag">sync</span></div>
+            <div class="atomic-body">
+                <p>The CUDA memory model is patterned after C++11's: every memory operation has a <em>memory order</em> (relaxed / acquire / release / acq_rel / seq_cst) and a <em>scope</em> (thread, block, device, system). Most reads and writes are implicitly relaxed; you bring in stricter ordering by using <code>cuda::atomic_ref</code>, <code>__threadfence_block()</code>, <code>__threadfence()</code>, or <code>__threadfence_system()</code>. The <em>scope</em> argument tells the hardware how far the fence has to reach — <code>thread_scope_block</code> uses only the local L1 fence; <code>thread_scope_device</code> drains L2; <code>thread_scope_system</code> reaches host memory. Tighten only when correctness requires it; each step out costs cycles.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.5.5-race">[[A0.5.5]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2.10 — STREAMS, EVENTS, ASYNC, GRAPHS
+         ============================================================ -->
+    <section class="section" id="sec-2-10">
+        <h2 class="section-title"><span class="sec-num">2.10</span>Streams, Events, Async, and Graphs</h2>
+        <div class="section-subtitle">How to keep the GPU busy when one kernel isn't enough</div>
+
+        <div class="atomic" id="A2.10.1-streams">
+            <div class="atomic-head"><span class="atomic-id">[[A2.10.1]]</span><h4 class="atomic-title">CUDA stream — a queue of work the device executes in order</h4><span class="atomic-tag">async</span></div>
+            <div class="atomic-body">
+                <p>A <code>cudaStream_t</code> is a FIFO of operations (kernel launches, memcopies, events) that the device guarantees to execute in submission order. Operations in <em>different</em> streams may overlap or reorder. Stream 0 (the "default stream") has special blocking semantics in most legacy modes — it serializes against every other stream — so use a named stream from <code>cudaStreamCreate</code> when overlapping work. Per-thread default streams (<code>-default-stream per-thread</code>) restore parallelism for multi-threaded host code.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.8.1-runtime-vs-driver">[[A2.8.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A2.10.2-events">[[A2.10.2]]</a> <a class="rel-chip rel-usedby" href="#A2.10.4-graph">[[A2.10.4]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.10.2-events">
+            <div class="atomic-head"><span class="atomic-id">[[A2.10.2]]</span><h4 class="atomic-title">Events — markers you can wait on or time with</h4><span class="atomic-tag">async</span></div>
+            <div class="atomic-body">
+                <p>A <code>cudaEvent_t</code> is a hardware-recorded timestamp in a stream. Three uses: (1) <em>timing</em> — record one before and one after a kernel, then <code>cudaEventElapsedTime</code> gives sub-microsecond runtime; (2) <em>cross-stream dependencies</em> — <code>cudaStreamWaitEvent(stream2, event_from_stream1)</code> makes <code>stream2</code> wait without involving the host; (3) <em>host polling</em> — <code>cudaEventQuery</code> tells you whether the event has fired. For benchmarking always prefer events over <code>std::chrono</code>: host clocks see launch overhead but not actual device time.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.10.1-streams">[[A2.10.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-4">[[§5.4 Benchmark protocol]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.10.3-async-copy">
+            <div class="atomic-head"><span class="atomic-id">[[A2.10.3]]</span><h4 class="atomic-title">Async copies (<code>cudaMemcpyAsync</code>, pinned host memory)</h4><span class="atomic-tag">async</span></div>
+            <div class="atomic-body">
+                <p>Host-to-device copies happen at PCIe bandwidth, and that bandwidth is only achievable from <em>pinned</em> host memory (<code>cudaMallocHost</code> / <code>cudaHostAlloc</code>). Pageable allocations cost ~2× because the runtime stages them through an internal pinned buffer. <code>cudaMemcpyAsync</code> on a non-default stream lets you overlap copy with computation in another stream — the classic three-stream "stage-execute-drain" pipeline that hides PCIe behind compute.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.10.1-streams">[[A2.10.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.10.4-graph">
+            <div class="atomic-head"><span class="atomic-id">[[A2.10.4]]</span><h4 class="atomic-title">CUDA Graphs — record a DAG once, replay it cheap</h4><span class="atomic-tag">async</span></div>
+            <div class="atomic-body">
+                <p>A CUDA Graph is a captured DAG of kernel launches, memcopies, events, and host callbacks. You build it once (via <em>stream capture</em> — record the work submitted on a stream, or via the explicit <code>cudaGraphAdd*</code> APIs) and then replay it with one <code>cudaGraphLaunch</code> call. The win is amortization: for a pipeline of 50 small kernels, the per-launch overhead drops from ~50 × 5 µs to a single launch of a few microseconds. Graphs are the canonical fix for "my GPU is 80% idle in the timeline view." Use them whenever the same sequence of work runs many times — every training step, every inference call, every iteration of a numerical solver.</p>
+                <div class="pitfall">
+                    <div class="pitfall-label">Trap</div>
+                    <p style="margin:0">Graph capture turns runtime API calls into recorded nodes; if a kernel inside the capture depends on a value computed by the host, you must either bake it into the graph as a memcpy node or use <code>cudaGraphExecKernelNodeSetParams</code> to update it before each replay. <em>Modifying a captured graph is much more constrained than rebuilding one.</em></p>
+                </div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A2.10.1-streams">[[A2.10.1]]</a> <a class="rel-chip rel-prereq" href="#A2.10.2-events">[[A2.10.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.5.1-amdahl">[[A0.5.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2.11 — UNIFIED MEMORY & ALLOCATOR
+         ============================================================ -->
+    <section class="section" id="sec-2-11">
+        

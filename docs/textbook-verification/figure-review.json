@@ -1,0 +1,34 @@
+{
+  "design": "rahil-design@3.3.1",
+  "reviewer": "Codex gpt-6.1-sol",
+  "scope": "Reading-edition design review; historical quantities retain their original evidence scope. No claim of fresh financial, benchmark or user-learning validation.",
+  "phone_viewport": 390,
+  "figures_by_book": {
+    "strategy": 29,
+    "tokenization": 11,
+    "ctrm": 17,
+    "riscv": 11,
+    "ssrd": 17,
+    "stablecoins": 17,
+    "mev": 12,
+    "rwa-regression": 15,
+    "cuda": 14
+  },
+  "review_method": [
+    "Phone-size figure captures and contact-sheet inspection",
+    "Typography and figure-surface corrections",
+    "Preserved SVG geometry and numeric source content, except two explicitly re-encoded CUDA tables",
+    "Direct leaf-text contrast checks with exclusions recorded in review.md",
+    "Shared contents and representative behavior checks"
+  ],
+  "quantitative_changes": {
+    "cuda_hardware_modes": "Six rows explicitly distinguish TFLOPS and TOPS; no shared length scale.",
+    "cuda_optimization": "Eight retained values, 125 TFLOPS comparison; 130 / 125 = 104%. Not re-run benchmark evidence."
+  },
+  "limits": [
+    "No Safari or Windows rendering check",
+    "No color-vision simulation; neutral/one-accent presentation and text alternatives used",
+    "Source-paper and financial facts were not refreshed",
+    "Inherited geometry was preserved; no new physical-geometry audit is claimed"
+  ]
+}

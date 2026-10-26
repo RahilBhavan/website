@@ -1,0 +1,252 @@
+<h1 class="chapter-title">CUDA Programming:<br>From Syntax to Shared Memory</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Write, compile, and run a correct CUDA kernel. Understand the programming model deeply enough to walk a GEMM from naive → coalesced → shared-memory tiled → register-tiled → vectorized, and time each version honestly.</p>
+    </header>
+
+    <!-- 2.1 -->
+    <section class="section" id="sec-2-1">
+        <h2 class="section-title"><span class="sec-num">2.1</span>The CUDA Programming Model</h2>
+        <div class="section-subtitle">A small surface area on top of C++</div>
+
+        <p>CUDA is a small dialect of C++ — about a dozen keywords and a couple of built-in variables. Everything else is ordinary C++. The keywords you must know cold:</p>
+
+        <div class="table-wrap">
+        <table>
+        <thead><tr><th>Keyword</th><th>Meaning</th><th>Example</th></tr></thead>
+        <tbody>
+        <tr><td><code>__global__</code></td><td>Kernel: callable from host, runs on device, returns <code>void</code>.</td><td><code>__global__ void k(...){}</code></td></tr>
+        <tr><td><code>__device__</code></td><td>Helper function callable only from device code.</td><td><code>__device__ float relu(float)</code></td></tr>
+        <tr><td><code>__host__</code></td><td>Runs on the CPU (default for ordinary functions). Combinable with <code>__device__</code> for dual-mode functions.</td><td><code>__host__ __device__ int min(...)</code></td></tr>
+        <tr><td><code>__shared__</code></td><td>Allocates memory in the SM's shared memory; per-block scope.</td><td><code>__shared__ float t[32][32];</code></td></tr>
+        <tr><td><code>__constant__</code></td><td>Read-only memory cached in a dedicated constant cache. 64 KB total per kernel.</td><td><code>__constant__ float cf[64];</code></td></tr>
+        <tr><td><code>__syncthreads()</code></td><td>Block-wide barrier. Every thread in the block must reach it.</td><td><code>__syncthreads();</code></td></tr>
+        <tr><td><code>&lt;&lt;&lt;grid, block&gt;&gt;&gt;</code></td><td>Kernel launch syntax. Takes 1D, 2D, or 3D grid and block dimensions.</td><td><code>k&lt;&lt;&lt;128, 256&gt;&gt;&gt;(x);</code></td></tr>
+        <tr><td><code>threadIdx</code>, <code>blockIdx</code>, <code>blockDim</code>, <code>gridDim</code></td><td>Built-in <code>uint3</code>-like variables visible inside every kernel.</td><td><code>int t = threadIdx.x;</code></td></tr>
+        <tr><td><code>warpSize</code></td><td>Built-in constant. Always 32 today; coded as a variable for forward compatibility.</td><td><code>if (t &lt; warpSize) ...</code></td></tr>
+        </tbody>
+        </table>
+        </div>
+
+        <h3>Host ↔ device execution model</h3>
+        <p>The host (CPU) launches a kernel asynchronously — control returns to the host as soon as the launch is enqueued; the GPU runs the kernel concurrently with subsequent host code. You synchronize explicitly with <code>cudaDeviceSynchronize()</code> or, more idiomatically, by recording a <code>cudaEvent_t</code> and waiting on it. All <code>cudaMemcpy</code> calls without a stream argument are <em>implicitly synchronous</em>; the asynchronous variant is <code>cudaMemcpyAsync</code>.</p>
+
+        <h3>Error handling</h3>
+        <p>Every CUDA API call returns <code>cudaError_t</code>. Kernel launches return errors through the next call to <code>cudaGetLastError()</code>. <strong>Wrap every CUDA call</strong>; otherwise a failed kernel will silently corrupt your output and you will spend hours blaming your algorithm.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.1-A: A complete, working CUDA program">#include &lt;cuda_runtime.h&gt;
+#include &lt;cstdio&gt;
+#include &lt;cstdlib&gt;
+
+#define CUDA_CHECK(x) do {                                          \
+    cudaError_t _e = (x);                                            \
+    if (_e != cudaSuccess) {                                         \
+        fprintf(stderr, "CUDA error %s at %s:%d -&gt; %s\n",          \
+                cudaGetErrorName(_e), __FILE__, __LINE__,            \
+                cudaGetErrorString(_e));                             \
+        std::exit(1);                                                \
+    }                                                                \
+} while (0)
+
+// Device helper — runs on the GPU, callable only from device code.
+__device__ float relu(float x) { return x &gt; 0.f ? x : 0.f; }
+
+// Kernel — entry point. Called from host, runs on device.
+__global__ void scaleAndReluKernel(float* __restrict__ out,
+                                   const float* __restrict__ in,
+                                   float scale,
+                                   int N)
+{
+    // Map this thread to one element of the output.
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Always bounds-check: the grid is rounded up, so the last
+    // block has more threads than there is work.
+    if (idx &lt; N) {
+        out[idx] = relu(in[idx] * scale);
+    }
+}
+
+int main() {
+    const int N = 1 &lt;&lt; 20;                     // 1,048,576 elements
+    const size_t bytes = N * sizeof(float);
+
+    // 1) Allocate host buffers and initialize input.
+    float* h_in  = (float*)std::malloc(bytes);
+    float* h_out = (float*)std::malloc(bytes);
+    for (int i = 0; i &lt; N; ++i) h_in[i] = (float)(i - N/2);
+
+    // 2) Allocate device buffers.
+    float *d_in, *d_out;
+    CUDA_CHECK(cudaMalloc(&amp;d_in,  bytes));
+    CUDA_CHECK(cudaMalloc(&amp;d_out, bytes));
+
+    // 3) Copy input H-&gt;D.
+    CUDA_CHECK(cudaMemcpy(d_in, h_in, bytes, cudaMemcpyHostToDevice));
+
+    // 4) Launch: block of 256 threads, ceil(N / 256) blocks.
+    const int blockSize = 256;
+    const int gridSize  = (N + blockSize - 1) / blockSize;
+    scaleAndReluKernel&lt;&lt;&lt;gridSize, blockSize&gt;&gt;&gt;(d_out, d_in, 2.5f, N);
+    CUDA_CHECK(cudaGetLastError());     // catch launch-config errors
+    CUDA_CHECK(cudaDeviceSynchronize()); // catch run-time errors
+
+    // 5) Copy result D-&gt;H.
+    CUDA_CHECK(cudaMemcpy(h_out, d_out, bytes, cudaMemcpyDeviceToHost));
+
+    // 6) Quick sanity check on a few elements.
+    printf("out[0] = %f  out[N-1] = %f\n", h_out[0], h_out[N-1]);
+
+    // 7) Cleanup.
+    CUDA_CHECK(cudaFree(d_in));
+    CUDA_CHECK(cudaFree(d_out));
+    std::free(h_in);
+    std::free(h_out);
+    return 0;
+}
+
+// Compile (Ampere consumer):
+//   nvcc -O3 -arch=sm_86 -o scale scale.cu
+// Compile (A100):
+//   nvcc -O3 -arch=sm_80 -o scale scale.cu
+// Compile with line info for source-level profiling (chapter 4):
+//   nvcc -O3 -arch=sm_86 -lineinfo -o scale scale.cu
+</pre>
+
+        <h4>What the compile flags mean</h4>
+        <ul>
+            <li><code>-O3</code>: aggressive C++ optimization, same as host-side g++/clang.</li>
+            <li><code>-arch=sm_86</code>: generate SASS for Ampere GA10x consumer cards. <code>sm_80</code> for A100, <code>sm_89</code> for Ada (RTX 40-series), <code>sm_90</code> for Hopper (H100). Wrong arch == suboptimal codegen at best, compile failure at worst.</li>
+            <li><code>-lineinfo</code>: emit SASS↔source line correlation. Required for Nsight Compute's <em>Source View</em>. Adds zero performance cost.</li>
+            <li><code>-Xptxas -v</code>: print per-kernel register, SMEM, and stack-frame usage at compile time — invaluable when chasing occupancy.</li>
+            <li><code>--use_fast_math</code>: enable approximated transcendentals (<code>sin</code>, <code>cos</code>, <code>log</code>) — only for kernels where you have audited that loss of precision.</li>
+        </ul>
+    </section>
+
+    <!-- 2.2 -->
+    <section class="section" id="sec-2-2">
+        <h2 class="section-title"><span class="sec-num">2.2</span>Kernel 1 — Naive GEMM</h2>
+        <div class="section-subtitle">The simplest correct kernel, and why it is slow</div>
+
+        <p>The simplest GEMM kernel: launch one thread per output element. Each thread loops over <code>K</code>, accumulating into a register. This is correct, easy to read, and slow.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.2-A: Naive GEMM kernel">// Computes C = A * B where A is M x K, B is K x N, C is M x N (row-major, FP32).
+__global__ void gemmNaive(const float* __restrict__ A,
+                          const float* __restrict__ B,
+                                float* __restrict__ C,
+                          int M, int N, int K)
+{
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row &gt;= M || col &gt;= N) return;
+
+    float acc = 0.f;
+    for (int k = 0; k &lt; K; ++k) {
+        acc += A[row * K + k] * B[k * N + col];   // 2 global loads per inner iter
+    }
+    C[row * N + col] = acc;                       // 1 global store
+}
+
+// Launch: 16x16 = 256 threads/block.
+const int TX = 16, TY = 16;
+dim3 block(TX, TY);
+dim3 grid((N + TX - 1) / TX, (M + TY - 1) / TY);
+gemmNaive&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_A, d_B, d_C, M, N, K);
+</pre>
+
+        <h3>Why it is slow — by the numbers</h3>
+        <p>For <code>M = N = K = 4096</code>, FP32, on the RTX 3090:</p>
+        <ul>
+            <li>Total threads: <code>M·N = 16,777,216</code>.</li>
+            <li>Global loads per thread: <code>2·K = 8,192</code>.</li>
+            <li>Total global loads: <code>2·M·N·K = 1.37 × 10<sup>11</sup></code>, at 4 bytes each, ≈ <strong>549 GB</strong>.</li>
+        </ul>
+        <p>At the RTX 3090's peak DRAM bandwidth of 936 GB/s, just <em>moving</em> the loads takes 549 / 936 = 0.587 s. Add in poor coalescing, cache pressure, and the fact you can never reach peak bandwidth in practice, and the naive kernel measures in hundreds of milliseconds on a problem that cuBLAS finishes in ones of milliseconds.</p>
+
+        <p>The fundamental waste: <strong>every element of <code>A</code> is read <code>N</code> times and every element of <code>B</code> is read <code>M</code> times</strong>. The same word of DRAM crosses the memory bus thousands of times. Tiling exists to read each word from DRAM once and reuse it from on-chip memory thereafter.</p>
+
+        <div class="figure">
+            <div class="figure-label">Figure 2.2 — Interactive</div>
+            <div class="figure-title">One thread, one output, K loads of A and K loads of B</div>
+            <svg viewBox="0 0 720 280" role="img" aria-label="Naive thread-to-output mapping" preserveAspectRatio="xMidYMid meet">
+                <!-- A matrix -->
+                <g transform="translate(20,40)" data-tip="**A — one row reused per output column** — the entire row i is streamed from DRAM once per output element C[i,j]. With N output columns, the same row is read N times across the kernel. Tiling makes it 1× per tile.">
+                    <text x="0" y="-10" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">A (M × K)</text>
+                    <rect width="180" height="180" fill="#f5f5ef" stroke="#52545a"/>
+                    <!-- highlighted row -->
+                    <rect x="0" y="70" width="180" height="14" fill="#111214" opacity="0.7"/>
+                    <text x="190" y="80" font-family="JetBrains Mono" font-size="10" fill="#111214">row = i</text>
+                </g>
+                <!-- B matrix -->
+                <g transform="translate(280,40)" data-tip="**B — one column reused per output row** — column j is read M times across the kernel. Same redundancy as A, swapped axes. Together: 2·M·N·K global loads — 549 GB at FP32 for 4096³.">
+                    <text x="0" y="-10" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">B (K × N)</text>
+                    <rect width="180" height="180" fill="#f5f5ef" stroke="#52545a"/>
+                    <!-- highlighted col -->
+                    <rect x="84" y="0" width="14" height="180" fill="#111214" opacity="0.7"/>
+                    <text x="190" y="100" font-family="JetBrains Mono" font-size="10" fill="#111214">col = j</text>
+                </g>
+                <!-- C matrix -->
+                <g transform="translate(540,40)" data-tip="**C[i,j] — one output, one thread** — the inner loop runs K iterations issuing 2 global loads each = 2K loads per output. The arithmetic intensity is 1 FMA per 2 loads — DRAM-bound, not compute-bound.">
+                    <text x="0" y="-10" font-family="JetBrains Mono" font-size="11" fill="#111214" font-weight="700">C (M × N)</text>
+                    <rect width="160" height="180" fill="#f5f5ef" stroke="#52545a"/>
+                    <!-- single element -->
+                    <rect x="74" y="74" width="14" height="14" fill="#111214"/>
+                    <text x="170" y="84" font-family="JetBrains Mono" font-size="10" fill="#111214">C[i,j] ← one thread</text>
+                </g>
+                <!-- arrows -->
+                <line x1="200" y1="120" x2="280" y2="120" stroke="#111214" stroke-dasharray="3,3"/>
+                <line x1="200" y1="120" x2="540" y2="120" stroke="#111214" stroke-dasharray="3,3" opacity="0.3"/>
+                <text x="220" y="252" font-family="JetBrains Mono" font-size="10" fill="#52545a">Inner loop: K iterations, 2 global loads each = 2K global loads per output element.</text>
+            </svg>
+        </div>
+    </section>
+
+    <!-- 2.3 -->
+    <section class="section" id="sec-2-3">
+        <h2 class="section-title"><span class="sec-num">2.3</span>Kernel 2 — Memory Coalescing</h2>
+        <div class="section-subtitle">The cheapest 5×–10× you will ever get</div>
+
+        <p>Look closely at the naive kernel's inner-loop loads:</p>
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.3-A: The two loads, by warp">// Warp = 32 threads with consecutive threadIdx.x, same threadIdx.y.
+// row = blockIdx.y * blockDim.y + threadIdx.y   -&gt; constant across the warp
+// col = blockIdx.x * blockDim.x + threadIdx.x   -&gt; consecutive across the warp
+
+// LOAD 1: A[row * K + k]
+//   Index does not depend on threadIdx.x -&gt; ALL 32 threads load the SAME address.
+//   The hardware broadcasts this single value to the whole warp -&gt; 1 transaction. Good.
+
+// LOAD 2: B[k * N + col]
+//   col = ... + threadIdx.x -&gt; consecutive threads hit consecutive columns of B.
+//   In a row-major B, that means consecutive 4-byte words -&gt; ONE 128-byte
+//   transaction per warp. Good.
+</pre>
+
+        <p>So <em>this</em> mapping is already coalesced. The hazard arises when programmers reverse the axes by accident. Swap the row/col definitions:</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.3-B: The disaster version (NOT in your kernel)">int row = blockIdx.x * blockDim.x + threadIdx.x;   // consecutive across warp
+int col = blockIdx.y * blockDim.y + threadIdx.y;   // constant across warp
+
+float acc = 0.f;
+for (int k = 0; k &lt; K; ++k) {
+    // LOAD: B[k * N + col]
+    // col is constant across the warp -&gt; broadcast load. Fine.
+    // LOAD: A[row * K + k]
+    // row is consecutive across the warp -&gt; consecutive ROWS of A,
+    // strided by K elements per row -&gt; up to 32 separate cache lines.
+    // That is a 32x bandwidth waste per inner iteration.
+    acc += A[row * K + k] * B[k * N + col];
+}
+</pre>
+
+        <p><strong>The lesson is not "swap row and col."</strong> The lesson is: pick the loop nest <em>and</em> the thread layout so the fast-varying thread axis runs along the fast-varying memory axis. For row-major matrices, that means <code>threadIdx.x</code> indexes columns.</p>
+
+        <h3>What you can prove by reading PTX</h3>
+        <p>Compile both versions with <code>nvcc -arch=sm_86 -ptx -O3</code>. In the well-formed kernel, the inner-loop loads from <code>B</code> compile to <code>ld.global.f32</code> instructions whose addresses differ by 4 bytes across consecutive threads — which the hardware turns into a single 128-byte transaction. In the swapped version, the same instruction appears, but the addresses differ by <code>4·N</code> bytes — and the hardware issues up to 32 separate transactions. The SASS (<code>cuobjdump --dump-sass</code>) shows the same number of <code>LDG</code> instructions for both kernels; the bus traffic and the L1 sector counts differ wildly. <em>This is why looking only at the source code or only at the instruction count lies to you about cost.</em></p>
+
+        <div class="callout warn">
+            <div class="callout-label">Diagnostic</div>
+            Nsight Compute exposes the coalescing penalty as the ratio between "<em>Sectors / Request</em>" and the ideal of 1.0 in the Memory Workload Analysis. A ratio of 4× means each warp is touching four 32-byte sectors when one would have sufficed.
+        </div>
+    </section>
+
+    <!-- 2.4 -->
+    <section class="section" id="sec-2-4">
+        

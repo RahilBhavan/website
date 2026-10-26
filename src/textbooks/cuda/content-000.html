@@ -1,0 +1,278 @@
+
+
+<div id="progress-bar"></div>
+<button id="menu-toggle" aria-label="Toggle menu">≡</button>
+
+<nav id="sidebar">
+    <div class="sidebar-title">Zero to Beating cuBLAS</div>
+    <div class="sidebar-subtitle">A CUDA Kernel Engineering Textbook</div>
+    <div class="sidebar-divider"></div>
+    <ul class="sidebar-nav">
+        <li><a href="#cover" class="chapter-link"><span class="ch-num">FM</span>Front Matter</a></li>
+        <li>
+            <a href="#chapter-0" class="chapter-link"><span class="ch-num">00</span>Foundations</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-0-1">0.1 Reading Map</a></li>
+                <li><a href="#sec-0-2">0.2 Numbers (IEEE/FP16/BF16/TF32/FP8)</a></li>
+                <li><a href="#sec-0-3">0.3 Linear Algebra &amp; BLAS</a></li>
+                <li><a href="#sec-0-4">0.4 Computer Architecture Primer</a></li>
+                <li><a href="#sec-0-5">0.5 Parallelism Laws</a></li>
+                <li><a href="#sec-0-6">0.6 GPU Lineage</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-1" class="chapter-link"><span class="ch-num">01</span>The Machine Underneath</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-1-1">1.1 Parallelism Imperative</a></li>
+                <li><a href="#sec-1-2">1.2 The SM</a></li>
+                <li><a href="#sec-1-3">1.3 Threads, Warps, Blocks</a></li>
+                <li><a href="#sec-1-3-deep">⤷ atomic deep dive</a></li>
+                <li><a href="#sec-1-4">1.4 Memory Hierarchy</a></li>
+                <li><a href="#sec-1-4-deep">⤷ atomic deep dive</a></li>
+                <li><a href="#sec-1-5">1.5 Occupancy</a></li>
+                <li><a href="#sec-1-5-deep">⤷ atomic deep dive</a></li>
+                <li><a href="#sec-1-6">1.6 Roofline Model</a></li>
+                <li><a href="#sec-1-6-deep">⤷ atomic deep dive</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-2" class="chapter-link"><span class="ch-num">02</span>CUDA Programming</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-2-1">2.1 Programming Model</a></li>
+                <li><a href="#sec-2-2">2.2 Naive GEMM</a></li>
+                <li><a href="#sec-2-3">2.3 Coalescing</a></li>
+                <li><a href="#sec-2-4">2.4 Shared-Memory Tiling</a></li>
+                <li><a href="#sec-2-5">2.5 Register Tiling</a></li>
+                <li><a href="#sec-2-6">2.6 Vectorized Loads</a></li>
+                <li><a href="#sec-2-7">2.7 Benchmarking</a></li>
+                <li><a href="#sec-2-8">2.8 Software Stack (nvcc)</a></li>
+                <li><a href="#sec-2-9">2.9 Synchronization</a></li>
+                <li><a href="#sec-2-10">2.10 Streams, Events, Graphs</a></li>
+                <li><a href="#sec-2-11">2.11 Unified Memory</a></li>
+                <li><a href="#sec-2-12">2.12 Error Handling</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-3" class="chapter-link"><span class="ch-num">03</span>Tensor Cores &amp; PTX</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-3-1">3.1 Tensor Cores</a></li>
+                <li><a href="#sec-3-2">3.2 WMMA API</a></li>
+                <li><a href="#sec-3-3">3.3 PTX &amp; Inline Asm</a></li>
+                <li><a href="#sec-3-4">3.4 mma.sync</a></li>
+                <li><a href="#sec-3-5">3.5 cp.async</a></li>
+                <li><a href="#sec-3-6">3.6 Numerics Deep Dive</a></li>
+                <li><a href="#sec-3-7">3.7 Hopper (TMA, wgmma, clusters)</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-4" class="chapter-link"><span class="ch-num">04</span>Nsight Compute</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-4-1">4.1 Profiler Architecture</a></li>
+                <li><a href="#sec-4-2">4.2 Running the Profiler</a></li>
+                <li><a href="#sec-4-3">4.3 Summary View</a></li>
+                <li><a href="#sec-4-4">4.4 Roofline in NCU</a></li>
+                <li><a href="#sec-4-5">4.5 Memory Workload</a></li>
+                <li><a href="#sec-4-6">4.6 Source-Level</a></li>
+                <li><a href="#sec-4-7">4.7 Profiler Theory Deep Dive</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-5" class="chapter-link"><span class="ch-num">05</span>Beating cuBLAS</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-5-1">5.1 How cuBLAS Works</a></li>
+                <li><a href="#sec-5-2">5.2 Vulnerable Shapes</a></li>
+                <li><a href="#sec-5-3">5.3 Optimization Stack</a></li>
+                <li><a href="#sec-5-4">5.4 Benchmark Protocol</a></li>
+                <li><a href="#sec-5-5">5.5 Publishing</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-6" class="chapter-link"><span class="ch-num">06</span>Reference &amp; Roadmap</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-6-1">6.1 Hardware Reference</a></li>
+                <li><a href="#sec-6-2">6.2 PTX Reference</a></li>
+                <li><a href="#sec-6-3">6.3 NCU Metrics</a></li>
+                <li><a href="#sec-6-4">6.4 CUTLASS</a></li>
+                <li><a href="#sec-6-5">6.5 What's Next</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-7" class="chapter-link"><span class="ch-num">07</span>Building-Block Kernels</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-7-1">7.1 Warp Reduce</a></li>
+                <li><a href="#sec-7-2">7.2 Block Reduce</a></li>
+                <li><a href="#sec-7-3">7.3 Grid Reduce</a></li>
+                <li><a href="#sec-7-4">7.4 Prefix Sums / Scans</a></li>
+                <li><a href="#sec-7-5">7.5 Histograms</a></li>
+                <li><a href="#sec-7-6">7.6 Transpose &amp; Sort</a></li>
+                <li><a href="#sec-7-7">7.7 Persistent / Split-K / Stream-K</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-8" class="chapter-link"><span class="ch-num">08</span>Multi-GPU CUDA</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-8-1">8.1 Topology (NVLink/NVSwitch)</a></li>
+                <li><a href="#sec-8-2">8.2 Collectives (NCCL)</a></li>
+                <li><a href="#sec-8-3">8.3 Parallelism Strategies</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-9" class="chapter-link"><span class="ch-num">09</span>Knowledge Graph</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-9-1">9.1 Concept Graph</a></li>
+                <li><a href="#sec-9-2">9.2 Atomic-Notes Index</a></li>
+                <li><a href="#sec-9-3">9.3 Reading Paths</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-10" class="chapter-link"><span class="ch-num">10</span>Compiler &amp; Toolchain</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-10-1">10.1 nvcc Pipeline</a></li>
+                <li><a href="#sec-10-2">10.2 ptxas &amp; Register Pressure</a></li>
+                <li><a href="#sec-10-3">10.3 SASS &amp; cuobjdump</a></li>
+                <li><a href="#sec-10-4">10.4 NVRTC &amp; JIT</a></li>
+                <li><a href="#sec-10-5">10.5 ABI &amp; Linking</a></li>
+                <li><a href="#sec-10-6">10.6 Compile-Time Tooling</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-11" class="chapter-link"><span class="ch-num">11</span>Advanced Memory</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-11-1">11.1 Bank Conflicts Deep Dive</a></li>
+                <li><a href="#sec-11-2">11.2 Shared-Memory Swizzling</a></li>
+                <li><a href="#sec-11-3">11.3 L2 Carveout &amp; Persisting Access</a></li>
+                <li><a href="#sec-11-4">11.4 HBM &amp; GDDR Internals</a></li>
+                <li><a href="#sec-11-5">11.5 Pinned/Pageable/Async Allocators</a></li>
+                <li><a href="#sec-11-6">11.6 TMA &amp; Async Bulk Copy</a></li>
+                <li><a href="#sec-11-7">11.7 Texture &amp; Constant Memory</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-12" class="chapter-link"><span class="ch-num">12</span>Numerical Methods</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-12-1">12.1 IEEE 754 Beyond the Bit Layout</a></li>
+                <li><a href="#sec-12-2">12.2 FMA Semantics</a></li>
+                <li><a href="#sec-12-3">12.3 Summation Algorithms</a></li>
+                <li><a href="#sec-12-4">12.4 Conditioning &amp; Stability</a></li>
+                <li><a href="#sec-12-5">12.5 Mixed Precision &amp; Loss Scaling</a></li>
+                <li><a href="#sec-12-6">12.6 Determinism on the GPU</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-13" class="chapter-link"><span class="ch-num">13</span>Quantization &amp; Sparsity</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-13-1">13.1 The Quantization Spectrum</a></li>
+                <li><a href="#sec-13-2">13.2 INT8 GEMM Kernels</a></li>
+                <li><a href="#sec-13-3">13.3 FP8 E4M3 vs E5M2</a></li>
+                <li><a href="#sec-13-4">13.4 Sub-Byte Weights (INT4/FP4)</a></li>
+                <li><a href="#sec-13-5">13.5 2:4 Structured Sparsity</a></li>
+                <li><a href="#sec-13-6">13.6 Dequant Fusion &amp; Epilogues</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-14" class="chapter-link"><span class="ch-num">14</span>Flash Attention &amp; IO-Aware</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-14-1">14.1 Why Attention is Memory-Bound</a></li>
+                <li><a href="#sec-14-2">14.2 Online Softmax</a></li>
+                <li><a href="#sec-14-3">14.3 FlashAttention-1 Walkthrough</a></li>
+                <li><a href="#sec-14-4">14.4 FlashAttention-2 &amp; 3</a></li>
+                <li><a href="#sec-14-5">14.5 IO-Aware Design Principles</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-15" class="chapter-link"><span class="ch-num">15</span>Convolution Kernels</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-15-1">15.1 What Convolution Is</a></li>
+                <li><a href="#sec-15-2">15.2 im2col + GEMM</a></li>
+                <li><a href="#sec-15-3">15.3 Implicit GEMM</a></li>
+                <li><a href="#sec-15-4">15.4 Winograd Minimal Filtering</a></li>
+                <li><a href="#sec-15-5">15.5 FFT &amp; Direct Convolution</a></li>
+                <li><a href="#sec-15-6">15.6 Depthwise &amp; Group Conv</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-16" class="chapter-link"><span class="ch-num">16</span>Triton &amp; CUTLASS</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-16-1">16.1 The Kernel-DSL Landscape</a></li>
+                <li><a href="#sec-16-2">16.2 Triton in Anger</a></li>
+                <li><a href="#sec-16-3">16.3 CUTLASS Architecture</a></li>
+                <li><a href="#sec-16-4">16.4 CuTe Layouts</a></li>
+                <li><a href="#sec-16-5">16.5 Choosing Your Abstraction</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-17" class="chapter-link"><span class="ch-num">17</span>Debugging &amp; Correctness</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-17-1">17.1 compute-sanitizer Suite</a></li>
+                <li><a href="#sec-17-2">17.2 cuda-gdb Workflow</a></li>
+                <li><a href="#sec-17-3">17.3 Race Conditions &amp; Memory Ordering</a></li>
+                <li><a href="#sec-17-4">17.4 Numerical Validation</a></li>
+                <li><a href="#sec-17-5">17.5 Printf, Asserts, &amp; Trap</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-18" class="chapter-link"><span class="ch-num">18</span>Performance Methodology</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-18-1">18.1 The Optimization Loop</a></li>
+                <li><a href="#sec-18-2">18.2 SOL &amp; OAE Analysis</a></li>
+                <li><a href="#sec-18-3">18.3 Autotuning Frameworks</a></li>
+                <li><a href="#sec-18-4">18.4 Sensitivity Analysis</a></li>
+                <li><a href="#sec-18-5">18.5 Recording &amp; Reproducing Wins</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-19" class="chapter-link"><span class="ch-num">19</span>Hopper &amp; Blackwell</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-19-1">19.1 The Hopper SM</a></li>
+                <li><a href="#sec-19-2">19.2 TMA in Detail</a></li>
+                <li><a href="#sec-19-3">19.3 wgmma &amp; Warp-Group MMA</a></li>
+                <li><a href="#sec-19-4">19.4 Thread-Block Clusters &amp; DSMEM</a></li>
+                <li><a href="#sec-19-5">19.5 Transformer Engine</a></li>
+                <li><a href="#sec-19-6">19.6 Blackwell Preview</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#chapter-20" class="chapter-link"><span class="ch-num">20</span>Appendix &amp; Cheat Sheets</a>
+            <ul class="sidebar-sublist">
+                <li><a href="#sec-20-1">20.1 C++ for CUDA Kernel Writers</a></li>
+                <li><a href="#sec-20-2">20.2 Driver, Toolkit, Install</a></li>
+                <li><a href="#sec-20-3">20.3 Statistical Benchmarking</a></li>
+                <li><a href="#sec-20-4">20.4 Master Cheat Sheet</a></li>
+                <li><a href="#sec-20-5">20.5 Final Self-Test (50 Questions)</a></li>
+            </ul>
+        </li>
+    </ul>
+    <div class="gpu-badge">
+        <div class="gpu-badge-label">Hardware Target</div>
+        <div class="gpu-badge-value">NVIDIA Ampere · RTX 3090 / A100</div>
+    </div>
+</nav>
+
+<main id="content">
+
+<!-- COVER -->
+<section class="cover" id="cover">
+    <div class="cover-eyebrow">A CUDA Kernel Engineering Textbook</div>
+    <h1 class="cover-title">Zero to Beating<br>cuBLAS</h1>
+    <p class="cover-subtitle">Hardware, kernels, profiling, and the path to outperforming NVIDIA's<br>own library on a specific matrix multiply shape.</p>
+    <div class="cover-meta">
+        <div class="cover-meta-item"><div class="cover-meta-label">Target Hardware</div><div class="cover-meta-value">NVIDIA Ampere · sm_80 / sm_86</div></div>
+        <div class="cover-meta-item"><div class="cover-meta-label">Prerequisites</div><div class="cover-meta-value">C++, Python, undergrad CS</div></div>
+        <div class="cover-meta-item"><div class="cover-meta-label">Outcome</div><div class="cover-meta-value">Ship a kernel that beats cuBLAS</div></div>
+        <div class="cover-meta-item"><div class="cover-meta-label">Toolchain</div><div class="cover-meta-value">nvcc 12.x · Nsight Compute · CUTLASS</div></div>
+    </div>
+
+    <div class="callout warn" style="margin-top:36px">
+        <div class="callout-label">A note on numbers</div>
+        Every concrete number in this textbook is annotated with its source. Where a number was derived (e.g. ridge points, arithmetic intensities), the formula is shown. Where it was measured by a third party, the source is named. <strong>Re-verify hardware claims against the latest NVIDIA whitepapers and product pages before publishing or quoting them in production work.</strong> Architectures and metric names drift between toolkit versions; the structure of the analysis is the durable part.
+    </div>
+</section>
+
+<!-- =====================================================================
+     CHAPTER 0 — FOUNDATIONS (math, hardware, parallelism, lineage)
+     ===================================================================== -->
+<article class="chapter" id="chapter-0">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">00</div>
+        <div class="chapter-eyebrow">Chapter 00</div>
+        

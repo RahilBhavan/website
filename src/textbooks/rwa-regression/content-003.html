@@ -1,0 +1,340 @@
+<h2>Anatomy of an ERC-20 Transfer log</h2>
+
+    <p>
+      The raw log, exactly as the EVM emits it, looks like this:
+    </p>
+
+    <pre class="code-solidity"><code>{
+  "address":   "0x96F6ef951840721adBF46Ac996b59E0235CB985C",   // USDY contract
+  "topics": [
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",  // Transfer event signature
+    "0x000000000000000000000000a0b8...c4ad19fec",                            // from (left-padded)
+    "0x000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045"     // to (Vitalik's address)
+  ],
+  "data":      "0x000000000000000000000000000000000000000000000000056bc75e2d63100000",
+  "blockNumber":     "0x12a3f4a",
+  "transactionHash": "0xabc...",
+  "logIndex":        "0x42"
+}</code></pre>
+
+    <p>
+      The key field is <code>topics[0]</code>, which is the keccak-256 hash of the event
+      signature string <code>"Transfer(address,address,uint256)"</code>. That hash —
+      <code>0xddf252ad…b3ef</code> — is identical across every ERC-20 contract on every
+      EVM chain. You filter by this topic when you want all Transfer events for a given
+      contract. <code>topics[1]</code> and <code>topics[2]</code> are the indexed
+      <code>from</code> and <code>to</code> addresses (left-padded to 32 bytes because
+      that's how the EVM stores them). The <code>data</code> field, also 32 bytes, holds
+      the integer value (in the token's raw "wei-equivalent" units — for USDY with 18
+      decimals, that hex value decodes to 100 USDY).
+    </p>
+
+    <p>
+      In practice we do not parse hex by hand. Alchemy's
+      <code>alchemy_getAssetTransfers</code> endpoint does the decoding and returns clean
+      JSON. But you should know the underlying structure for two reasons. First, when
+      something looks wrong — say, Alchemy returns 1,000 transfers but Etherscan shows
+      1,200 — you want to be able to verify the discrepancy by querying raw logs directly.
+      Second, the "transfer category" field that Alchemy returns has subtle semantics
+      that you cannot interpret without knowing where it comes from.
+    </p>
+
+    <h2>The Alchemy request pattern</h2>
+
+    <p>
+      The blueprint's data-collection script makes JSON-RPC calls of this form:
+    </p>
+
+    <pre class="code-py"><code>payload = {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "alchemy_getAssetTransfers",
+    "params": [{
+        "fromBlock": "0x0",
+        "toBlock": "latest",
+        "contractAddresses": ["0x96F6ef951840721adBF46Ac996b59E0235CB985C"],
+        "category": ["erc20"],
+        "withMetadata": True,
+        "excludeZeroValue": False,   # keep zero-value transfers (relevant for BUIDL allowlist updates)
+        "maxCount": "0x3E8",         # 1000 per page (hex)
+    }]
+}</code></pre>
+
+    <p>
+      The response contains up to 1,000 transfers plus a <code>pageKey</code> if there
+      are more. You loop on <code>pageKey</code> until it's null. Two parameters deserve
+      attention:
+    </p>
+
+    <ul>
+      <li>
+        <strong><code>excludeZeroValue: False</code>.</strong> By default Alchemy excludes
+        zero-value transfers. For BUIDL we want them: when Securitize updates the
+        allowlist or processes certain administrative events, it emits zero-value
+        Transfers between specific bookkeeping addresses. Including them lets us verify
+        our issuer-wallet list is complete. We then drop them in post-processing because
+        they're never secondary-market activity.
+      </li>
+      <li>
+        <strong><code>withMetadata: True</code>.</strong> Returns the block timestamp
+        alongside each transfer. Without metadata, we'd have to call
+        <code>eth_getBlockByNumber</code> for every distinct block to recover timestamps —
+        an order of magnitude more requests. With metadata, one request is enough.
+      </li>
+    </ul>
+
+    <h2>What we keep, what we throw out</h2>
+
+    <p>
+      Not every Transfer event is a "secondary market trade." Most are not. The blueprint
+      defines a four-step filtering decision tree, applied to every raw Transfer log we
+      pull. The interactive widget below lets you walk a synthetic batch of transfers
+      through the same logic and see what survives.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 4.1 — The secondary-transfer filter, interactively</h3>
+        <span class="tag">interactive · decision tree</span>
+      </div>
+      <p style="font-family: var(--font-sans); font-size: 13.5px; color: var(--ink-soft); margin-top: 0;">
+        Each row below is a synthetic Transfer event. Click <strong>Apply filters</strong>
+        and watch which ones get kept (green ✓), and why each rejected row was rejected.
+        Toggle the filter rules on/off to see how each one bites.
+      </p>
+      <div class="controls">
+        <label><input type="checkbox" id="f_mint" checked /> drop mints (from = 0x000)</label>
+        <label><input type="checkbox" id="f_burn" checked /> drop burns (to = 0x000)</label>
+        <label><input type="checkbox" id="f_issuer" checked /> drop issuer wallets</label>
+        <label><input type="checkbox" id="f_self" checked /> drop self-transfers</label>
+        <label><input type="checkbox" id="f_zero" checked /> drop zero-value</label>
+        <button id="applyFilters">Apply filters</button>
+      </div>
+      <div id="transferList"></div>
+      <div class="readout" id="filterStats"></div>
+    </div>
+
+    <h2>Building the issuer wallet exclusion list</h2>
+
+    <p>
+      The hardest part of step 3 ("drop transfers to or from issuer wallets") is knowing
+      <em>which</em> addresses count as issuer wallets. For each of our seven tokens, this
+      list is hand-built by:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Reading the issuer's official documentation.</strong> Ondo, BlackRock,
+        Securitize, Franklin, Superstate, Hashnote, MatrixDock all publish (sometimes
+        on request) the contract addresses they use as transfer agents, custody pools,
+        and rebalancing operators.
+      </li>
+      <li>
+        <strong>Cross-referencing Etherscan labels.</strong> Etherscan tags addresses
+        with labels like "Securitize: Transfer Agent" when the operator has verified
+        them. Not all addresses are tagged — but the ones that are, are reliable.
+      </li>
+      <li>
+        <strong>Inspecting outlier transfer clusters.</strong> The flow that produces
+        the biggest concentration of large transfers is almost always an issuer process.
+        For BUIDL, sorting transfers by USD value and looking at the top 20 reveals
+        the few addresses that account for 90%+ of total movement. These are inspected
+        manually to confirm they are operational, not trading.
+      </li>
+    </ol>
+
+    <p>
+      Every addition to (and exclusion from) the list is logged in
+      <code>notes/data_anomalies.md</code> with a date and the reasoning. This is not
+      academic theater — when a reviewer asks "how did you decide that
+      <code>0x123…</code> was an issuer wallet?", you need a single document that
+      answers the question for every address. The blueprint's "Hot rules" mandate this.
+    </p>
+
+    <h2>Holder count reconstruction from event logs</h2>
+
+    <p>
+      One subtlety: Etherscan's free API does <em>not</em> provide historical holder
+      counts — only the current count. We need a weekly holder series. The solution is
+      to <strong>reconstruct</strong> holder counts from the transfer event log
+      directly, by simulating running per-address balances.
+    </p>
+
+    <p>
+      The algorithm is straightforward in concept: sort all transfers (including mints
+      and burns) by block number. For each transfer, adjust the running balance of the
+      <code>from</code> address downward and the <code>to</code> address upward. At any
+      point in time, the holder count is the number of addresses with strictly positive
+      balance. By sampling the running state at, say, the end of each week, we get a
+      full historical series.
+    </p>
+
+    <p>
+      This is the same procedure that Etherscan and DefiLlama do internally. Doing it
+      ourselves gives us reproducibility, and it lets us run sensitivity checks like:
+      "what if we exclude holders with balances below $1?" or "what if we count holders
+      with balance > 0 but no activity in the last 90 days separately?" Both of those
+      sensitivities are reported as robustness checks in Chapter 14.
+    </p>
+
+    <pre class="code-py"><code># pseudocode — see data_collection/04_pull_supply_holders.py
+balances = {}
+holder_count_by_week = {}
+for tx in sorted(transfers, key=lambda t: t["block_num"]):
+    if tx["from"] != ZERO_ADDR:
+        balances[tx["from"]] -= tx["raw_value"]
+    balances[tx["to"]]   = balances.get(tx["to"], 0) + tx["raw_value"]
+    # snapshot at end of each ISO week
+    week = iso_week(tx["block_timestamp"])
+    if week_just_ended(week, prev_week):
+        holder_count_by_week[prev_week] = sum(1 for v in balances.values() if v > 0)</code></pre>
+
+    <h2>Why we keep the raw data in SQLite, not CSV</h2>
+
+    <p>
+      Two practical reasons. First, querying "give me all USDY transfers between
+      blocks X and Y where value > $100k" is one SQL line against a SQLite database
+      and impossible against a CSV without re-parsing. Second, transfer pulls are
+      expensive (Alchemy compute units, time) — we want to never re-pull. SQLite with
+      a unique constraint on <code>(token, tx_hash, from, to)</code> and
+      <code>INSERT OR IGNORE</code> semantics makes re-runs idempotent. The blueprint's
+      hot rule #5 ("All data-pipeline scripts must be re-runnable") demands this.
+    </p>
+
+    <p>
+      The schema, from <code>data_collection/01_pull_transfers.py</code>:
+    </p>
+
+    <pre class="code-sql"><code>CREATE TABLE IF NOT EXISTS transfers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token            VARCHAR(20) NOT NULL,
+    block_num        INTEGER     NOT NULL,
+    block_timestamp  INTEGER     NOT NULL,
+    tx_hash          VARCHAR(66) NOT NULL,
+    from_address     VARCHAR(42) NOT NULL,
+    to_address       VARCHAR(42) NOT NULL,
+    value_raw        TEXT        NOT NULL,
+    value_usd        REAL,
+    is_secondary     INTEGER     DEFAULT 0,
+    UNIQUE(token, tx_hash, from_address, to_address)
+);</code></pre>
+
+    <p>
+      <code>value_raw</code> is stored as TEXT, not INTEGER — this matters because the
+      18-decimal tokens (OUSG, USDY, STBT) routinely produce raw values that exceed the
+      64-bit integer range. SQLite would silently round them otherwise. Lower-decimal
+      tokens (BUIDL at 6 decimals, USTB at 6, USYC at 8) fit in int64, but we use TEXT
+      uniformly so that one query path handles every token. The <code>is_secondary</code> flag is computed in the filtering step and
+      cached, so downstream regression code can simply
+      <code>WHERE is_secondary = 1</code> without re-running the filter logic.
+    </p>
+
+    <h2>What about BENJI on Stellar?</h2>
+
+    <p>
+      Stellar is a non-EVM chain with a fundamentally different data model. Stellar has
+      <em>operations</em> instead of transactions-with-logs, and the Horizon API exposes
+      <code>/payments</code> and <code>/operations</code> endpoints with cursor-based
+      pagination — the data is reachable, but there is no batched contract-address filter
+      equivalent to <code>alchemy_getAssetTransfers</code>, so collection walks operations
+      account-by-account and is materially slower. Building a robust Stellar pipeline
+      would take several weeks of dedicated effort.
+    </p>
+
+    <p>
+      Rather than do that, we scope BENJI to its <strong>Polygon deployment</strong> only.
+      Polygon is EVM-compatible, so the exact same Alchemy pipeline works (Alchemy
+      supports Polygon mainnet on the same API). The Polygon BENJI has fewer holders and
+      lower volume than the Stellar BENJI, but for our purposes — providing a never-treated
+      control unit — it is sufficient. Chapter 15 flags the multi-chain scoping as a
+      limitation and discusses what a follow-up paper extending to Stellar would look like.
+    </p>
+
+    <h2>Validation checks before any regression runs</h2>
+
+    <p>
+      The blueprint specifies five validation checks that must pass before the data is
+      considered "panel-ready":
+    </p>
+
+    <ol>
+      <li>No velocity observations before token launch (zero or null).</li>
+      <li>For every treated token, AMM TVL is zero or near-zero before the first listing date — if not, an earlier pool exists that we missed.</li>
+      <li>Holder counts are within an order of magnitude of independently-reported numbers (RWA.xyz, DefiLlama).</li>
+      <li>No missing weeks in the FFR series (Fed publishes daily; we resample to weekly).</li>
+      <li>Panel balance: how many token-week observations have all variables non-missing? Report this number in the paper.</li>
+    </ol>
+
+    <p>
+      These five checks are the data hygiene equivalent of unit tests. They are cheap to
+      run and they catch the kinds of errors that would otherwise show up as inexplicable
+      regression results three months later.
+    </p>
+
+    <p>
+      With the raw materials in hand — transfers, prices, supply, holder counts — the next
+      chapter builds the actual dependent variable: secondary-market velocity.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="05-velocity-construction" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 05 · Part II — Infrastructure</div>
+    <h1 class="chapter-title">Constructing velocity</h1>
+    <p class="chapter-subtitle">
+      The dependent variable. Why we annualize. Why we take the inverse hyperbolic sine.
+      And why the zero-inflated distribution forces us into a two-part model robustness check.
+    </p>
+
+    <h2>The raw formula</h2>
+
+    <p>
+      The dependent variable in every specification of this paper is one number per token
+      per week. Call it $V_{i,t}$ for token $i$ in week $t$:
+    </p>
+
+    <p>
+      $$V_{i,t} = \frac{\text{secondary transfer volume}_{i,t} \times 52}{\overline{\text{MCap}}_{i,t}}$$
+    </p>
+
+    <p>
+      The numerator is the sum of USD value of secondary transfers in week $t$, multiplied
+      by 52 to annualize. The denominator is the average market capitalization over the
+      same week (computed as the daily market cap on each of the seven days, averaged).
+      The ratio has units of "fraction of supply turned over per year" — a velocity in
+      the strict sense.
+    </p>
+
+    <p>
+      Each piece is built from data we collected in Chapter 4:
+    </p>
+
+    <ul>
+      <li><strong>Secondary transfer volume.</strong> Sum of <code>value_usd</code> over all rows in the <code>transfers</code> table where <code>token = $i$</code>, <code>is_secondary = 1</code>, and the block timestamp falls within week $t$. Built in <code>data_collection/06_assemble_panel.py</code>.</li>
+      <li><strong>Market cap.</strong> Total supply (queried at the block closest to each daily snapshot) multiplied by NAV. For BUIDL, USTB, USYC, STBT the NAV is fixed at $1.00. For OUSG and USDY we use the on-chain price oracle.</li>
+      <li><strong>Annualization.</strong> Multiplying weekly turnover by 52 converts to an annual rate. This is the same convention used in equity market research (turnover ratios are reported annualized).</li>
+    </ul>
+
+    <h2>What this dependent variable looks like in the data</h2>
+
+    <p>
+      Histograms first, modeling later. Across the 7 tokens × 170 weeks = 1,190 token-week
+      observations, with adjustments for unbalanced panel (USTB joining late, etc.) and
+      pre-launch zeros excluded, we expect roughly 800–900 usable observations of $V_{i,t}$.
+      The distribution is brutally skewed:
+    </p>
+
+    <ul>
+      <li><strong>Roughly 40% of observations are exactly zero</strong> — no secondary trades that week, common in BUIDL, BENJI-Polygon, USTB.</li>
+      <li>Another 30% are below 0.5 (modest activity).</li>
+      <li>Another 20% are between 0.5 and 5.</li>
+      <li>The top 10% range from 5 to occasionally 50+ (USDY in promotion weeks, OUSG in early AMM weeks).</li>
+    </ul>
+
+    <p>
+      Plotting $V_{i,t}$ directly is uninformative — the tail compresses everything else.
+      Two things have to happen before we can put this into a regression.
+    </p>
+
+    

@@ -1,0 +1,335 @@
+<h2>What you will get out of this textbook</h2>
+
+    <p>
+      By the time you finish Chapter 16, you should be able to do every one of the following
+      without consulting notes:
+    </p>
+
+    <ul>
+      <li>Explain to a non-economist <em>why</em> staggered two-way fixed effects is biased,
+        using nothing more than a 2×2 table of group-time means.</li>
+      <li>Write the formal definition of $ATT(g,t)$, the Callaway-Sant'Anna group-time
+        average treatment effect, and explain in plain English what each piece of notation
+        means.</li>
+      <li>Look at a raw <code>alchemy_getAssetTransfers</code> JSON response and identify
+        which fields you keep, which you throw away, and which you cross-check against
+        a separate issuer-wallet list.</li>
+      <li>Defend, in a thesis committee or in a journal response letter, the specific
+        decision to use <code>control_group = "nevertreated"</code> rather than
+        <code>"notyettreated"</code> in this project, and articulate the cost-benefit
+        of either choice.</li>
+      <li>Sketch the exact placebo test that will appear as Figure 4 in the paper, and
+        explain what its null distribution should look like under the maintained assumption
+        of zero average treatment effect.</li>
+      <li>Name three plausible reasons the paper's main estimate could be biased upward
+        and three reasons it could be biased downward, and rank them by how worried a
+        sophisticated reviewer would be.</li>
+    </ul>
+
+    <p>
+      The next chapter takes the seven tokens one at a time and tells you everything you
+      need to know about each: who issues it, who can hold it, what the transfer restrictions
+      are, what its actual trading pattern looks like, and what role it plays in the regression.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="02-rwa-primer" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 02 · Part I — The Problem</div>
+    <h1 class="chapter-title">The seven-token universe</h1>
+    <p class="chapter-subtitle">
+      Who issues each, who can hold each, what trades and what doesn't, and why these
+      seven and not others.
+    </p>
+
+    <h2>What is a tokenized Treasury, exactly</h2>
+
+    <p>
+      A tokenized U.S. Treasury is an ERC-20 (or, in BENJI's case, an asset on Stellar
+      or Polygon) whose underlying backing is a portfolio of short-duration U.S. Treasury
+      bills held in segregated custody at a regulated bank or trust company. Each unit
+      of the token represents a fractional ownership claim on that underlying portfolio.
+      The token's net asset value (NAV) is either fixed at $1.00 with yield distributed
+      separately (BUIDL, BENJI, USTB, USYC, STBT) or accrued into a growing NAV per share
+      (OUSG, USDY).
+    </p>
+
+    <p>
+      The legal structures differ — some are SEC-registered Regulation D 506(c) private
+      placements, some are foreign issuers under Reg S — but functionally, an investor
+      who passes whatever KYC/AML check the issuer requires can deposit USDC (or wire USD)
+      and receive tokens at the prevailing NAV. They can later redeem at the prevailing
+      NAV, again subject to the issuer's process. The yield accrues continuously and is
+      paid out by one of three mechanisms (more on this in the per-token cards below).
+    </p>
+
+    <div class="callout">
+      <div class="label">Why this is not a stablecoin</div>
+      <p>
+        USDC is backed by reserves held at custodian banks, but USDC tokens themselves do
+        not represent a security claim — they are e-money. BUIDL, in contrast, is an interest
+        in a fund. That distinction is why every RWA token in our universe has
+        <strong>transfer restrictions</strong> baked into its smart contract: the
+        <code>transfer()</code> function will revert if the recipient is not on an allowlist.
+        Stablecoins do not need to do that.
+      </p>
+    </div>
+
+    <h2>The seven instruments</h2>
+
+    <p>
+      The cards below summarize each token in our sample. Pay attention to the
+      <strong>transfer-restriction model</strong>, the <strong>holder count</strong>,
+      and the <strong>role</strong> (treated vs. control). These three attributes
+      determine almost everything about how each token contributes to identification.
+    </p>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">BUIDL</span>
+        <div>Ethereum mainnet</div>
+        <div>6 decimals</div>
+        <span class="role control">CONTROL</span>
+      </div>
+      <div>
+        <h3>BlackRock USD Institutional Digital Liquidity Fund</h3>
+        <p>
+          Issued by BlackRock through the Securitize transfer agent. The largest tokenized
+          Treasury fund in the world by AUM ($2.4B as of mid-2026). Holders are restricted to
+          qualified institutional investors who pass Securitize's KYC; the smart contract's
+          <code>transfer()</code> function checks an on-chain allowlist before letting any
+          movement go through. Yield is distributed monthly as a rebase-style mint of
+          additional BUIDL units to each holder.
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">March 2024 (Ethereum), later Arbitrum/Avalanche</div>
+          <div class="k">Holder count</div><div class="v">~85 wallets (entirely institutional)</div>
+          <div class="k">AMM listed?</div><div class="v">No — KYC restrictions prevent open AMM trading</div>
+          <div class="k">Why control</div><div class="v">Cannot be treated within the sample window</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">OUSG</span>
+        <div>Ethereum mainnet</div>
+        <div>18 decimals</div>
+        <span class="role treated">TREATED</span>
+      </div>
+      <div>
+        <h3>Ondo Short-Term U.S. Government Bond Fund</h3>
+        <p>
+          Issued by Ondo Finance. Originally a more restricted instrument; in 2023, Ondo
+          re-wrapped it into a tokenized fund structure that allows broader institutional
+          access. NAV is accrued into the token price (so 1 OUSG = ~$108 in mid-2026, having
+          appreciated from $100 at launch). The first major RWA token to be listed in a
+          permissioned Uniswap v3 pool. Treatment date for the regression is the first
+          week with material AMM liquidity (TVL > $10k).
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">January 2023</div>
+          <div class="k">Holder count</div><div class="v">~250 wallets</div>
+          <div class="k">AMM listed?</div><div class="v"><strong>Yes</strong> — Uniswap v3, late 2023</div>
+          <div class="k">First g_i week</div><div class="v">Week 44 (the cohort indicator in CS notation)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">USDY</span>
+        <div>Ethereum mainnet</div>
+        <div>18 decimals</div>
+        <span class="role treated">TREATED</span>
+      </div>
+      <div>
+        <h3>Ondo U.S. Dollar Yield Token</h3>
+        <p>
+          Ondo's retail-facing yield-bearing dollar. Holders earn yield through a slowly
+          appreciating NAV (1 USDY appreciates roughly 5% per year at current rates).
+          USDY's KYC is the lightest of the seven — accessible to non-U.S. retail investors
+          via Ondo's app. As a result it has by far the most holders (~12,000) and the
+          highest baseline velocity. The most retail-facing token in the sample.
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">August 2023</div>
+          <div class="k">Holder count</div><div class="v">~12,000 wallets (largest in sample)</div>
+          <div class="k">AMM listed?</div><div class="v"><strong>Yes</strong> — Uniswap v3, spring 2024</div>
+          <div class="k">First g_i week</div><div class="v">Week 68 (late April 2024)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">BENJI</span>
+        <div>Polygon (and Stellar)</div>
+        <div>9 dec (Stellar) · 18 dec (Polygon)</div>
+        <span class="role control">CONTROL</span>
+      </div>
+      <div>
+        <h3>Franklin OnChain U.S. Government Money Fund Token</h3>
+        <p>
+          Issued by Franklin Templeton. Originally Stellar-only (where most of the supply
+          sits), with a smaller Polygon deployment. We scope to <strong>Polygon only</strong>
+          because Stellar's on-chain analytics infrastructure is too immature to reliably
+          extract secondary transfers — the Stellar Horizon API is functional but lacks the
+          batched <code>getAssetTransfers</code> equivalent that Alchemy provides for EVM chains.
+          This scope decision is documented in Chapter 4 and flagged as a robustness concern
+          in Chapter 15.
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">April 2021 (Stellar); Polygon deployment 2023</div>
+          <div class="k">Holder count</div><div class="v">~600 on Polygon, ~thousands on Stellar (excluded)</div>
+          <div class="k">AMM listed?</div><div class="v">No — Franklin requires KYC; no AMM pool exists</div>
+          <div class="k">Why control</div><div class="v">Never treated within sample window</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">USTB</span>
+        <div>Ethereum mainnet</div>
+        <div>6 decimals</div>
+        <span class="role control">CONTROL</span>
+      </div>
+      <div>
+        <h3>Superstate Short Duration U.S. Government Securities Fund</h3>
+        <p>
+          Issued by Superstate, a relatively new entrant founded by Robert Leshner
+          (formerly Compound). KYC-restricted to U.S. qualified purchasers. Has not been
+          AMM-listed; Superstate's strategy has emphasized partnerships with institutional
+          DeFi venues rather than open AMM pools. Functions as a control. Note: USTB joins
+          the sample late (October 2023 launch), so it contributes roughly 135 weeks of data
+          versus 170 for tokens present at the start. This creates an unbalanced panel that
+          requires <code>allow_unbalanced_panel = TRUE</code> in the CS estimator call.
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">October 2023</div>
+          <div class="k">Holder count</div><div class="v">~60 wallets</div>
+          <div class="k">AMM listed?</div><div class="v">No</div>
+          <div class="k">Sample weeks</div><div class="v">~135 (joins late, unbalanced)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">USYC</span>
+        <div>Ethereum mainnet</div>
+        <div>8 decimals</div>
+        <span class="role control">CONTROL</span>
+      </div>
+      <div>
+        <h3>Hashnote (now Circle) U.S. Yield Coin</h3>
+        <p>
+          Originally issued by Hashnote; acquired by Circle in early 2025. The acquisition
+          itself is a confound — we verify that no AMM listing event coincided with the
+          Circle integration and document this in <code>notes/data_anomalies.md</code>.
+          USYC's holders are mostly DeFi protocols using it as a yield-bearing collateral
+          token (e.g., in some Morpho markets). This produces an interesting transfer
+          pattern: high frequency, but mostly to and from a handful of protocol contracts
+          that we need to decide whether to count as "secondary" trades or as protocol-internal
+          rebalancing. (We exclude them; see Chapter 4.)
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">June 2023</div>
+          <div class="k">Holder count</div><div class="v">~180 wallets</div>
+          <div class="k">AMM listed?</div><div class="v">No (though some DEX aggregators route through it)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="token-card">
+      <div class="lhs">
+        <span class="ticker">STBT</span>
+        <div>Ethereum mainnet</div>
+        <div>18 decimals</div>
+        <span class="role treated">TREATED</span>
+      </div>
+      <div>
+        <h3>Matrixdock Short-Term Treasury Bill Token</h3>
+        <p>
+          Issued by MatrixDock (Matrix Port). Smallest treated token by market cap, but
+          methodologically interesting because its AMM venue is a <strong>Curve stableswap
+          pool</strong> rather than Uniswap v3. Curve uses a different pricing function —
+          the "stableswap invariant" — designed for assets that trade close to par. This
+          gives us a robustness check (Chapter 14): does the treatment effect look the
+          same when AMM venue type varies? It also raises a methodological concern: Curve's
+          reported TVL is summed across <em>both</em> sides of the pool (STBT + USDC), so
+          the AMM-depth covariate has to be constructed carefully.
+        </p>
+        <div class="kv">
+          <div class="k">Launched</div><div class="v">March 2023</div>
+          <div class="k">Holder count</div><div class="v">~120 wallets</div>
+          <div class="k">AMM listed?</div><div class="v"><strong>Yes</strong> — Curve, late 2024</div>
+          <div class="k">First g_i week</div><div class="v">Week 92 (early October 2024)</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>The treatment timeline at a glance</h2>
+
+    <p>
+      Below is the staggered-treatment timeline that drives the entire identification
+      strategy. Each row is a token. Each row starts at the token's launch (small marker)
+      and continues to the present. For treated tokens, the colored band marks the AMM
+      listing event and everything after. Notice: the three treated tokens have
+      <strong>three different cohort indicators</strong> $g_i$ (week 44, week 68, week 92) —
+      this staggering is exactly what makes Callaway-Sant'Anna the right estimator and what
+      makes naive two-way fixed effects misleading.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 2.1 — Token launches and treatment cohorts</h3>
+        <span class="tag">interactive</span>
+      </div>
+      <svg id="timeline" width="860" height="240"></svg>
+      <div class="readout" id="timelineReadout">
+        Three treated tokens have a marked listing boundary; four never-treated controls do not. The
+        spacing between cohort indicators g_i is what gives Callaway-Sant'Anna its
+        identifying variation.
+      </div>
+    </div>
+
+    <h2>Why these seven and not others</h2>
+
+    <p>
+      The blueprint considered including additional tokens — WTGXX (WisdomTree's tokenized
+      money market fund), TBILL (OpenEden's Treasury fund), and several others. We held the
+      sample at seven for three reasons:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Verification cost.</strong> Each token requires a manually-curated issuer
+        wallet exclusion list. Building this for a new token takes several hours of work
+        per token, including reading the issuer's documentation, cross-referencing
+        Etherscan labels, and inspecting suspicious transfer clusters by hand. Seven was
+        the right number for the available time budget.
+      </li>
+      <li>
+        <strong>Sample length.</strong> Adding TBILL would have added ~40 weeks of data
+        starting from late 2024, which is too short to identify any treatment effect
+        cleanly. The CS estimator needs enough pre-period observations to estimate
+        $ATT(g,t)$ for $t \ll g$.
+      </li>
+      <li>
+        <strong>Stake in the sample.</strong> The seven we picked together cover ~70% of
+        the total tokenized-Treasury market cap. Adding a 20th token that's 0.5% of the
+        market wouldn't meaningfully change the dollar-weighted answer.
+      </li>
+    </ol>
+
+    <p>
+      Chapter 15 revisits this and discusses what changes if a follow-up paper expands to
+      15–20 tokens. The short answer: statistical power roughly doubles, the never-treated
+      control group becomes much larger, and several robustness checks that currently
+      lean on a single token (BUIDL's near-zero baseline velocity) become more meaningful.
+    </p>
+
+    

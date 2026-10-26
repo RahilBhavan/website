@@ -1,0 +1,202 @@
+<h2 class="section-title"><span class="sec-num">0.2</span>How Numbers Live in Hardware</h2>
+        <p class="section-subtitle">From IEEE 754 to FP8: every format you will meet</p>
+
+        <div class="cluster">
+            <strong>Why this section exists.</strong> Every CUDA program is, at its core, a function that loads numbers, does some arithmetic on them, and stores numbers back. The width of those numbers — 32 bits or 16 bits or 8 bits — sets your memory bandwidth, your tensor-core throughput, your numerical accuracy budget, and whether the kernel even fits in registers. You cannot reason about a kernel without first knowing what its operands physically <em>are</em>.
+        </div>
+
+        <div class="atomic" id="A0.2.1-positional">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.1]]</span>
+                <h4 class="atomic-title">Positional binary encoding — the floor of the stack</h4>
+                <span class="atomic-tag">representation</span>
+            </div>
+            <div class="atomic-body">
+                <p>A binary integer is just a sum of powers of two with coefficients in {0, 1}. The number <code>1011</code> means <code>1·2³ + 0·2² + 1·2¹ + 1·2⁰ = 11</code>. Every other format on this page — signed integers, fixed-point, floating-point — is a deliberate encoding <em>on top of</em> this primitive, trading bits between three things: the range it can express, the resolution within that range, and how cheap the arithmetic circuits are.</p>
+                <p>Two's-complement signed integers (used by <code>int32_t</code>, <code>int8_t</code>, the GPU's integer ALU) are the simplest such trade: the top bit is the sign, but the value is encoded so that <em>the same addition circuit works for signed and unsigned</em>. That circuit reuse is why GPUs and CPUs both default to two's-complement — not because mathematicians liked it.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.2.2-ieee754">[[A0.2.2]]</a> <a class="rel-chip rel-usedby" href="#A0.2.10-int8">[[A0.2.10]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.2-ieee754">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.2]]</span>
+                <h4 class="atomic-title">IEEE 754 — scientific notation for circuits</h4>
+                <span class="atomic-tag">representation</span>
+            </div>
+            <div class="atomic-body">
+                <p>IEEE 754 expresses a real number as <code>(−1)<sup>s</sup> · 1.mantissa · 2<sup>exponent − bias</sup></code>. Three fields, all integers: a sign bit, a biased exponent, and a fractional mantissa with an <em>implicit leading 1</em> (the "hidden bit"). The bias keeps the exponent unsigned in hardware so a single compare-and-subtract aligns two numbers' exponents before adding their mantissas. Every floating-point format you will see is just a re-budgeting of bits across (sign, exponent, mantissa).</p>
+
+                <div class="figure">
+                    <div class="figure-label">FIG 0.2.A · 32 BITS, THREE FIELDS</div>
+                    <div class="figure-title">FP32 bit layout (IEEE 754 binary32)</div>
+                    <div class="bitlayout">
+                        <div class="bit sign" title="sign">S</div>
+                        <div class="bit exp" style="grid-column: span 8;" title="biased exponent · bias = 127">E (8 bits, bias 127)</div>
+                        <div class="bit mant" style="grid-column: span 23;" title="mantissa · implicit leading 1">M (23 bits, +1 hidden)</div>
+                    </div>
+                    <div class="bitlayout-legend">
+                        <div><span style="color: var(--accent-red);">■</span> 1 sign · range  [−∞, +∞]</div>
+                        <div><span style="color: var(--accent-cyan);">■</span> 8 exponent · range ≈ 10<sup>±38</sup></div>
+                        <div><span style="color: var(--accent-green);">■</span> 23 mantissa · ≈ 7 decimal digits</div>
+                    </div>
+                    <p class="figure-caption">Five special exponent encodings: all-zeros mantissa with E=0 → zero (signed); non-zero mantissa with E=0 → subnormal (no hidden bit; gradual underflow); E=all-ones with zero mantissa → ±∞; E=all-ones with non-zero mantissa → NaN; everything else → a normal number with the hidden 1.</p>
+                </div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.1-positional">[[A0.2.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.2.3-fp32">[[A0.2.3]]</a> <a class="rel-chip rel-usedby" href="#A0.2.4-fp16">[[A0.2.4]]</a> <a class="rel-chip rel-usedby" href="#A0.2.5-bf16">[[A0.2.5]]</a> <a class="rel-chip rel-usedby" href="#A0.2.6-tf32">[[A0.2.6]]</a> <a class="rel-chip rel-usedby" href="#A0.2.7-fp8">[[A0.2.7]]</a></div>
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A0.2.9-rounding">[[A0.2.9-rounding]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.3-fp32">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.3]]</span>
+                <h4 class="atomic-title">FP32 (binary32) — the unit of GPU compute, until it isn't</h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>32 bits, 1 sign / 8 exponent / 23 mantissa, ~7 decimal digits of precision, dynamic range ≈ 10<sup>±38</sup>. On NVIDIA hardware FP32 is the "natural" CUDA core width: every regular ALU operation issued by an SM executes at <em>FP32 rate</em>, and FP64 is a small fraction of that rate on consumer GPUs (1:64 on a 3090, 1:2 on a server-class A100). FP32 is what you use when you don't know what you need; it is also the dominant cost when memory bandwidth dominates, because at four bytes per scalar a 4 KB row vector burns one whole L2 sector per 64 elements.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.2.4-fp16">[[A0.2.4-fp16]]</a> <a class="rel-chip rel-contrast" href="#A0.2.6-tf32">[[A0.2.6-tf32]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-1-6">[[§1.6 Roofline]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.4-fp16">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.4]]</span>
+                <h4 class="atomic-title">FP16 (binary16, "half") — the deep-learning starter format</h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>16 bits, 1 / 5 / 10. Range ≈ 6.1·10<sup>−5</sup> to 6.55·10<sup>4</sup>. Half the bytes of FP32, half the memory traffic, and on Tensor Cores (Volta and later) <em>8× the FLOP rate</em> when used as an MMA input. Its weakness is the narrow 5-bit exponent: activation tensors with values like 1·10<sup>−5</sup> or 7·10<sup>4</sup> sit at the edge of the range and overflow to <code>inf</code>, which is why training pipelines use <em>loss scaling</em> and accumulate matrix products in FP32.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.2.5-bf16">[[A0.2.5-bf16]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3 — Tensor Cores]]</a> <a class="rel-chip rel-usedby" href="#A0.2.8-accumulator">[[A0.2.8-accumulator]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.5-bf16">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.5]]</span>
+                <h4 class="atomic-title">BF16 — FP32's exponent at FP16's size</h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>16 bits, 1 / 8 / 7. Same exponent budget as FP32, so the dynamic range matches (≈ 10<sup>±38</sup>); only the mantissa is sacrificed. The implication for training: BF16 will <em>not</em> overflow on activations that would have killed FP16, at the cost of ~3 decimal digits of precision. Introduced by Google for TPUs, supported by NVIDIA Tensor Cores from Ampere onward.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.2.4-fp16">[[A0.2.4-fp16]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.6-tf32">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.6]]</span>
+                <h4 class="atomic-title">TF32 — Tensor Float, a 19-bit input format that <em>looks like FP32</em></h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>TF32 is an <em>internal</em> tensor-core format introduced on Ampere. The register is 32 bits, but only 19 of them are actually consumed by the MMA datapath: 1 sign + 8 exponent (FP32's range) + 10 mantissa (FP16's precision). The extra 13 mantissa bits the application passed in are discarded. The trick is that you can feed it ordinary <code>float</code> registers and get an ~8× speedup over CUDA-core FP32 — at the cost of mantissa precision the network often doesn't notice. NVIDIA enables it by default on Ampere when an FP32 GEMM hits <code>cublasGemmEx</code>; you opt out via <code>CUBLAS_PEDANTIC_MATH</code> or by setting <code>CUBLAS_TF32_TENSOR_OP_MATH</code> off.</p>
+                <div class="pitfall">
+                    <div class="pitfall-label">Common confusion</div>
+                    <p style="margin:0">"My FP32 GEMM on an A100 only matches a CPU FP64 reference to 3 decimal places — is something wrong?" Almost certainly not: cuBLAS silently dispatched a TF32 tensor-core kernel.</p>
+                </div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a> <a class="rel-chip rel-prereq" href="#A0.2.3-fp32">[[A0.2.3-fp32]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3]]</a> <a class="rel-chip rel-usedby" href="#sec-5-2">[[§5.2 cuBLAS vuln.]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.7-fp8">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.7]]</span>
+                <h4 class="atomic-title">FP8 — two formats, both 8 bits, one trade-off</h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>Hopper (sm_90) and later support two FP8 formats whose names you must memorize because they are <em>not</em> interchangeable: <code>E4M3</code> (1 sign / 4 exponent / 3 mantissa, narrower range, finer steps) and <code>E5M2</code> (1 / 5 / 2, IEEE-like, wider range, coarser steps). The standard recipe in FP8 training: weights and forward activations in <code>E4M3</code>, gradients in <code>E5M2</code>. Both formats deviate from IEEE 754 in subtle ways (no inf in E4M3; special NaN encodings).</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3 — Hopper TC]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.8-accumulator">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.8]]</span>
+                <h4 class="atomic-title">Mixed-precision: input format ≠ accumulator format</h4>
+                <span class="atomic-tag">numerics</span>
+            </div>
+            <div class="atomic-body">
+                <p>A tensor-core <em>D = A·B + C</em> almost never accumulates in its input format. The MMA reads FP16 (or BF16, INT8, FP8) operands, multiplies them, and accumulates the dot products into <em>wider</em> registers — typically FP32. This is what keeps GEMM stable: K-deep sums of small noisy numbers do not lose precision the way they would in pure FP16. When you see "FP16 GEMM" in cuBLAS or CUTLASS it almost always means "FP16 inputs, FP32 accumulator." When the accumulator is also FP16 (the <code>HMMA.1688.F16</code> SASS variant), expect numerical disasters at K > 256.</p>
+                <div class="tldr">If the input fits in fewer bytes than the output, the kernel is mixed-precision. Output precision dominates correctness; input precision dominates speed and bandwidth.</div>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.4-fp16">[[A0.2.4]]</a> <a class="rel-chip rel-prereq" href="#A0.2.3-fp32">[[A0.2.3]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3]]</a> <a class="rel-chip rel-usedby" href="#sec-3-4">[[§3.4 mma.sync]]</a></div>
+                <div class="rel-row"><span class="rel-label">Related</span> <a class="rel-chip rel-related" href="#A0.2.11-kahan">[[A0.2.11-kahan]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.9-rounding">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.9]]</span>
+                <h4 class="atomic-title">Rounding modes — the silent five</h4>
+                <span class="atomic-tag">numerics</span>
+            </div>
+            <div class="atomic-body">
+                <p>Floating-point arithmetic has to <em>round</em> after every operation that produces more mantissa than the format can store. IEEE 754 defines five rounding modes: round-to-nearest-ties-to-even (the default everywhere serious), ties-to-away (used in financial software), toward zero (truncation), toward +∞, toward −∞. CUDA exposes them as intrinsics: <code>__fadd_rn / _rz / _ru / _rd</code>. On Tensor Cores the rounding mode is <em>hardwired</em> per format and per generation; you cannot change it from the kernel. Hopper introduced <em>stochastic rounding</em> for FP8 to address a specific training instability: when a small gradient is added many times to a large weight, deterministic rounding loses every increment to the same direction; stochastic rounding turns the bias into noise.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.2.2-ieee754">[[A0.2.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A0.2.11-kahan">[[A0.2.11-kahan]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.10-int8">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.10]]</span>
+                <h4 class="atomic-title">INT8 / INT4 — integer matmul as quantization target</h4>
+                <span class="atomic-tag">format</span>
+            </div>
+            <div class="atomic-body">
+                <p>Tensor cores can also consume signed/unsigned integers: INT8 since Turing, INT4 since Turing (sm_75) but deprecated for new code on Hopper. The semantics are different from float MMA: the multiply is integer (so two INT8 operands fit in an INT16 product), and the accumulator is INT32. INT8 GEMM throughput is 2× the FP16 tensor-core rate on most NVIDIA parts. The catch is that to use it you have to <em>quantize</em>: pick per-tensor or per-channel scales <code>s</code>, store <code>x_q = round(x / s)</code> as INT8, then dequantize after the MMA with another multiply by <code>s</code>. That quantization is application-level, not hardware-level.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.1-positional">[[A0.2.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-3">[[Ch3]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.2.11-kahan">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.2.11]]</span>
+                <h4 class="atomic-title">Kahan summation — why long dot-products go bad without compensation</h4>
+                <span class="atomic-tag">numerics</span>
+            </div>
+            <div class="atomic-body">
+                <p>Summing <em>K</em> floating-point numbers in a naive loop accumulates an error that grows as <em>O(Kε)</em> in the worst case, where ε is the machine epsilon. For a K=4096 FP16 dot product with ε ≈ 9.8·10<sup>−4</sup>, the bound is ~4 — much larger than the answer for many inputs. Kahan's compensated-summation trick maintains an auxiliary "lost low-order bits" running variable and folds it back in on each step, reducing the bound to <em>O(ε)</em> independent of <em>K</em>. CUDA programmers rarely run Kahan inside the inner GEMM loop because it costs ~3× the FLOPs; instead, they sidestep the problem by using an FP32 accumulator (see <a href="#A0.2.8-accumulator" class="note-ref">[[A0.2.8]]</a>) and, for ultra-stable reductions, by reshaping the algorithm into a pairwise tree (see <a href="#chapter-7" class="note-ref">Ch 7 — reductions</a>).</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.2-ieee754">[[A0.2.2]]</a> <a class="rel-chip rel-prereq" href="#A0.2.9-rounding">[[A0.2.9]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7-reductions]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.2.8-accumulator">[[A0.2.8]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 0.3 Linear Algebra ============== -->
+    

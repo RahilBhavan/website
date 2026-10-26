@@ -1,0 +1,112 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import textbooks from '../../data/textbooks.json';
+export const prerender = true;
+const subjects = ['All subjects', 'Engineering', 'Finance', 'Crypto'];
+---
+<BaseLayout title="Textbooks" description="Eleven project textbooks on engineering, finance and crypto, with worked examples, diagrams and questions to test your understanding.">
+  <main id="main" class="wrap-wide library">
+    <header class="library-heading">
+      <p class="label">The learning library · 11 textbooks</p>
+      <h1>Learn the<br /><span>whole thing.</span></h1>
+      <div class="intro">
+        <p>Long-form companions to the projects: the foundations, the worked examples, the questions worth getting wrong first.</p>
+        <p class="muted">Engineering, finance and crypto. These are study books with dated evidence and open questions. Start with the subject you want to understand.</p>
+      </div>
+    </header>
+    <section aria-labelledby="browse-title" class="catalogue">
+      <div class="catalogue-head">
+        <h2 id="browse-title">Find your next subject</h2>
+        <p id="result-count" role="status">11 textbooks</p>
+      </div>
+      <form id="library-filters" role="search">
+        <div class="search-field"><label for="book-query">Search textbooks</label><input id="book-query" name="q" type="search" placeholder="Try pipeline, valuation or tokenization" /></div>
+        <fieldset><legend>Subject</legend><div class="subject-options">{subjects.map((subject, index) => <label><input type="radio" name="subject" value={subject} checked={index === 0} /><span>{subject}</span></label>)}</div></fieldset>
+        <button type="reset" class="reset">Reset</button>
+      </form>
+      <noscript><p>All books are listed below. Use your browser’s Find command to search this page.</p></noscript>
+      <ol class="book-list">
+        {textbooks.map((book, index) => (
+          <li data-book data-subject={book.subject} data-search={`${book.title} ${book.description} ${book.subject}`.toLowerCase()}>
+            <span class="book-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+            <div class="book-copy"><p class="label">{book.subject}</p><h3><a href={`/textbooks/${book.slug}`}>{book.title}</a></h3><p>{book.description}</p><p class="basis">{book.basis}</p></div>
+            <a class="read-book" href={`/textbooks/${book.slug}`} aria-label={`Read ${book.title}`}>Read textbook <span aria-hidden="true">↗</span></a>
+          </li>
+        ))}
+      </ol>
+      <div id="no-books" hidden><h3>No textbooks match.</h3><p>Try a different word or reset the search to see the whole library.</p><button id="empty-reset" type="button">Show all textbooks</button></div>
+    </section>
+    <aside class="companion" aria-labelledby="companion-title">
+      <p class="label">Companion reading</p><h2 id="companion-title">Understanding Strategy</h2>
+      <p>A shorter Bitcoin study guide: foundations, financing, measurement and risk, with a reading path and review questions.</p>
+      <a href="/textbooks/strategy-bitcoin">Open the study guide <span aria-hidden="true">↗</span></a>
+    </aside>
+    <p class="edition-note">The website editions share a reading design. Figures, source dates and project limitations stay with their chapters. An example calculation is a study tool, not evidence of a live result.</p>
+  </main>
+</BaseLayout>
+<script>
+  const form = document.querySelector<HTMLFormElement>('#library-filters');
+  const query = document.querySelector<HTMLInputElement>('#book-query');
+  const count = document.querySelector('#result-count');
+  const empty = document.querySelector<HTMLElement>('#no-books');
+  const books = [...document.querySelectorAll<HTMLElement>('[data-book]')];
+  function update() {
+    if (!form || !query || !count || !empty) return;
+    const subject = new FormData(form).get('subject');
+    const words = query.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let matches = 0;
+    for (const book of books) {
+      book.hidden = !(subject === 'All subjects' || book.dataset.subject === subject) || !words.every(word => book.dataset.search?.includes(word));
+      if (!book.hidden) matches++;
+    }
+    count.textContent = `${matches} ${matches === 1 ? 'textbook' : 'textbooks'}`;
+    empty.hidden = matches > 0;
+  }
+  form?.addEventListener('submit', event => event.preventDefault());
+  form?.addEventListener('input', update);
+  form?.addEventListener('reset', () => requestAnimationFrame(update));
+  document.querySelector('#empty-reset')?.addEventListener('click', () => { form?.reset(); query?.focus(); });
+</script>
+<style>
+  .library{padding-top:3rem;padding-bottom:6rem}
+  .library-heading{padding-bottom:5rem}
+  .library-heading>.label{margin:0 0 2rem}
+  h1{font-size:clamp(4rem,11vw,9.25rem);line-height:.97;letter-spacing:-.02em;max-width:12ch;margin-bottom:2rem}
+  h1 span{color:var(--accent)}
+  .intro{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,4fr);gap:4rem;max-width:68rem}
+  .intro p{font-size:1.3rem;margin:0;max-width:45ch}
+  .intro .muted{font-size:1rem;max-width:37ch}
+  .catalogue-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:1rem;border-top:1px solid var(--border);padding-top:2rem}
+  .catalogue-head h2{font-size:2rem}
+  #result-count{color:var(--secondary);font-size:1rem}
+  form{display:flex;gap:1.5rem;align-items:end;flex-wrap:wrap;margin:1rem 0 2rem}
+  .search-field{flex:1 1 300px;max-width:460px}
+  .search-field label,legend{display:block;font-size:.875rem;color:var(--secondary);margin-bottom:.5rem}
+  input[type=search]{font:inherit;width:100%;min-height:48px;padding:.65rem .8rem;color:var(--ink);background:var(--surface);border:1px solid var(--secondary);border-radius:4px}
+  fieldset{padding:0;margin:0;border:0;min-width:0}
+  .subject-options{display:flex;flex-wrap:wrap;gap:.25rem}
+  .subject-options label{position:relative;cursor:pointer}
+  .subject-options input{position:absolute;opacity:0;width:1px;height:1px}
+  .subject-options span{display:flex;align-items:center;min-height:48px;padding:.5rem .8rem;border:1px solid var(--border);font-size:.9375rem}
+  .subject-options input:checked+span{background:var(--accent);color:var(--canvas);border-color:var(--accent)}
+  .subject-options input:focus-visible+span{outline:3px solid var(--accent);outline-offset:3px}
+  button{font:inherit;min-height:48px;padding:.5rem .75rem;background:transparent;color:var(--ink);border:1px solid var(--secondary);cursor:pointer}
+  .reset{border:0;text-decoration:underline;text-underline-offset:.25em}
+  .book-list{list-style:none}
+  .book-list>li{display:grid;grid-template-columns:64px minmax(0,1fr) 150px;gap:1.5rem;align-items:start;border-top:1px solid var(--border);padding:2.25rem 0}
+  .book-number{font-family:var(--font-display);font-size:2.25rem;line-height:1;color:var(--secondary);padding-top:.25rem}
+  .book-copy>.label{margin:0 0 .625rem}
+  .book-copy h3{font-size:clamp(1.5rem,2.7vw,2rem);font-weight:600;line-height:1.15;margin:0 0 1rem;max-width:30ch}
+  .book-copy h3 a{color:var(--ink);text-decoration:none}
+  .book-copy h3 a:hover{text-decoration:underline;text-decoration-color:var(--accent)}
+  .book-copy p{max-width:60ch;margin:0 0 .75rem}
+  .book-copy .basis{font-size:.875rem;color:var(--secondary);margin-bottom:0}
+  .read-book{display:flex;gap:.75rem;align-items:center;min-height:44px;font-size:.9375rem;margin-top:1.75rem}
+  .book-list>li[hidden],#no-books[hidden]{display:none}
+  #no-books{padding:3rem 0;border-top:1px solid var(--border)}
+  .companion{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);max-width:48rem}
+  .companion h2{margin:.5rem 0 1rem}
+  .companion a{display:inline-flex;gap:.75rem;align-items:center;min-height:44px}
+  .edition-note{max-width:70ch;margin:4rem 0 0;color:var(--secondary);font-size:.9375rem}
+  @media(max-width:700px){.intro{grid-template-columns:1fr;gap:1.25rem}.library-heading{padding-bottom:3rem}.book-list>li{grid-template-columns:40px minmax(0,1fr);gap:1rem}.read-book{grid-column:2;margin:0}.book-number{font-size:1.75rem}.subject-options span{padding:.5rem .6rem}.library{padding-top:2rem}}
+</style>

@@ -1,0 +1,354 @@
+<h2>Three building-block 2×2 comparisons</h2>
+
+    <p>
+      With three cohorts (early-treated E, late-treated L, never-treated N), TWFE
+      computes three types of 2×2 DiD inside itself:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Treated vs. never-treated.</strong> Compare E (or L) to N over a
+        consistent window. These are clean: N never changes status, so the parallel-trends
+        assumption can hold.
+      </li>
+      <li>
+        <strong>Early vs. late, BEFORE late is treated.</strong> Use E as treated, L as
+        control, over the window where L is still "not yet treated". This is also clean.
+      </li>
+      <li>
+        <strong>Late vs. early, AFTER early is treated.</strong> Use L as "treated"
+        (correct), E as "control" — but E has been treated for a while and its outcome
+        is now reflecting a treatment effect. Using E as a control here is what
+        Goodman-Bacon calls the <em>forbidden comparison</em>.
+      </li>
+    </ol>
+
+    <p>
+      Type 3 is the killer. The TWFE machine cannot distinguish "early-treated unit's
+      changing outcome" from "control unit's expected counterfactual change". It treats
+      E's post-treatment dynamics as if they were E's untreated trajectory. Then when
+      L's treatment kicks in and L's outcome rises faster than E's (which is plateauing),
+      the comparison subtracts E's continued rise — pulling the estimate of L's effect
+      downward, sometimes flipping its sign.
+    </p>
+
+    <div class="callout error">
+      <div class="label">The result, in one sentence</div>
+      <p>
+        TWFE = (weighted avg of clean 2×2 comparisons) − (weighted avg of forbidden 2×2
+        comparisons that subtract dynamic treatment effects). Under dynamic treatment
+        effects, TWFE is biased toward zero or even toward the wrong sign.
+      </p>
+    </div>
+
+    <h2>See it for yourself</h2>
+
+    <p>
+      The interactive widget below shows three units with adjustable treatment timing
+      and an adjustable dynamic-treatment-effect shape. The chart at the top shows the
+      raw outcomes. The chart at the bottom decomposes the TWFE coefficient into its
+      three building-block 2×2 comparisons, with their Bacon weights. Negative weights
+      appear in red. Notice how the forbidden comparison dominates as the dynamic effect
+      grows.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 8.1 — Goodman-Bacon decomposition visualizer</h3>
+        <span class="tag">interactive · the killer chart</span>
+      </div>
+      <div class="controls">
+        <label>
+          Static effect size (baseline jump)
+          <input type="range" id="staticEff" min="0" max="2" step="0.1" value="0.8" />
+          <span class="value" id="staticEffV">0.8</span>
+        </label>
+        <label>
+          Dynamic effect growth (post-treatment slope)
+          <input type="range" id="dynEff" min="0" max="0.15" step="0.005" value="0.05" />
+          <span class="value" id="dynEffV">0.05 per period</span>
+        </label>
+        <label>
+          Late treatment timing
+          <input type="range" id="lateT" min="12" max="18" step="1" value="15" />
+          <span class="value" id="lateTV">period 15</span>
+        </label>
+      </div>
+      <svg id="baconOutcomes" width="720" height="220"></svg>
+      <svg id="baconDecomp" width="720" height="280"></svg>
+      <div class="readout" id="baconReadout"></div>
+      <div class="interactive-caption">
+        Top: outcomes for three units — early-treated (treated at period 8, red),
+        late-treated (treated at period chosen by slider, orange), and never-treated
+        (grey). Bottom: the four implicit 2×2 DiD comparisons that build up the TWFE
+        estimate. The Bacon weights shown (0.30 / 0.25 / 0.20 / 0.25) are illustrative
+        constants chosen for pedagogy; the real Bacon weights depend on cohort sizes,
+        treatment timing, and the panel's covariance structure, and are produced by
+        <code>bacondecomp::bacon()</code> in R. The point of the visualization is the
+        <em>direction</em> of bias contributed by the forbidden comparison (marked bar
+        under dynamic effects), not the exact numbers.
+      </div>
+    </div>
+
+    <h2>The implications for our project</h2>
+
+    <p>
+      Our three treated cohorts (OUSG, USDY, STBT) are exactly the staggered structure
+      that creates forbidden comparisons. And we have strong prior reasons to expect
+      <em>dynamic</em> treatment effects — AMM TVL builds gradually over weeks after a
+      pool is created, and the velocity response should plausibly grow as more LPs
+      provide liquidity and more traders find the pool.
+    </p>
+
+    <p>
+      If we ran TWFE blindly on this panel:
+    </p>
+
+    <ul>
+      <li>The OUSG effect would partially be estimated using post-listing USDY and STBT as "controls" (in the forbidden direction), pulling the estimate toward zero.</li>
+      <li>The USDY effect would be estimated using already-treated OUSG as a "control", biased in the same direction.</li>
+      <li>The single TWFE coefficient $\hat\beta$ would be a confused mixture, not interpretable as any single token's treatment effect.</li>
+    </ul>
+
+    <p>
+      We still <em>report</em> TWFE in the paper, as Table 2 — but as a comparison baseline,
+      not the preferred specification. The blueprint's
+      <code>analysis/02_twfe_baseline.R</code> runs the regression and reports the
+      coefficient alongside the result of <code>bacondecomp::bacon()</code>, which
+      decomposes the TWFE estimate into its building blocks and reports the weights. If
+      the forbidden comparisons (using already-treated units as controls) account for a
+      non-trivial fraction of the total Bacon weight (we expect 15–25% in this sample),
+      that is itself a finding worth showing
+      a reviewer — it justifies the move to Callaway-Sant'Anna.
+    </p>
+
+    <h2>The exact Bacon weighting formula</h2>
+
+    <p>
+      Goodman-Bacon proves that the TWFE coefficient under staggered treatment equals:
+    </p>
+
+    <p>
+      $$\hat\beta_{\text{TWFE}} = \sum_{k} w_k \cdot \widehat{\text{ATT}}_k^{2\times 2}$$
+    </p>
+
+    <p>
+      where the index $k$ runs over all possible 2×2 comparisons embedded in the panel
+      and $w_k$ are non-negative weights that sum to 1 (in the sense that the comparison
+      receives a positive weight in the decomposition). The bias arises because the
+      "treatment" assignment in some of those 2×2 comparisons is wrong: an already-treated
+      unit being used as control means the comparison's $\widehat{\text{ATT}}^{2\times 2}$
+      equals (true ATT of late cohort) MINUS (dynamic-effect change of early cohort over
+      the same window). Subtracting a positive dynamic-effect contamination pulls the
+      reported "ATT" downward.
+    </p>
+
+    <p>
+      The fix is to never use treated units as controls. Callaway-Sant'Anna does exactly
+      this by construction: it builds $\widehat{\text{ATT}}(g, t)$ as a direct DiD between
+      cohort $g$ at period $t$ and the never-treated (or not-yet-treated) units only,
+      with no aggregation that could re-introduce contamination. That's the topic of
+      Chapter 9.
+    </p>
+
+    <h2>What you should remember</h2>
+
+    <ul>
+      <li>TWFE under staggered treatment ≠ a simple average of treatment effects.</li>
+      <li>The bias comes from using already-treated units as implicit "controls" for later-treated ones.</li>
+      <li>Bias is worst when treatment effects are dynamic (grow over time after treatment).</li>
+      <li>We use TWFE as a comparison only and run the formal Bacon decomposition to expose the bias mechanically.</li>
+      <li>The fix is Callaway-Sant'Anna, which never lets a treated unit serve as control.</li>
+    </ul>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="09-callaway-santanna" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 09 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">The Callaway-Sant'Anna estimator</h1>
+    <p class="chapter-subtitle">
+      A treatment-effect estimator that — by construction — never uses a treated unit as
+      a control. The methodological backbone of the project.
+    </p>
+
+    <h2>The atomic building block: ATT(g, t)</h2>
+
+    <p>
+      Callaway and Sant'Anna (2021) sidestep the TWFE problem by defining a more
+      granular estimand. Rather than collapse the entire panel into one coefficient,
+      they define the average treatment effect for each (cohort, calendar period) cell:
+    </p>
+
+    <p>
+      $$\text{ATT}(g, t) = \mathbb{E}\!\left[Y_t(g) - Y_t(\infty) \mid G_i = g\right]$$
+
+      where $Y_t(g)$ is the potential outcome at time $t$ for a unit first treated at
+      time $g$, and $Y_t(\infty)$ is the never-treated potential outcome.
+    </p>
+
+    <p>
+      Here $g$ is the period in which a unit was first treated (its <strong>cohort</strong>),
+      and $t$ is calendar time. $\text{ATT}(44, 60)$ would read as "the average treatment
+      effect on units that were first treated in week 44, evaluated in week 60". For our
+      project, $g \in \{44, 68, 92\}$ (the three treated cohorts) and $t$ runs from 1 to
+      170. So the full set of $\text{ATT}(g, t)$ values forms a grid with about 400 cells
+      worth estimating (each cohort $g$ contributes estimates for every $t \geq g$).
+    </p>
+
+    <h2>How each ATT(g, t) is estimated</h2>
+
+    <p>
+      For a chosen cohort $g$ and period $t \geq g$, the CS estimator constructs the
+      simplest possible 2×2 DiD:
+    </p>
+
+    <p>
+      $$\widehat{\text{ATT}}(g, t) = \left[ \bar Y_{g, t} - \bar Y_{g, g-1} \right] - \left[ \bar Y_{\mathcal C, t} - \bar Y_{\mathcal C, g-1} \right]$$
+    </p>
+
+    <p>
+      where the bars denote sample means, the first bracketed term is the change in
+      cohort $g$'s outcome between its last pre-treatment period $g-1$ and the current
+      period $t$, and the second bracketed term is the analogous change in a chosen
+      <strong>control group</strong> $\mathcal C$. There are two natural choices for
+      $\mathcal C$:
+    </p>
+
+    <ul>
+      <li>
+        <strong>Never-treated</strong> (<code>control_group = "nevertreated"</code>):
+        $\mathcal C$ = the units that are never treated within the sample window. In
+        our project, that's BUIDL, BENJI, USTB, USYC.
+      </li>
+      <li>
+        <strong>Not-yet-treated</strong> (<code>control_group = "notyettreated"</code>):
+        $\mathcal C$ = units that have not been treated by period $t$. So when
+        estimating $\text{ATT}(44, 50)$, the eligible not-yet-treated control units include
+        USDY (will be treated at 68, still untreated at 50) and STBT (will be treated at
+        92, still untreated at 50). When the estimator later evaluates $\text{ATT}(44, 70)$,
+        USDY is excluded from the control group because it became treated at 68.
+      </li>
+    </ul>
+
+    <p>
+      The two choices have a tradeoff. Never-treated is the most conservative — those
+      units' parallel-trends assumption is the cleanest because they are never disturbed
+      by treatment. But never-treated has fewer units, and they may differ structurally
+      from the treated units in ways that violate parallel trends (BUIDL is
+      institutional-only; OUSG is not). Not-yet-treated has more units and better matches
+      the treated cohort structurally — they are the kind of tokens that <em>did</em> end
+      up getting AMM-listed — but the eligible control pool shrinks as $t$ grows, and the
+      ATT(g, t) for very long horizons may rest on a thin control set.
+    </p>
+
+    <p>
+      Our main spec uses <strong>never-treated</strong> for conservatism. We report
+      not-yet-treated as a robustness check in Chapter 14.
+    </p>
+
+    <h2>The ATT(g, t) grid, visualized</h2>
+
+    <p>
+      Below is a synthetic but realistic visualization of the full ATT(g, t) grid. Each
+      cell is a single 2×2 DiD comparison. Empty cells are pre-treatment (where
+      $t < g$, no treatment has happened yet, so the ATT is not defined). Colored cells
+      are post-treatment, with color encoding the magnitude of the estimated ATT.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 9.1 — The ATT(g, t) grid</h3>
+        <span class="tag">interactive · click a cell</span>
+      </div>
+      <svg id="attGrid" width="720" height="280"></svg>
+      <div class="readout" id="attGridReadout">Click any cell to inspect the cohort/period combination and the 2×2 DiD that produced its ATT estimate.</div>
+    </div>
+
+    <h2>Aggregation: from many ATTs to one number</h2>
+
+    <p>
+      A grid of 400 cells is not what we report in a paper. The CS framework provides
+      principled <em>aggregation</em> rules that collapse the grid into one of several
+      summary objects. The <code>did::aggte()</code> function in R offers four:
+    </p>
+
+    <ul>
+      <li>
+        <strong><code>type = "simple"</code></strong> — a weighted average of all
+        post-treatment ATT(g, t), weighted by cohort size. Returns one number, the
+        overall ATT.
+      </li>
+      <li>
+        <strong><code>type = "dynamic"</code></strong> — re-indexes time as $e = t - g$
+        (event time, weeks since treatment), and reports ATT at each event time. This
+        is the most useful aggregation for a paper because it produces an event-study
+        plot.
+      </li>
+      <li>
+        <strong><code>type = "group"</code></strong> — reports a separate ATT per cohort.
+        Useful for asking "is the OUSG effect different from the USDY effect?"
+      </li>
+      <li>
+        <strong><code>type = "calendar"</code></strong> — reports ATT per calendar period,
+        averaged across cohorts. Useful for asking whether the treatment effect varies
+        across macro regimes (low-rate vs. high-rate weeks).
+      </li>
+    </ul>
+
+    <p>
+      Our paper reports all four. The headline result in Table 3 is from
+      <code>type = "simple"</code>; the event-study plot in Figure 2 is from
+      <code>type = "dynamic"</code>; the cohort heterogeneity discussion uses
+      <code>type = "group"</code>.
+    </p>
+
+    <h2>The event-study plot, interactively</h2>
+
+    <p>
+      The event-study aggregation is the single most informative plot in the project.
+      The x-axis is event time (event-time 0 is the listing week; -8 is 8 weeks before;
+      +12 is 12 weeks after). The y-axis is the estimated ATT, with confidence bands.
+      The plot tells you three things at once: (1) the pre-treatment ATTs should hover
+      around zero — that's the pre-trends test visualized; (2) the post-treatment ATTs
+      show how the effect builds up over time; (3) the confidence bands tell you how
+      precisely each ATT is estimated.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 9.2 — Event-study aggregation</h3>
+        <span class="tag">interactive · vary the truth</span>
+      </div>
+      <div class="controls">
+        <label>
+          True post-treatment effect size
+          <input type="range" id="evStaticEff" min="0" max="2" step="0.1" value="0.6" />
+          <span class="value" id="evStaticV">0.6</span>
+        </label>
+        <label>
+          Dynamic ramp rate
+          <input type="range" id="evDynEff" min="0" max="0.2" step="0.01" value="0.08" />
+          <span class="value" id="evDynV">0.08</span>
+        </label>
+        <label>
+          Pre-trend slope (true PT violation)
+          <input type="range" id="evPreSlope" min="-0.1" max="0.1" step="0.005" value="0" />
+          <span class="value" id="evPreV">0</span>
+        </label>
+        <label>
+          Noise (SE multiplier)
+          <input type="range" id="evNoise" min="0.05" max="0.5" step="0.01" value="0.18" />
+          <span class="value" id="evNoiseV">0.18</span>
+        </label>
+      </div>
+      <svg id="eventStudy" width="720" height="340"></svg>
+      <div class="readout" id="eventStudyReadout"></div>
+      <div class="interactive-caption">
+        Vertical line at event-time 0 = listing week. Solid line: estimated ATT at each
+        event time. Shaded band: 95% confidence interval. When pre-trend slope is non-zero,
+        the pre-period estimates drift — the test would (correctly) reject parallel trends.
+      </div>
+    </div>
+
+    

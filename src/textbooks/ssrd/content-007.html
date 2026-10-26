@@ -1,0 +1,132 @@
+<h3>8.7 Time to flag: median and p90, not the mean</h3>
+  <p>Time to flag runs from the CT timestamp to the first alert. A few sites flagged only on the +24 h retry would drag a mean far from the typical case. So report the <strong>median</strong> (half the alerts were faster) and <strong>p90</strong> (90% were faster). Count only box uptime, and report gaps.</p>
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 8.6</span><p class="fig-title">Retries make a long tail: median 27.5 min, p90 121 min <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 150" role="img" aria-label="Twenty made-up flag times on a log scale from 20 minutes to 1 day. Most cluster between 21 and 38 minutes. A few come from the 2-hour and 24-hour retries. Median 27.5 minutes, p90 121 minutes.">
+      <path class="ln" d="M60 90H860"/>
+      <g class="mute"><circle cx="69.1" cy="80" r="5"/><circle cx="69.1" cy="68" r="5"/><circle cx="77.8" cy="80" r="5"/><circle cx="77.8" cy="68" r="5"/><circle cx="86.1" cy="80" r="5"/><circle cx="86.1" cy="68" r="5"/><circle cx="94.1" cy="80" r="5"/><circle cx="101.7" cy="80" r="5"/><circle cx="109.1" cy="80" r="5"/><circle cx="116.1" cy="80" r="5"/><circle cx="122.9" cy="80" r="5"/><circle cx="129.5" cy="80" r="5"/><circle cx="142.0" cy="80" r="5"/><circle cx="159.3" cy="80" r="5"/><circle cx="180.1" cy="80" r="5"/><circle cx="211.7" cy="80" r="5"/><circle cx="271.6" cy="80" r="5"/><circle cx="396.7" cy="80" r="5"/><circle cx="402.8" cy="80" r="5"/><circle cx="860.3" cy="80" r="5"/></g>
+      <path class="ln" d="M119.6 40V96" style="stroke-width:2"/><text x="119.6" y="32" text-anchor="middle" class="ts tb">median 27.5</text>
+      <path d="M396.7 40V96" style="stroke:#111214;stroke-width:2"/><text x="396.7" y="32" text-anchor="middle" class="ts tb">p90 = 121</text>
+      <g class="ts tm" text-anchor="middle"><text x="60" y="114">20 min</text><text x="266" y="114">60 min</text><text x="471" y="114">3 h</text><text x="860" y="114">24 h</text></g>
+      <text x="60" y="140" class="ts tm">log scale · minutes from CT entry to alert · 20 made-up values</text>
+    </svg>
+    </div>
+    <figcaption>Twenty invented flag times: most from the +20 min first fetch, two from the +2 h retry and one from +24 h. p90 follows the code's rule (the value at rank ⌈0.9 n⌉, the 18th of 20), so it lands on a retry. The SPEC target (under 30 min) applies only to sites that were live at the first fetch, so report that subset too.</figcaption>
+  </div>
+
+  <h3>8.8 What the README will report</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Definition</th><th>Target</th><th>Now (Oct 17)</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Precision</td><td>scam-kit ÷ labeled alerts above threshold, Wilson 95% CI, n ≥ 50, decoys not confirmed</td><td>≥ 70%</td><td>not yet measured</td></tr>
+        <tr><td>Backtest catch rate</td><td>held-out seeds matched to the correct kit</td><td>≥ 60%</td><td>68% (13/19, CI 46–85%); earlier 87% was inflated</td></tr>
+        <tr><td>Time to flag</td><td>CT entry → alert, median and p90</td><td>&lt; 30 min if live at first fetch</td><td>not yet measured</td></tr>
+        <tr><td>Weekly volume</td><td>new confirmed matches per week, KCDA vs CBR</td><td>report as found</td><td>not yet measured</td></tr>
+        <tr><td>Also</td><td>decoy share, kappa, CBR forward confirmations, filter recall and pass rate</td><td>—</td><td>filter: 0.55 recall at 0.71%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>Base rate 2%, recall 50%, false-positive rate 1%, 10,000 pages. Precision?</summary><div>TP = 10,000 × 0.02 × 0.5 = 100. FP = 9,800 × 0.01 = 98. Precision ≈ 100 / 198 ≈ 51%.</div></details>
+    <details><summary>Why does a decoy count against precision even if it's probably a scam?</summary><div>Precision claims what you confirmed. You didn't see the scam content, so the claim isn't supported. Reporting the decoy share separately keeps the information without inflating the headline.</div></details>
+    <details><summary>You swept TLSH on the week 3 labels and then reported precision on those same labels. What's wrong, and how do you fix it?</summary><div>The threshold was fitted to those labels' noise, so precision is optimistic. Freeze the threshold, then report precision only on alerts from the week 4 run, labeled afterwards.</div></details>
+    <details><summary>Two labelers agree 90% of the time but κ = 0.2. How?</summary><div>One label dominates. If almost everything is "not-scam", chance agreement p<sub>e</sub> is already near 0.9, so agreeing 90% adds little beyond luck.</div></details>
+  </div>
+  <div class="deeper">Go deeper: Brown, Cai &amp; DasGupta, "Interval Estimation for a Binomial Proportion" (Statistical Science, 2001) · Cohen, "A coefficient of agreement for nominal scales" (1960) · <a href="https://en.wikipedia.org/wiki/Base_rate_fallacy">Base rate fallacy</a> · Kapoor &amp; Narayanan, <a href="https://reproducible.cs.princeton.edu/">"Leakage and the reproducibility crisis in ML-based science"</a> (2023)</div>
+</section>
+
+<section class="chapter" id="ch9" aria-labelledby="ch9-h">
+  <p class="issue-line">Chapter 9 · Week 4, Mon Nov 9 · 30 minutes</p>
+  <h2 id="ch9-h">Writing a lead an investigator can use</h2>
+  <p class="lede">The memo goes to a prosecutor who leads the unit and a senior analyst. They're busy, they'll check your claims, and anything they act on may one day be read aloud in court. Two pages have to tell them what you found, how sure you are, and what you can't see.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Conclusion-first structure, confidence labels, wording that never overclaims, and the process rules around sending.</dd></div>
+    <div><dt>Why it matters</dt><dd>It's the project's deliverable. An overclaim here undoes the care taken everywhere else.</dd></div>
+    <div><dt>In the repo</dt><dd><code>SPEC.md</code> "VCU memo", CLAUDE.md "Language in code, docs, and output".</dd></div>
+  </dl>
+
+  <h3>9.1 Conclusion first</h3>
+  <p>Put the answer in the first three lines: how many new domains matched which kits, over what window, at what precision with its interval. Everything after supports that paragraph. A reader who stops after it should still have the result and its main limit. This is Barbara Minto's pyramid principle: the governing thought, then the reasons, then the evidence.</p>
+
+  <h3>9.2 Every claim carries a label</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Label</th><th>Means</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><strong>confirmed</strong></td><td>Directly observed and re-checkable from your evidence.</td><td>"Domain A served a page whose copy shares 84 5-grams with kit-01-KCDA seed pages (capture SHA-256 in the appendix)."</td></tr>
+        <tr><td><strong>likely</strong></td><td>Supported indirectly, or by a small sample.</td><td>"Kit-03-KCDA probably reflects one site builder's template; 3 recovered pages agree."</td></tr>
+        <tr><td><strong>speculative</strong></td><td>Plausible, not tested. Include it only if it's useful and plainly marked.</td><td>"The quiet period after Oct 9 may reflect the backend takedown rather than less activity."</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="meta">The examples are illustrative wording, not findings.</p>
+
+  <h3>9.3 Words to swap</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Don't write</th><th>Write</th></tr></thead>
+      <tbody>
+        <tr><td>"operated by the same group", "belongs to the network"</td><td>"matches kit X on favicon and copy signals"</td></tr>
+        <tr><td>"a scam site"</td><td>"a site matching kit X; listed by CBR on [date]" (where true)</td></tr>
+        <tr><td>"the criminals rebuilt within days"</td><td>"N new domains matching kit X appeared in CT within D days of the Oct ~7 action"</td></tr>
+        <tr><td>"proves", "clearly shows"</td><td>"is consistent with", plus the confidence label</td></tr>
+        <tr><td>"SSRD detects the network's sites"</td><td>"SSRD flags newly certified domains whose pages match recovered kit pages"</td></tr>
+        <tr><td>"87% accurate"</td><td>"re-identified 13 of 19 held-out seed pages (68%, 95% CI 46–85%)"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>9.4 A two-page skeleton</h3>
+  <ol>
+    <li><strong>Summary.</strong> The result with numbers and intervals, the window, and "investigative leads, not attribution".</li>
+    <li><strong>What the kits share.</strong> One sentence per kit, the signals that define it, KCDA kits separate from general CBR kits.</li>
+    <li><strong>What appeared, and when.</strong> New matches since the takedown, time from takedown to first match, and the time-to-flag median and p90.</li>
+    <li><strong>Method in five lines.</strong> CT → filter → passive visit → fingerprints → two-family rule → human review, with a link to the public repo.</li>
+    <li><strong>Leads.</strong> A table with the domain (defanged), kit, signals matched, confidence label and capture hash. Private, never in the repo.</li>
+    <li><strong>Limitations.</strong> Cloaking and the decoy share, filter recall (0.55 on future CBR names), wildcard certs, a CT-only view of a funnel that starts with Facebook ads, a thin KCDA seed set, and box downtime.</li>
+  </ol>
+
+  <h3>9.5 Process rules</h3>
+  <ul>
+    <li>Nothing is sent until Rahil approves the final text. Drafts, renders and this book are not approval.</li>
+    <li>Find the intake channel through the DA's office main line. Don't guess email addresses.</li>
+    <li>Send findings; don't offer to collect on request (chapter 7.3).</li>
+    <li>No operator names, no victim data, no addresses or handles in the body. Linking evidence stays in the private appendix.</li>
+  </ul>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>Rewrite: "These 14 sites are run by the same scammers the VCU took down."</summary><div>"14 domains first seen in CT after Oct 9 match kit-01-KCDA on at least two signal families (list attached; confidence: likely for 11, confirmed for 3 with copy and favicon matches). Kit matches indicate shared software, not shared operators."</div></details>
+    <details><summary>Where does the decoy share go, and why?</summary><div>Next to precision in the summary and in the limitations. High cloaking means precision undercounts real kit sites, and the reader needs both numbers to judge it.</div></details>
+  </div>
+  <div class="deeper">Go deeper: Barbara Minto, <em>The Pyramid Principle</em>, ch. 1–2 · <a href="https://www.cisa.gov/sites/default/files/publications/TLP-Usage-Guidance.pdf">CISA guidance on sharing threat information with TLP</a> (a vocabulary for "who may see this")</div>
+</section>
+
+<section class="chapter" id="appendix" aria-labelledby="appA-h">
+  <p class="issue-line">Appendix A · Week 2 · decisions for you</p>
+  <h2 id="appA-h">Where the code and the docs disagree</h2>
+  <p class="lede">While writing this book, every claim was checked against <code>src/ssrd/</code> as it stood on Oct 17, including uncommitted changes in the working tree. These are the gaps found. None was changed. Each one is your call.</p>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>What the docs say</th><th>What the code does</th><th>Why it matters / options</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>1</td><td>Alert only on ≥ 2 strong signals from different families among A/B/C. D only adds weight. (SPEC R6, architecture.md)</td><td><code>score.decide</code> also alerts on 1 strong family + ≥ 2 other signals of any strength or family, so strong tlsh + asn + ns alerts.</td><td>That's close to the "single-signal shortcut" CLAUDE.md forbids. Options: drop the second clause; or count only A/B/C medium signals; or keep it and document it in the SPEC with a reason. Then add a test for "strong + D + D → no alert" or the opposite. Try it in Fig 6.1.</td></tr>
+        <tr><td>2</td><td>"a global token bucket at 20 requests/min" (SAFETY.md fetch rule 6)</td><td><code>fetch.RateLimiter</code> is a fixed-interval pacer: one request per 3 s, no bursts.</td><td>The behavior is stricter than described, which is safe. Fix the wording so the docs match.</td></tr>
+        <tr><td>3</td><td>Thresholds come from sweeps on labeled data (SPEC R6).</td><td><code>tlsh_max_distance = 70</code>, <code>jaccard_min = 0.80</code> and <code>copy_min_shared = 30</code> are marked placeholders.</td><td>Expected at this stage. The week 3 sweep must use the tuning labels only (Fig 8.5).</td></tr>
+        <tr><td>4</td><td>Name filter: recall 0.55 at 0.71% (README, config)</td><td>The 0.93 threshold was chosen from the same test table it's reported on.</td><td>Slightly optimistic. Re-measure on CBR names listed after Oct 17 with the threshold frozen, and report both.</td></tr>
+        <tr><td>5</td><td>A medium copy signal needs ≥ 12 shared 5-grams.</td><td>Seed-vs-background pairs reached a maximum of 15 shared (research.md).</td><td>A background pair can earn a medium copy signal. Combined with item 1, medium signals can help trigger an alert. Consider raising it above the background maximum in the sweep.</td></tr>
+        <tr><td>6</td><td>README: 52,897 CBR domains. research.md: 24,665 entries with a site.</td><td>Not checked here.</td><td>Probably entries vs split-out domains. Confirm in <code>seeds.py</code> and use one clearly defined number.</td></tr>
+        <tr><td>7</td><td>The fetcher handles the filter's output.</td><td>Measured: about 325 candidates/h against about 250 visits/h (README, Oct 17).</td><td>About 75 candidates an hour can't be visited in time. The priority queue serves the highest model scores first, and the rest expire, counted. Report the expired share next to time to flag and recall, because it lowers effective recall below 0.55.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter" id="glossary" aria-labelledby="appB-h">
+  <p class="issue-line">Appendix B · reference</p>
+  

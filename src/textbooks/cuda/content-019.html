@@ -1,0 +1,150 @@
+<h3>Double-buffered inner loop, sketched</h3>
+        <pre class="cb" data-lang="cpp" data-title="Listing 3.5-B: A two-stage pipelined inner loop">// Two SMEM buffers, ping-pong.
+__shared__ half  As[2][BM][BK];
+__shared__ half  Bs[2][BK][BN];
+
+int load = 0;     // buffer being loaded
+int comp = 1;     // buffer being computed on
+bool first = true;
+
+// Prime the pipeline: issue load for the first phase.
+issueLoadsInto(As[load], Bs[load], /*phase=*/0);
+cp_async_commit();
+
+for (int p = 0; p &lt; nPhases; ++p) {
+    if (p + 1 &lt; nPhases) {
+        // Issue the NEXT phase's load while we compute on this phase.
+        std::swap(load, comp);                     // ping-pong roles
+        issueLoadsInto(As[load], Bs[load], p + 1);
+        cp_async_commit();
+    }
+
+    // Wait until the buffer we want to COMPUTE on is fully loaded.
+    cp_async_wait_group&lt;1&gt;();   // keep one in-flight load (the next phase)
+    __syncthreads();
+
+    // Tensor-core compute using mma.sync, consuming As[comp]/Bs[comp].
+    runMmaLoop(As[comp], Bs[comp], /*accumulator=*/regC);
+
+    // No second barrier needed here as long as the next phase will
+    // load into a DIFFERENT buffer (the swapped one).
+}
+
+// Drain the pipeline.
+cp_async_wait_all();
+</pre>
+
+        <div class="figure">
+            <div class="figure-label">Figure 3.5 — Interactive</div>
+            <div class="figure-title">Without vs with <code>cp.async</code> pipelining</div>
+            <svg viewBox="0 0 720 240" role="img" aria-label="Pipelining Gantt" preserveAspectRatio="xMidYMid meet">
+                <g font-family="JetBrains Mono" font-size="10">
+                    <text x="10" y="20" fill="#111214" font-weight="700">Without cp.async — fully serial</text>
+                    <g transform="translate(10,32)">
+                        <g data-tip="**load phase** — synchronous global→shared copy. The whole block waits at `__syncthreads()` until the load finishes before any thread can compute."><rect x="0"   y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="40" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 0</text></g>
+                        <g data-tip="**mma phase** — Tensor Cores compute on the loaded tile. During this time DRAM sits idle. The two pipes never overlap, so the timeline is the sum of all loads + all mmas."><rect x="82"  y="0" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="122" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 0</text></g>
+                        <rect x="164" y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="204" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 1</text>
+                        <rect x="246" y="0" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="286" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 1</text>
+                        <rect x="328" y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="368" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 2</text>
+                        <rect x="410" y="0" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="450" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 2</text>
+                        <g data-tip="**Total wall time** = N × (T_load + T_mma). DRAM bandwidth and Tensor Cores each run at ~50% utilization at best."><text x="500" y="16" fill="#52545a">total = 6T</text></g>
+                    </g>
+
+                    <text x="10" y="100" fill="#111214" font-weight="700">With cp.async double buffering — load and compute overlap</text>
+                    <g transform="translate(10,112)">
+                        <!-- load track -->
+                        <text x="-2" y="14" fill="#52545a" text-anchor="end">load:</text>
+                        <g data-tip="**cp.async issued** — non-blocking copy from global into the *other* SMEM buffer. The thread does not wait; it goes straight to mma on the buffer it loaded last cycle."><rect x="0"   y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="40" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 0</text></g>
+                        <rect x="82"  y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="122" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 1</text>
+                        <rect x="164" y="0" width="80" height="24" fill="#52545a" rx="2"/>
+                        <text x="204" y="16" text-anchor="middle" fill="#f5f5ef" font-weight="700">load 2</text>
+
+                        <!-- mma track -->
+                        <text x="-2" y="56" fill="#52545a" text-anchor="end">mma:</text>
+                        <g data-tip="**mma overlaps the next load** — Tensor Cores compute on buffer A while cp.async fills buffer B. If T_load ≤ T_mma, the load is fully hidden."><rect x="82"  y="42" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="122" y="58" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 0</text></g>
+                        <rect x="164" y="42" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="204" y="58" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 1</text>
+                        <rect x="246" y="42" width="80" height="24" fill="#111214" rx="2"/>
+                        <text x="286" y="58" text-anchor="middle" fill="#f5f5ef" font-weight="700">mma 2</text>
+                        <g data-tip="**Overlap saves a load-time per phase** — wall time ≈ max(T_load, T_mma) × N. CUTLASS uses 3–5 stage pipelines for even tighter overlap at the cost of more SMEM."><text x="340" y="58" fill="#52545a">total ≈ 4T</text></g>
+                    </g>
+                </g>
+            </svg>
+            <div class="figure-caption">In the bottom timeline, the next phase's load is in flight while the current phase's <code>mma</code> runs. If the load is shorter than the MMA, the load is fully hidden. CUTLASS uses 3–5 stage pipelines on Ampere for even tighter overlap; the trade-off is more shared memory per block.</div>
+        </div>
+
+        <div class="callout tip">
+            <div class="callout-label">Why this is the last big lever before peak</div>
+            On Ampere consumer parts, well-tuned <code>mma.sync</code> kernels without async pipelining typically land around 80&ndash;85% of FP16-TC peak. Adding 2- or 3-stage <code>cp.async</code> pipelining pushes that into the low-90% range and lets the kernel cross the cuBLAS line on selected shapes.
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3.6 — NUMERICAL PRECISION DEEP DIVE
+         ============================================================ -->
+    <section class="section" id="sec-3-6">
+        <h2 class="section-title"><span class="sec-num">3.6</span>Tensor-Core Numerics — What Precision Actually Buys</h2>
+        <div class="section-subtitle">Format choice as a first-class optimization knob</div>
+
+        <div class="cluster">
+            <strong>Goal.</strong> Make the precision/throughput trade-off mechanical instead of guess-and-test. Each format is one node in <a href="#sec-0-2" class="note-ref">§0.2</a>; this section says exactly when each one is appropriate on a Tensor Core and what happens at the SASS level when you pick.
+        </div>
+
+        <div class="atomic" id="A3.6.1-accum-policy">
+            <div class="atomic-head"><span class="atomic-id">[[A3.6.1]]</span><h4 class="atomic-title">Accumulator policy — the silent half of every MMA</h4><span class="atomic-tag">numerics</span></div>
+            <div class="atomic-body">
+                <p>Every Tensor Core MMA has two precisions you can pick independently: the operand precision (A and B) and the accumulator precision (C). The hardware allows several combinations per generation; the most useful ones on Ampere are <em>FP16 × FP16 → FP32</em> and <em>BF16 × BF16 → FP32</em>. The FP16 → FP16 variant exists but is dangerous for K &gt; 256: cumulative round-off blows up. Always default to FP32 accumulators unless you have proved otherwise on real data.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.8-accumulator">[[A0.2.8]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-3-4">[[§3.4 mma.sync]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.6.2-tf32-vs-fp32">
+            <div class="atomic-head"><span class="atomic-id">[[A3.6.2]]</span><h4 class="atomic-title">TF32 vs FP32 — when "FP32" isn't FP32</h4><span class="atomic-tag">numerics</span></div>
+            <div class="atomic-body">
+                <p>From CUDA 11 on Ampere, <code>cublasSgemm</code> on default math mode actually runs <em>TF32 tensor cores</em> internally — a 10-bit-mantissa input format (see <a href="#A0.2.6-tf32" class="note-ref">[[A0.2.6]]</a>). You get 8× throughput vs CUDA-core FP32 at the cost of mantissa precision. To force "real" FP32 numerics call <code>cublasSetMathMode(handle, CUBLAS_PEDANTIC_MATH)</code> or set the math mode to <code>CUBLAS_TF32_TENSOR_OP_MATH_DISALLOW</code>. The throughput-vs-accuracy budget for TF32 is the single biggest "why does my reference disagree" gotcha in cuBLAS.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.6-tf32">[[A0.2.6]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-2">[[§5.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.6.3-sparse-tc">
+            <div class="atomic-head"><span class="atomic-id">[[A3.6.3]]</span><h4 class="atomic-title">Sparse Tensor Cores — 2:4 structured sparsity</h4><span class="atomic-tag">numerics</span></div>
+            <div class="atomic-body">
+                <p>Ampere introduced a 2:4 structured-sparsity feature on Tensor Cores: in every contiguous group of 4 elements of <em>A</em>, exactly 2 must be zero. Storing this as a 50%-dense matrix with a 2-bit-per-quad selection metadata cuts memory traffic in half and doubles MMA throughput. The catch is the sparsity pattern is <em>structured</em>, not arbitrary; pruning a dense network to 2:4 typically costs a few percent accuracy and requires fine-tuning. The PTX is <code>mma.sp.sync</code>. Used by NVIDIA's structured-sparse Transformer kernels in cuSPARSELt.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#sec-3-4">[[§3.4 mma.sync]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.6.4-loss-scale">
+            <div class="atomic-head"><span class="atomic-id">[[A3.6.4]]</span><h4 class="atomic-title">Loss scaling — keeping FP16 from underflowing</h4><span class="atomic-tag">numerics</span></div>
+            <div class="atomic-body">
+                <p>FP16's smallest normal positive value is ≈ 6·10<sup>−5</sup>. Gradients in deep nets routinely land below that and underflow to zero — training silently stalls. The fix is <em>loss scaling</em>: multiply the loss by a large constant (1024–65536), do the backward in FP16, then divide gradients by the same constant before the optimizer step. The intermediate exponents climb back into the FP16 normal range. BF16 has FP32's exponent and does not need loss scaling. PyTorch's <code>autocast</code> and CUDA's <code>NVIDIA::amp</code> automate this; if you write kernels at this level you almost never have to think about it.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.4-fp16">[[A0.2.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Contrast</span> <a class="rel-chip rel-contrast" href="#A0.2.5-bf16">[[A0.2.5]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3.7 — HOPPER-SPECIFIC FEATURES
+         ============================================================ -->
+    <section class="section" id="sec-3-7">
+        

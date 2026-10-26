@@ -1,0 +1,130 @@
+<h3>The technical writeup</h3>
+        <p>Format: a single blog post or Twitter thread. Lead with the roofline plot — that picture tells the entire story in one frame. Follow with the table. Then 4&ndash;6 paragraphs walking through the kernel-by-kernel optimizations, focusing on the bottleneck each one solved (Nsight Compute metric → code change → measured delta). Close with a falsifiable claim, e.g. <em>"On RTX 3090 with locked clocks, M = N = K = 4096 FP16 GEMM, my kernel sustains 130 TFLOPS vs 125 TFLOPS for cuBLAS 12.2, verified across 500 iterations."</em></p>
+
+        <div class="callout tip">
+            <div class="callout-label">What "reproducible" actually means</div>
+            A stranger should be able to clone your repo, run one script, and within ten minutes have a table on their console that they can compare against yours. If they can't — if there are manual steps, magic environment variables, or missing baseline runs — the result is unverifiable and will be discounted, regardless of how good your kernel is.
+        </div>
+    </section>
+
+    <!-- CHECKPOINT -->
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 5 Checkpoint</div>
+        <div class="checkpoint-sub">Click each item to mark complete.</div>
+        <ul>
+            <li>Name three families of shapes or configurations where cuBLAS is most beatable, and explain why each is vulnerable.</li>
+            <li>Why must you lock GPU clocks before benchmarking? What command does it on Linux?</li>
+            <li>A colleague says their kernel is "5% faster." List the eight protocol questions you ask before accepting the claim.</li>
+            <li>What is cuBLAS logging? What environment variables enable it, and what does it tell you that no other tool can?</li>
+            <li>Sketch a repo layout that lets a stranger reproduce your benchmark in under ten minutes.</li>
+        </ul>
+    </div>
+
+    <!-- REFS -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 5</div>
+        <ol>
+            <li>Boehm, S. <em>How to Optimize a CUDA Matmul Kernel for cuBLAS-like Performance.</em> 2022. <a href="https://siboehm.com/articles/22/CUDA-MMM" target="_blank" rel="noopener">siboehm.com/articles/22/CUDA-MMM</a> — the canonical FP32 SGEMM-to-cuBLAS walkthrough on Ampere.</li>
+            <li>Pandya, M. <em>Outperforming cuBLAS on H100: A Worklog.</em> <a href="https://cudaforfun.substack.com/p/outperforming-cublas-on-h100-a-worklog" target="_blank" rel="noopener">cudaforfun.substack.com</a> — Hopper-era analogue covering <code>wgmma</code>.</li>
+            <li>NVIDIA. <em>cuBLAS Library User Guide.</em> <a href="https://docs.nvidia.com/cuda/cublas/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cublas/</a> — <code>cublasGemmEx</code> signature, compute-type enums, logging API.</li>
+            <li>NVIDIA. <em>CUTLASS</em> — open-source reference implementations that match or exceed cuBLAS on selected shapes. <a href="https://github.com/NVIDIA/cutlass" target="_blank" rel="noopener">github.com/NVIDIA/cutlass</a></li>
+            <li>He, H. <em>Making Deep Learning Go Brrrr From First Principles.</em> <a href="https://horace.io/brrr_intro.html" target="_blank" rel="noopener">horace.io/brrr_intro.html</a> — the compute-vs-memory framing this entire book inherits from.</li>
+            <li>Dao, T. et al. <em>FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness.</em> NeurIPS 2022. <a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">arxiv.org/abs/2205.14135</a> — the textbook example of fused-kernel wins over a vendor-library baseline (cuBLAS + softmax).</li>
+            <li>NVIDIA. <em>nvidia-smi reference.</em> <a href="https://docs.nvidia.com/deploy/nvidia-smi/" target="_blank" rel="noopener">docs.nvidia.com/deploy/nvidia-smi/</a> — clock locking, persistence mode.</li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-4"><span class="label">← Previous</span>Nsight Compute</a>
+        <a href="#chapter-6" class="next"><span class="label">Next →</span>Reference &amp; Roadmap</a>
+    </nav>
+</article>
+<!-- =====================================================================
+     CHAPTER 6
+     ===================================================================== -->
+<article class="chapter" id="chapter-6">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">06</div>
+        <div class="chapter-eyebrow">Chapter 06</div>
+        <h1 class="chapter-title">Reference, Tools,<br>and What Comes Next</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> A working reference set you can return to, plus a clear map of which projects to pick up next once your "beat-cuBLAS" repo is live.</p>
+    </header>
+
+    <!-- 6.1 -->
+    <section class="section" id="sec-6-1">
+        <h2 class="section-title"><span class="sec-num">6.1</span>Hardware Reference Table</h2>
+        <div class="section-subtitle">The numbers you will need in every back-of-envelope calculation</div>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr>
+                <th>Spec</th>
+                <th>RTX 3090</th>
+                <th>A100 80GB</th>
+                <th>H100 SXM</th>
+                <th>RTX 4090</th>
+            </tr></thead>
+            <tbody>
+                <tr><td>Architecture</td><td>Ampere (GA102)</td><td>Ampere (GA100)</td><td>Hopper (GH100)</td><td>Ada Lovelace (AD102)</td></tr>
+                <tr><td>Compute capability</td><td><code>sm_86</code></td><td><code>sm_80</code></td><td><code>sm_90</code></td><td><code>sm_89</code></td></tr>
+                <tr><td>SM count</td><td class="num">82</td><td class="num">108</td><td class="num">132</td><td class="num">128</td></tr>
+                <tr><td>FP32 CUDA cores</td><td class="num">10,496</td><td class="num">6,912</td><td class="num">16,896</td><td class="num">16,384</td></tr>
+                <tr><td>FP32 TFLOPS (peak)</td><td class="num">~35.6</td><td class="num">~19.5</td><td class="num">~67</td><td class="num">~82.6</td></tr>
+                <tr><td>FP16 TC TFLOPS (dense)</td><td class="num">142</td><td class="num">312</td><td class="num">989</td><td class="num">330</td></tr>
+                <tr><td>BF16 TC TFLOPS (dense)</td><td class="num">142</td><td class="num">312</td><td class="num">989</td><td class="num">330</td></tr>
+                <tr><td>TF32 TC TFLOPS (dense)</td><td class="num">~71</td><td class="num">156</td><td class="num">495</td><td class="num">~165</td></tr>
+                <tr><td>FP8 TC TFLOPS (dense)</td><td class="num">n/a</td><td class="num">n/a</td><td class="num">1979</td><td class="num">660</td></tr>
+                <tr><td>INT8 TC TOPS (dense)</td><td class="num">284</td><td class="num">624</td><td class="num">1979</td><td class="num">660</td></tr>
+                <tr><td>Memory technology</td><td>GDDR6X</td><td>HBM2e</td><td>HBM3</td><td>GDDR6X</td></tr>
+                <tr><td>Memory capacity</td><td class="num">24 GB</td><td class="num">80 GB</td><td class="num">80 GB</td><td class="num">24 GB</td></tr>
+                <tr><td>Memory bandwidth</td><td class="num">936 GB/s</td><td class="num">~2,039 GB/s</td><td class="num">~3,350 GB/s</td><td class="num">~1,008 GB/s</td></tr>
+                <tr><td>L2 cache</td><td class="num">6 MB</td><td class="num">40 MB</td><td class="num">50 MB</td><td class="num">72 MB</td></tr>
+                <tr><td>Shared mem / SM (max)</td><td class="num">128 KB</td><td class="num">192 KB</td><td class="num">228 KB</td><td class="num">128 KB</td></tr>
+                <tr><td>Shared mem / block (max)</td><td class="num">99 KB</td><td class="num">163 KB</td><td class="num">228 KB</td><td class="num">99 KB</td></tr>
+                <tr><td>Registers / SM (32-bit)</td><td class="num">65,536</td><td class="num">65,536</td><td class="num">65,536</td><td class="num">65,536</td></tr>
+                <tr><td>Max threads / block</td><td class="num">1024</td><td class="num">1024</td><td class="num">1024</td><td class="num">1024</td></tr>
+                <tr><td>Max warps / SM</td><td class="num">48</td><td class="num">64</td><td class="num">64</td><td class="num">48</td></tr>
+                <tr><td>Max blocks / SM</td><td class="num">16</td><td class="num">32</td><td class="num">32</td><td class="num">24</td></tr>
+                <tr><td>Tensor Cores / SM</td><td class="num">4 (3rd gen)</td><td class="num">4 (3rd gen)</td><td class="num">4 (4th gen)</td><td class="num">4 (4th gen)</td></tr>
+                <tr><td>Native <code>mma.sync</code> shape (FP16→FP32)</td><td><code>m16n8k16</code></td><td><code>m16n8k16</code></td><td><code>m64nKk16</code> via wgmma</td><td><code>m16n8k16</code></td></tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="font-size:12px;color:var(--text-tertiary);margin-top:8px">Numbers are NVIDIA-published peaks. Always reconfirm against the product page and architecture whitepaper for your specific SKU — variants of the same architecture (e.g. A100 40GB vs 80GB, H100 SXM vs PCIe, RTX 3090 vs 3090 Ti) differ on bandwidth, clock, and sometimes core counts. Hopper Tensor-Core throughput numbers depend on sparsity assumptions — the dense numbers are listed here.</p>
+    </section>
+
+    <!-- 6.2 -->
+    <section class="section" id="sec-6-2">
+        <h2 class="section-title"><span class="sec-num">6.2</span>Key PTX Instructions Reference</h2>
+        <div class="section-subtitle">Every instruction the GEMM project actually used</div>
+
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Instruction</th><th>Purpose</th><th>Typical use</th></tr></thead>
+            <tbody>
+                <tr><td><code>ld.global.f32 %f, [%r]</code></td><td>Load 32-bit float from global memory.</td><td>Compiled from <code>float x = A[i]</code>.</td></tr>
+                <tr><td><code>ld.global.v4.f32 {%f0,%f1,%f2,%f3}, [%r]</code></td><td>Load 128 bits (4 floats) in one instruction.</td><td>Compiled from <code>float4</code> loads.</td></tr>
+                <tr><td><code>st.global.f32 [%r], %f</code></td><td>Store 32-bit float to global memory.</td><td>Compiled from <code>C[i] = acc</code>.</td></tr>
+                <tr><td><code>ld.shared.f32 %f, [%r]</code></td><td>Load from shared memory.</td><td>SMEM tile reads.</td></tr>
+                <tr><td><code>st.shared.f32 [%r], %f</code></td><td>Store to shared memory.</td><td>SMEM tile writes.</td></tr>
+                <tr><td><code>bar.sync 0;</code></td><td>Block-wide barrier (= <code>__syncthreads()</code>).</td><td>End of phase in tiling.</td></tr>
+                <tr><td><code>mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 ...</code></td><td>Tensor-Core matrix multiply-accumulate.</td><td>Inner loop of TC GEMM, Ampere FP16.</td></tr>
+                <tr><td><code>ldmatrix.sync.aligned.m8n8.x4.shared.b16 ...</code></td><td>Load 4× 8×8 FP16 matrices from SMEM into <code>mma.sync</code> register layout.</td><td>Partner instruction to <code>mma.sync</code>.</td></tr>
+                <tr><td><code>cp.async.ca.shared.global [smem], [global], 16;</code></td><td>Async 16-byte global → shared copy (Ampere+).</td><td>Pipeline next tile while computing current.</td></tr>
+                <tr><td><code>cp.async.commit_group;</code></td><td>Close out the current group of <code>cp.async</code> ops.</td><td>Boundary between pipeline stages.</td></tr>
+                <tr><td><code>cp.async.wait_group N;</code></td><td>Wait until ≤ N groups remain in flight.</td><td>Sync before consuming a buffer.</td></tr>
+                <tr><td><code>cvt.rn.f16.f32 %h, %f;</code></td><td>Convert FP32 to FP16, round-to-nearest-even.</td><td>Mixed-precision storage.</td></tr>
+                <tr><td><code>setp.lt.s32 %p, %r, %r2;</code></td><td>Predicate set: <code>p = r &lt; r2</code>.</td><td>Bounds checks.</td></tr>
+                <tr><td><code>@%p bra TARGET;</code></td><td>Conditional branch on predicate.</td><td>If/else compilation.</td></tr>
+                <tr><td><code>fma.rn.f32 %f, %fa, %fb, %fc;</code></td><td>Fused FP32 multiply-add, round-to-nearest.</td><td>Inner-loop FMA (CUDA-core path).</td></tr>
+                <tr><td><code>add.f32 %f, %fa, %fb;</code></td><td>Add (no fused multiply).</td><td>Rarely emitted; compiler prefers FMA.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p>For the complete instruction set, see NVIDIA's <em>PTX ISA</em> document, which is updated with every CUDA toolkit release.<sup>[1]</sup> The relevant sections for this project are <em>Data Movement and Conversion Instructions</em> (load/store, <code>cp.async</code>) and <em>Warp Level Matrix Multiply-Accumulate Instructions</em> (<code>mma.sync</code>, <code>ldmatrix</code>, <code>wgmma</code>).</p>
+    </section>
+
+    <!-- 6.3 -->
+    <section class="section" id="sec-6-3">
+        

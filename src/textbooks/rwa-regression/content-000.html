@@ -1,0 +1,367 @@
+
+<div class="layout">
+  <aside class="sidebar"></aside>
+  <div class="content-wide">
+<div id="home" class="chapter-block landing-block">
+
+    <div class="hero">
+      <div class="meta">An interactive companion to the RWA panel-regression project</div>
+      <h1>RWA Velocity &amp; Causal Inference</h1>
+      <p class="tagline">
+        How does putting a tokenized U.S. Treasury on a Uniswap pool change how often it actually trades?
+        And how do you prove the answer with seven tokens and a noisy on-chain panel?
+      </p>
+    </div>
+
+    <p>
+      This textbook teaches the full stack of ideas behind one specific empirical paper:
+      a staggered difference-in-differences estimate of AMM listing's causal effect on
+      secondary-market velocity across seven tokenized U.S. Treasury instruments
+      (BUIDL, OUSG, USDY, BENJI, USTB, USYC, STBT).
+    </p>
+
+    <p>
+      We start from first principles. By the end you will be able to: read a raw ERC-20
+      Transfer event log; explain why two-way fixed effects under staggered treatment
+      embeds forbidden 2×2 comparisons that subtract dynamic treatment effects in the
+      wrong direction; sketch the Callaway-Sant'Anna estimator on
+      a whiteboard; defend your choice of never-treated vs. not-yet-treated control groups;
+      and articulate exactly why the project's N=7 sample is both its greatest asset and
+      its most brutal constraint.
+    </p>
+
+    <div class="callout">
+      <div class="label">How to use this textbook</div>
+      <p>
+        Read it linearly if you're new to either econometrics or DeFi — the chapters build
+        on each other. Skip around if you already know parts. Every chapter has at least one
+        interactive component: drag a slider to shift treatment timing, click into a Bacon
+        decomposition to see which 2×2 comparisons are doing the forbidden work, simulate
+        pre-trend tests under varying effect sizes.
+      </p>
+    </div>
+
+    <h2 style="font-family: var(--font-sans); font-size: 22px; margin-top: 56px; border-bottom: none;">The four parts</h2>
+
+    <div class="part-grid">
+
+      <div class="part-card">
+        <div class="part-num">PART I</div>
+        <h3>The problem</h3>
+        <p>
+          Why "tokenized" doesn't mean "liquid". What an RWA token is, who issues them,
+          and why most of them sit motionless in custody wallets for weeks at a time.
+        </p>
+        <div class="chapter-list">
+          <a href="#01-introduction">01 · The puzzle: idle tokens</a>
+          <a href="#02-rwa-primer">02 · The 7-token universe</a>
+        </div>
+      </div>
+
+      <div class="part-card">
+        <div class="part-num">PART II</div>
+        <h3>Infrastructure</h3>
+        <p>
+          AMMs explained from x·y=k upward. ERC-20 Transfer events. The decision tree
+          that separates a genuine trade from a custodial reshuffle. How to build a
+          velocity measure that survives reviewer scrutiny.
+        </p>
+        <div class="chapter-list">
+          <a href="#03-amm-mechanics">03 · AMMs for fixed-NAV assets</a>
+          <a href="#04-onchain-data">04 · On-chain data foundations</a>
+          <a href="#05-velocity-construction">05 · Constructing velocity</a>
+        </div>
+      </div>
+
+      <div class="part-card">
+        <div class="part-num">PART III</div>
+        <h3>Causal inference</h3>
+        <p>
+          The methodological heart of the project. Why Mafrur (2025) stopped at
+          descriptives. Potential outcomes, parallel trends, the failure of two-way
+          fixed effects under staggered treatment, and the modern estimators that fix it.
+        </p>
+        <div class="chapter-list">
+          <a href="#06-mafrur-paper">06 · The Mafrur paper</a>
+          <a href="#07-causal-inference">07 · Causal inference primer</a>
+          <a href="#08-twfe-bacon">08 · TWFE &amp; Goodman-Bacon</a>
+          <a href="#09-callaway-santanna">09 · Callaway-Sant'Anna</a>
+          <a href="#10-sun-abraham">10 · Sun-Abraham &amp; friends</a>
+          <a href="#11-inference">11 · Inference with N=7</a>
+          <a href="#12-pretrends">12 · Pre-trend tests &amp; limits</a>
+        </div>
+      </div>
+
+      <div class="part-card">
+        <div class="part-num">PART IV</div>
+        <h3>Execution</h3>
+        <p>
+          From pipeline to publishable paper. The full project methodology, the
+          robustness ladder reviewers will demand, and the limitations we have to
+          own up to honestly — plus the improvements that turn an SSRN working
+          paper into a real journal submission.
+        </p>
+        <div class="chapter-list">
+          <a href="#13-methodology">13 · Methodology end-to-end</a>
+          <a href="#14-robustness">14 · Robustness &amp; placebos</a>
+          <a href="#15-limitations">15 · Limitations &amp; improvements</a>
+          <a href="#16-glossary">16 · Glossary</a>
+        </div>
+      </div>
+
+    </div>
+
+    <h2 style="font-family: var(--font-sans); font-size: 22px; margin-top: 56px; border-bottom: none;">Three reading paths</h2>
+
+    <table class="data">
+      <thead>
+        <tr>
+          <th>If you are…</th>
+          <th>Read these first</th>
+          <th>Skim these</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>An econometrician</strong> learning the DeFi context</td>
+          <td>02, 03, 04, 05, 06, 13</td>
+          <td>07, 08, 09</td>
+        </tr>
+        <tr>
+          <td><strong>A DeFi engineer</strong> learning the causal toolkit</td>
+          <td>07, 08, 09, 11, 12</td>
+          <td>02, 03, 04</td>
+        </tr>
+        <tr>
+          <td><strong>A reviewer / co-author</strong> evaluating the project</td>
+          <td>01, 06, 13, 14, 15</td>
+          <td>all the rest</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 style="font-family: var(--font-sans); font-size: 22px; margin-top: 56px; border-bottom: none;">What this textbook is not</h2>
+
+    <p>
+      It is not a replacement for the original sources. The Callaway-Sant'Anna chapter
+      summarizes ideas that take Brantly Callaway and Pedro Sant'Anna 30 pages of formal
+      proof in <em>Journal of Econometrics</em> to establish; the AMM chapter compresses
+      Hayden Adams's Uniswap v3 whitepaper into half an hour of reading. If you intend
+      to actually defend the paper, you must also read those primary sources — this
+      textbook tells you which ones, in what order, and exactly what to extract from each.
+    </p>
+
+    <p>
+      It is also not neutral. Throughout, we flag the places where this specific project
+      is on weak ground — small N, endogenous listing timing, BUIDL's near-zero-velocity
+      pathology — and we tell you what to say when a reviewer raises them. The honest
+      answer to "is this paper publishable in <em>JFE</em>?" is "no, and that's fine,
+      because <em>Finance Research Letters</em> and <em>Ledger</em> are the right targets."
+    </p>
+
+    <div class="callout good" style="margin-top: 56px;">
+      <div class="label">Start here</div>
+      <p>
+        If this is your first session, open <a href="#01-introduction">Chapter 01 — The puzzle of idle tokens</a>.
+        It establishes the central empirical question in about ten minutes and motivates everything
+        that follows.
+      </p>
+    </div>
+
+  </div>
+<div id="01-introduction" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 01 · Part I — The Problem</div>
+    <h1 class="chapter-title">The puzzle of idle tokens</h1>
+    <p class="chapter-subtitle">
+      A $25-billion asset class where most of the assets sit, week after week, doing absolutely nothing.
+    </p>
+
+    <h2>The headline number, and what it hides</h2>
+
+    <p>
+      In May 2026, the total market capitalization of tokenized real-world assets crossed
+      <strong>$25 billion</strong>. The largest single instrument, BlackRock's USD Institutional
+      Digital Liquidity Fund — ticker <span class="token-chip">BUIDL</span> — alone holds
+      roughly <strong>$2.4 billion</strong> in tokenized U.S. Treasuries. That number is real:
+      every BUIDL token is backed by an actual short-duration Treasury bill held in BNY Mellon
+      custody, and the Securitize transfer agent will redeem it on demand for an institutional
+      client. This is not a stablecoin pegged to nothing. This is a securitized claim on
+      government debt, issued on Ethereum, by the world's largest asset manager.
+    </p>
+
+    <p>
+      Now look at how often it trades.
+    </p>
+
+    <p>
+      As of the most recent week of data, <span class="token-chip">BUIDL</span> has approximately
+      <strong>85 holders</strong>. Not 85 million, not 85 thousand. Eighty-five wallets.
+      In a typical week, the number of secondary on-chain transfers between non-issuer addresses
+      can be counted on one hand. The annualized turnover ratio — the fraction of outstanding
+      supply that actually changes hands in a year — is below 1%. For comparison, a typical
+      U.S. equity ETF turns over its float more than ten times per year. The 10-year Treasury
+      itself turns over roughly fifteen times.
+    </p>
+
+    <p>
+      So the central empirical puzzle of this project is:
+    </p>
+
+    <div class="callout">
+      <div class="label">The puzzle</div>
+      <p>
+        Tokenization was sold to investors and regulators as a path to dramatically more liquid
+        secondary markets for traditionally illiquid assets. Putting a Treasury on Ethereum is
+        supposed to mean it trades 24/7, atomically, with low friction. In practice, most of
+        these tokens trade <em>less</em> than the underlying instruments do. Why? And does it
+        change when the issuer puts the token on a Uniswap pool?
+      </p>
+    </div>
+
+    <h2>What "velocity" actually means here</h2>
+
+    <p>
+      Throughout this textbook the word <em>velocity</em> means one very specific thing:
+      the annualized dollar value of <em>secondary-market</em> transfers, divided by the
+      token's average market capitalization over the same period.
+    </p>
+
+    <p>
+      Written out:
+    </p>
+
+    <p>
+      $$\text{velocity}_{i,t} = \frac{\text{secondary transfer volume}_{i,t} \times 52}{\text{average market cap}_{i,t}}$$
+    </p>
+
+    <p>
+      The factor of 52 annualizes a weekly observation. "Secondary" means we exclude mints
+      (creation of new tokens by the issuer), burns (destruction at redemption), and transfers
+      to or from a hand-curated list of issuer, custodian, and protocol-internal wallets.
+      Chapter 5 is entirely devoted to building this measure rigorously. For now, the point is:
+    </p>
+
+    <ul>
+      <li>Velocity of <strong>0</strong> means the token sat in its existing wallets all week.</li>
+      <li>Velocity of <strong>1</strong> means the equivalent of the entire outstanding supply turned over once during the year.</li>
+      <li>Velocity of <strong>10</strong> means it turned over ten times — close to a liquid ETF.</li>
+    </ul>
+
+    <p>
+      Most of our 7 tokens, most weeks, sit between 0 and 0.5. A few, occasionally, spike to 5
+      or 10 around a specific event. <span class="token-chip">USDY</span>, the most
+      retail-accessible name, occasionally reaches 20 in promotion weeks. The dispersion across
+      tokens and across weeks is huge — and that dispersion is what will give us identifying
+      variation when we get to the regression.
+    </p>
+
+    <h2>The intervention: AMM listing</h2>
+
+    <p>
+      Of the seven tokens, only three received their first listing on a major decentralized
+      exchange's automated market maker (AMM) within our sample window of January 2023 through
+      April 2026. They are:
+    </p>
+
+    <ul>
+      <li><span class="token-chip">OUSG</span> — Ondo Short-Term U.S. Government Bond, first listed on Uniswap v3 in late 2023.</li>
+      <li><span class="token-chip">USDY</span> — Ondo's yield-bearing dollar product, listed on Uniswap v3 in spring 2024.</li>
+      <li><span class="token-chip">STBT</span> — Matrixdock's Short-Term Treasury Bill Token, listed in a Curve stableswap pool in 2024.</li>
+    </ul>
+
+    <p>
+      The other four — <span class="token-chip">BUIDL</span>, <span class="token-chip untreated">BENJI</span>,
+      <span class="token-chip untreated">USTB</span>, <span class="token-chip untreated">USYC</span> —
+      were never AMM-listed in our sample. They serve as our <strong>never-treated control
+      group</strong>. The question is straightforward:
+    </p>
+
+    <div class="callout good">
+      <div class="label">The causal question</div>
+      <p>
+        For the same token, what does its weekly secondary-market velocity look like in the
+        weeks <em>after</em> AMM listing, compared to a plausible counterfactual where
+        listing did not happen? And does the size of the AMM pool's available liquidity
+        (its TVL, total value locked) modulate the size of the effect?
+      </p>
+    </div>
+
+    <h2>Why this is harder than it sounds</h2>
+
+    <p>
+      A first-year graduate student in economics would look at the question above and reach
+      for a simple "before vs. after" comparison: take the average velocity of OUSG in the
+      8 weeks before its Uniswap listing, subtract from the average in the 8 weeks after,
+      and report the difference. This is exactly the wrong approach, for at least four reasons
+      that this textbook will unpack carefully:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Selection on the trend.</strong> Ondo did not choose to list OUSG on Uniswap
+        at a random moment. They listed it precisely <em>because</em> demand was building.
+        Some of the post-listing velocity increase reflects momentum that was already there.
+      </li>
+      <li>
+        <strong>Common shocks.</strong> What if the entire DeFi market — and with it, all
+        RWA tokens — got more active during the same weeks for unrelated reasons? A FOMC rate
+        cut, a major BlackRock announcement, a Coinbase listing event. We need to net out
+        time effects that hit every token equally.
+      </li>
+      <li>
+        <strong>Persistent differences.</strong> BUIDL is structurally a low-velocity token
+        because of its institutional-only KYC restrictions. USDY is structurally higher
+        because it's retail-facing. Comparing the two without netting out token-level fixed
+        effects will smuggle in those structural differences and call them "treatment effects."
+      </li>
+      <li>
+        <strong>Staggered treatment.</strong> OUSG was treated first, then USDY, then STBT.
+        It turns out that the standard "two-way fixed effects" panel regression — the workhorse
+        of empirical economics for forty years — can give a single coefficient that
+        is a confused weighted average of treatment effects, in which some of the implicit
+        comparisons use already-treated units as controls and subtract their dynamic
+        effects in the wrong direction. The repair
+        for this is one of the most important methodological developments of the last decade,
+        and it is the methodological heart of the project. We spend three chapters (8, 9, 10)
+        on it.
+      </li>
+    </ol>
+
+    <h2>A first look at the data</h2>
+
+    <p>
+      Before we go any further into methodology, here is the empirical pattern that motivated
+      the project. Drag the slider below to advance through time — you will see the relative
+      sizes of the seven tokens by market cap, and you will see how secondary velocity has
+      evolved differently for treated tokens (orange) versus controls (grey). Watch
+      OUSG and USDY especially: notice how velocity is roughly flat until the AMM listing
+      moment, then steps up.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 1.1 — Seven RWA tokens, three years of velocity</h3>
+        <span class="tag">interactive · synthetic data</span>
+      </div>
+      <div class="controls">
+        <label>
+          Week
+          <input type="range" id="weekSlider" min="0" max="169" value="60" />
+          <span class="value" id="weekValue">Week 60 (2024-03-10)</span>
+        </label>
+        <button id="playBtn">▶ Play</button>
+        <button class="secondary" id="resetBtn">Reset</button>
+      </div>
+      <svg id="mcapVelChart" width="860" height="420"></svg>
+      <div class="readout" id="figReadout"></div>
+      <div class="interactive-caption">
+        Top panel: market cap of each token over time. Bottom panel: 4-week rolling
+        average of secondary-transfer velocity. Dashed vertical lines mark AMM listings.
+        Values shown are <em>illustrative synthetic data</em> representing the qualitative
+        shape we expect to find; the actual paper will fit similar curves to live on-chain
+        observations.
+      </div>
+    </div>
+
+    

@@ -1,0 +1,355 @@
+<h2>Holder counts vs. velocity — the deep correlation</h2>
+
+    <p>
+      One pattern to flag now, because it will matter for identification: holder count and
+      velocity are positively but imperfectly correlated. USDY has 12,000 holders and high
+      velocity; BUIDL has 85 holders and near-zero velocity. But the relationship is not
+      mechanical — USYC has only 180 holders yet sees significant weekly volume because
+      those holders are mostly DeFi protocols rebalancing inventory. This means we have to
+      include $\log(\text{holders})$ as a time-varying control in the regression, otherwise
+      the AMM-listing effect could be confounded by holder-base growth that AMM listings
+      themselves accelerate (a mechanism — interesting in its own right, examined in
+      Chapter 15).
+    </p>
+
+    <p>
+      With the institutional landscape in hand, the next chapter turns to the
+      infrastructure that the treatment variable is built around: how AMMs actually work,
+      especially for assets that trade within a tight range around $1.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="03-amm-mechanics" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 03 · Part II — Infrastructure</div>
+    <h1 class="chapter-title">AMMs for fixed-NAV assets</h1>
+    <p class="chapter-subtitle">
+      From x·y=k to concentrated liquidity to stableswap — the pricing functions that
+      determine what "AMM listing" actually means in our regression.
+    </p>
+
+    <h2>Why we have to understand the price function</h2>
+
+    <p>
+      The treatment variable in this project is "the token has been listed on a major
+      AMM with at least <em>some</em> available depth." That phrase hides three decisions:
+      what counts as a "major AMM", how to measure "depth", and what threshold of depth
+      counts as a meaningful listing. To make these decisions rigorously, you need a
+      working understanding of how AMM pricing functions differ. Two pools with the same
+      reported "TVL" can offer wildly different effective liquidity for an RWA token that
+      trades within a few basis points of $1. The pricing function determines that.
+    </p>
+
+    <p>
+      We'll cover three pricing families in this chapter:
+    </p>
+
+    <ol>
+      <li><strong>Constant product</strong> ($x \cdot y = k$) — the original Uniswap v1/v2 design.</li>
+      <li><strong>Concentrated liquidity</strong> (Uniswap v3) — same invariant locally, but each LP picks a price range.</li>
+      <li><strong>Stableswap</strong> (Curve) — a different invariant entirely, optimized for assets that should trade near par.</li>
+    </ol>
+
+    <p>
+      Of our three treated tokens, OUSG and USDY sit in Uniswap v3 pools (concentrated
+      liquidity); STBT sits in a Curve stableswap pool. That difference is what makes
+      STBT an internal robustness check for the project.
+    </p>
+
+    <h2>What an automated market maker actually is</h2>
+
+    <p>
+      A traditional order-book exchange matches a buyer's bid against a seller's ask.
+      Liquidity is whatever sits in the limit order book at any moment. There is no
+      liquidity if no one has posted an order.
+    </p>
+
+    <p>
+      An AMM removes the order book. Instead, two reserves of two tokens sit in a smart
+      contract, and a fixed mathematical relationship between those reserves determines
+      the price of one token in terms of the other. Anyone can deposit equal value of both
+      tokens to <em>provide liquidity</em>; anyone can swap one token for the other against
+      the pool, paying a small fee that accrues to the liquidity providers (LPs). There is
+      always a price, because the formula always defines one.
+    </p>
+
+    <p>
+      For a constant-product AMM holding reserves $x$ of token A and $y$ of token B, the
+      pool maintains the invariant:
+    </p>
+
+    <p>
+      $$x \cdot y = k$$
+    </p>
+
+    <p>
+      $k$ stays approximately constant across swaps (it actually grows slightly as fees
+      accrue). If a trader wants to buy $\Delta y$ of token B, they must deposit enough
+      of token A to keep $k$ unchanged. The required deposit is:
+    </p>
+
+    <p>
+      $$\Delta x = \frac{k}{y - \Delta y} - x$$
+    </p>
+
+    <p>
+      The marginal price (the price of an infinitesimal trade) is simply
+      $p = y / x$. The realized price (the price you actually pay for a finite trade)
+      is worse than the marginal price — and the gap is called <strong>slippage</strong>.
+      Slippage is large when the trade is large relative to the pool's reserves, and
+      small when the pool is deep.
+    </p>
+
+    <h2>Try it: the constant-product curve</h2>
+
+    <p>
+      The chart below shows the curve $x \cdot y = k$ for a fixed value of $k$. The
+      pool's current state is the marked dot on the curve. When a swap happens, the dot
+      moves along the curve. Drag the slider to simulate a trade and see how the
+      reserves and the marginal price shift.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 3.1 — Constant-product invariant in action</h3>
+        <span class="tag">interactive · pure math</span>
+      </div>
+      <div class="controls">
+        <label>
+          Pool depth (k)
+          <input type="range" id="kSlider" min="100" max="10000" step="100" value="1000" />
+          <span class="value" id="kValue">k = 1,000</span>
+        </label>
+        <label>
+          Net B added to pool (Δy)
+          <input type="range" id="tradeSlider" min="-30" max="30" step="0.5" value="0" />
+          <span class="value" id="tradeValue">Δy = 0</span>
+        </label>
+      </div>
+      <svg id="ammCurve" width="720" height="380"></svg>
+      <div class="readout" id="ammReadout"></div>
+      <div class="interactive-caption">
+        The pool starts balanced at $x = y = \sqrt{k}$, so the marginal price is exactly
+        $1$. Swapping B for A moves the dot up and to the left along the hyperbola; the
+        marginal price ($y/x$) and the realized price gap (slippage) both rise.
+        Notice that for a fixed trade size, doubling $k$ (deeper pool) cuts slippage in half.
+      </div>
+    </div>
+
+    <h2>Why constant product is wrong for RWAs</h2>
+
+    <p>
+      Constant product is the right design for volatile pairs (ETH/USDC, where the price
+      can move 50% in a week). It spreads liquidity uniformly across all possible prices
+      from $0$ to $\infty$, so no matter where the price ends up, there's some liquidity
+      there.
+    </p>
+
+    <p>
+      For a tokenized Treasury, this is wasteful. OUSG trades within a few cents of its
+      NAV, week after week. An LP supplying a constant-product pool deposits capital that
+      will sit at price points like $\$0.50$ or $\$5$ — prices that will never be reached.
+      That capital earns no fees because no swaps happen there. To get a meaningful amount
+      of liquidity available at prices near $\$1.00$, an LP would have to deposit
+      enormous amounts of capital.
+    </p>
+
+    <p>
+      Uniswap v3 fixed this with <strong>concentrated liquidity</strong>: each LP picks a
+      price range $[p_l, p_h]$, and their capital is only active within that range. Within
+      the range, the LP behaves exactly like a constant-product LP for a hypothetical pool
+      with "virtual" reserves; outside the range, the LP is entirely in one asset.
+    </p>
+
+    <p>
+      The key consequence for our project: a Uniswap v3 OUSG/USDC pool with $100k of TVL
+      concentrated in the range $[\$0.99, \$1.01]$ provides roughly <em>50×</em> the
+      effective depth of a v2-style pool with the same nominal TVL — and a tighter range
+      of $[\$0.998, \$1.002]$ pushes that to roughly <em>250×</em>. This is why a "small"
+      v3 pool by reported TVL can still meaningfully facilitate trading.
+    </p>
+
+    <h2>Concentrated liquidity, visualized</h2>
+
+    <p>
+      In v3, the price axis is divided into discrete "ticks" spaced by a fixed proportion
+      (1.0001 per tick — about 1 basis point). Each LP position contributes liquidity to a
+      range of ticks. The effective liquidity at the <em>current</em> tick is the sum of
+      all positions that include that tick.
+    </p>
+
+    <p>
+      The chart below shows liquidity by tick for a synthetic OUSG-style pool. Adjust the
+      LP-range parameter to see how concentrating positions into a tighter band around
+      $\$1.00$ massively raises effective liquidity at the current price, at the cost of
+      being "out of range" entirely if the price drifts far enough.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 3.2 — Concentrated liquidity around $1.00</h3>
+        <span class="tag">interactive · Uniswap v3</span>
+      </div>
+      <div class="controls">
+        <label>
+          LP range half-width (bps)
+          <input type="range" id="rangeSlider" min="5" max="300" step="5" value="100" />
+          <span class="value" id="rangeValue">±100 bps</span>
+        </label>
+        <label>
+          Total TVL deposited
+          <input type="range" id="tvlSlider" min="10000" max="500000" step="10000" value="100000" />
+          <span class="value" id="tvlValue">$100,000</span>
+        </label>
+      </div>
+      <svg id="v3Liquidity" width="720" height="320"></svg>
+      <div class="readout" id="v3Readout"></div>
+      <div class="interactive-caption">
+        Yellow bars show how liquidity is distributed across price ticks. The vertical line
+        is the current price ($1.00). Narrowing the LP range concentrates the same capital
+        into fewer ticks, raising the effective depth available for a trade at $1.00 —
+        but exposing LPs to "going out of range" if the price drifts beyond their band.
+      </div>
+    </div>
+
+    <h2>The stableswap invariant (Curve)</h2>
+
+    <p>
+      Curve's stableswap, introduced by Michael Egorov in 2020, uses a different invariant
+      altogether — one designed from the start for assets that should trade near a fixed
+      relative price. The invariant is:
+    </p>
+
+    <p>
+      $$A n^n \sum_i x_i + D = A D n^n + \frac{D^{n+1}}{n^n \prod_i x_i}$$
+    </p>
+
+    <p>
+      Don't memorize that. What matters is the shape: stableswap is a hybrid between a
+      flat constant-sum curve (which would be perfect for assets at exactly equal price
+      but offers no protection if they diverge) and a constant-product curve. The
+      <em>amplification coefficient</em> $A$ controls how flat the curve is near the
+      balanced point. High $A$ means very flat (very low slippage near equal balance) but
+      sharp curvature once balance is disrupted; low $A$ means the curve behaves more like
+      constant product everywhere.
+    </p>
+
+    <p>
+      In a USDC / STBT Curve pool with $A=100$, a $\$50k$ swap near balance might have
+      slippage of one or two basis points. In a hypothetical Uniswap v2 pool with the same
+      $\$2M$ TVL, the same swap would suffer something like 50 basis points of slippage.
+      Curve's design is roughly $100×$ more capital-efficient near the peg, which is
+      exactly what an RWA token needs.
+    </p>
+
+    <div class="interactive">
+      <div class="interactive-header">
+        <h3>Figure 3.3 — Stableswap vs. constant product near the peg</h3>
+        <span class="tag">interactive · Curve</span>
+      </div>
+      <div class="controls">
+        <label>
+          Amplification A
+          <input type="range" id="aSlider" min="1" max="500" step="1" value="100" />
+          <span class="value" id="aValue">A = 100</span>
+        </label>
+      </div>
+      <svg id="curveCompare" width="720" height="340"></svg>
+      <div class="readout" id="curveReadout">
+        Slippage as a function of trade size (USD) against three pricing functions:
+        constant product (Uniswap v2), Uniswap v3 with a tight ±50 bps LP range, and
+        Curve stableswap with the chosen amplification. The readout below summarizes the
+        comparison at a $50k trade size; the chart shows the full curve up to $200k.
+        Vary A to see how stableswap interpolates between near-perfect price flatness and
+        constant-product behavior.
+      </div>
+    </div>
+
+    <h2>What "AMM TVL" actually means in our regression</h2>
+
+    <p>
+      Now that you understand the three pricing functions, two methodological points
+      from the blueprint should make sense:
+    </p>
+
+    <ol>
+      <li>
+        <strong>The treatment threshold of $\$10k$ TVL is venue-aware.</strong> A
+        $\$10k$ v3 pool tightly concentrated around $\$1.00$ provides meaningful depth
+        for a few-thousand-dollar trade. A $\$10k$ v2 pool would provide essentially
+        nothing. We deliberately set the threshold low so that early v3 listings count
+        as "treated" even when their nominal TVL is modest; in Chapter 14 we run a
+        robustness check at $\$50k$ and $\$100k$.
+      </li>
+      <li>
+        <strong>STBT's Curve TVL is double-sided and must be halved.</strong> DefiLlama
+        reports the total dollar value of <em>both</em> sides of a stableswap pool
+        (STBT + USDC). For comparability with the Uniswap pools, we use only the RWA-side
+        TVL — implementation detail flagged in
+        <code>data_collection/03_pull_amm_pools.py</code>.
+      </li>
+    </ol>
+
+    <h2>The economic intuition for why AMM listing matters</h2>
+
+    <p>
+      With this background, the project's core hypothesis becomes economically clear.
+      Before AMM listing, the only way to acquire OUSG is through Ondo's primary issuance
+      channel: complete the KYC process, sign the subscription agreement, wire funds, and
+      receive tokens 1-3 business days later at the day's NAV. This is a primary-market
+      transaction, and the friction (time, paperwork, minimum sizes) limits who participates.
+    </p>
+
+    <p>
+      After AMM listing, any wallet on the allowlist can swap USDC for OUSG in a single
+      atomic transaction with no minimum size, paying a few basis points of fees plus
+      slippage. The friction collapses. We would expect this to:
+    </p>
+
+    <ul>
+      <li>Increase the rate of secondary trades (the velocity we measure).</li>
+      <li>Increase the rate at which the holder base churns (people enter and exit).</li>
+      <li>Increase the volume of "rebalancing" trades — small swaps in and out as DeFi protocols and individual holders adjust positions.</li>
+    </ul>
+
+    <p>
+      Those three mechanisms together are the <em>economic content</em> of "AMM listing
+      causes velocity to rise." The regression measures the magnitude. Chapter 15
+      revisits whether we can separately identify the three mechanisms (we cannot with
+      this data; we can suggest paths forward).
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="04-onchain-data" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 04 · Part II — Infrastructure</div>
+    <h1 class="chapter-title">On-chain data foundations</h1>
+    <p class="chapter-subtitle">
+      Where transfer events come from, what's actually in a Transfer log, and the
+      decision tree that separates a "real" trade from a custodial reshuffle.
+    </p>
+
+    <h2>What "on-chain data" actually is</h2>
+
+    <p>
+      Every transaction submitted to an Ethereum-compatible chain emits zero or more
+      <strong>logs</strong>. Logs are the chain's way of publishing structured side-effects
+      of a transaction — they are not stored in account state, but they are stored
+      permanently in the chain's block history and are cheap to filter and retrieve. The
+      ERC-20 standard requires that any token transfer emits a specific log called a
+      <code>Transfer</code> event, with three fields: <code>from</code> address,
+      <code>to</code> address, and <code>value</code>.
+    </p>
+
+    <p>
+      Every secondary-market trade we want to count is a Transfer log. Every mint is
+      also a Transfer log (with <code>from = 0x000…000</code>). Every burn is a Transfer
+      log (with <code>to = 0x000…000</code>). Every internal custodial movement at
+      Securitize is also a Transfer log. This is good — we get a complete record of every
+      movement. It is also bad — we have to filter aggressively to separate the kind of
+      movements we want from the kind we do not.
+    </p>
+
+    

@@ -1,0 +1,169 @@
+<h2>The economics of the machine</h2>
+<div class="prose">
+<p class="lede-big">Strategy takes one asset, bitcoin, and sells different slices of it to different investors, each at the price that investor will pay. It makes money when the slices sell for more, in total, than the bitcoin behind them costs.</p>
+</div>
+
+<h3>One asset, five kinds of buyer</h3>
+<div class="prose"><p>Different investors want different things from bitcoin. Some want more risk, some less, some want a regular income. Strategy designs a security for each, and each buyer pays for the feature they want.</p></div>
+<figure class="figure">
+<h4>Who buys what, and what Strategy gives up</h4>
+<div class="tbl"><table>
+<thead><tr><th>Buyer</th><th>Wants</th><th>Buys</th><th>What Strategy is really selling</th><th>What it costs Strategy</th></tr></thead>
+<tbody>
+<tr><td><b>Growth investors</b></td><td>More than 1x bitcoin upside</td><td>MSTR</td><td>Leveraged bitcoin exposure, plus growth in bitcoin per share</td><td>A slice of all future value (cheap when mNAV is high)</td></tr>
+<tr><td><b>Convertible-arbitrage funds</b></td><td>Volatility to trade</td><td>Convertible notes</td><td>An option on a very volatile stock</td><td>~0% coupon; dilution if converted; cash if put</td></tr>
+<tr class="hl"><td><b>Income investors</b></td><td>Steady cash yield</td><td>STRC, STRF, STRD</td><td>Credit with bitcoin as the cushion behind it</td><td>8–12% a year, forever</td></tr>
+<tr><td><b>Hybrid investors</b></td><td>Income plus some upside</td><td>STRK</td><td>Income plus a conversion option</td><td>8% a year (or shares) and dilution if converted</td></tr>
+<tr><td><b>European investors</b></td><td>Income in euros</td><td>STRE</td><td>The same credit, in their currency</td><td>10% a year in euros; currency risk</td></tr>
+</tbody></table></div>
+<figcaption>Arbitrage funds typically buy the convertible and sell MSTR short to hedge, profiting from volatility rather than direction. That hedging is part of why converts were cheap for Strategy to issue.</figcaption>
+</figure>
+
+<h3>What the money costs</h3>
+<figure class="figure">
+<h4>Strategy's cost of capital, October 2026</h4>
+<p class="fl">Annual cash cost divided by the face value of each layer. This book's arithmetic from the filings (<a class="xref" href="#ch11">Chapter 27</a>).</p>
+<div class="hbar"><span>Convertible debt</span><div><div class="b" style="width:4.5%"></div></div><span class="a">0.5%</span></div>
+<div class="hbar"><span>All senior claims</span><div><div class="b ink" style="width:63.4%"></div></div><span class="a">7.6%</span></div>
+<div class="hbar"><span>Preferreds</span><div><div class="b hot" style="width:92.3%"></div></div><span class="a">11.1%</span></div>
+<div class="hbar"><span>STRC alone</span><div><div class="b" style="width:100%"></div></div><span class="a">12.0%</span></div>
+<figcaption>One scale from 0% to 12%. The converts are almost free in cash terms, which is exactly why they carry the put risk. The preferreds cost far more but never mature.</figcaption>
+</figure>
+
+<h3>The hurdle bitcoin has to clear</h3>
+<div class="prose">
+<p>Here is the cleanest way to see whether the machine works. Total fixed charges are about <b>$1.56B a year</b>. The bitcoin is worth about <b>$69.7B</b>. So bitcoin has to rise about <b>2.2% a year</b>, measured against the whole stack, just to "earn" the carry. Above that, common holders are ahead. Below it, the carry eats into their value.</p>
+<p>For a single new security, the hurdle is its own rate. Raising $1B of STRC at 12% buys about 12,176 BTC at $82,131. The dividend costs $120M a year, about 1,461 BTC at today's price. That trade pays off for common holders only if bitcoin rises faster than about 12% a year over the life of the money. Strategy's bet is that bitcoin's long-run growth will beat its cost of credit by a wide margin. That's a forecast, not a fact, and it's the single assumption the whole model rests on.</p>
+</div>
+<figure class="figure">
+<span class="tag">Illustration: one year, using today's figures</span>
+<h4>$1B of STRC used to buy bitcoin: what common holders gain or lose</h4>
+<div class="tbl"><table>
+<thead><tr><th>Bitcoin over the year</th><th class="r">Value of 12,176 BTC</th><th class="r">Less $120M dividend</th><th class="r">Gain to common vs not raising</th></tr></thead>
+<tbody>
+<tr><td>+30%</td><td class="r">$1,300M</td><td class="r">$1,180M</td><td class="r"><b>+$180M</b></td></tr>
+<tr><td>+12% (STRC's rate)</td><td class="r">$1,120M</td><td class="r">$1,000M</td><td class="r">$0</td></tr>
+<tr><td>0%</td><td class="r">$1,000M</td><td class="r">$880M</td><td class="r"><b>−$120M</b></td></tr>
+<tr><td>−30%</td><td class="r">$700M</td><td class="r">$580M</td><td class="r"><b>−$420M</b></td></tr>
+</tbody></table></div>
+<figcaption>Gain = value of the extra bitcoin − $1B claim − $120M dividend. Ignores fees, taxes and any effect on mNAV. The $1B claim stays the same size whatever bitcoin does.</figcaption>
+</figure>
+
+<h3>Leverage, measured</h3>
+<div class="prose">
+<p>Net assets are bitcoin ($69.7B) plus cash ($5.5B) minus claims ($20.5B), about $54.7B. A 10% move in bitcoin is $7.0B, which is a <b>12.7% move in net assets</b>. So at net asset value, common holders own about <b>1.27x</b> bitcoin. The market premium adds more swing on top. When MSTR trades above its net assets, its price can move further than that 1.27x.</p>
+</div>
+
+<h3>The issuance rulebook</h3>
+<div class="prose"><p>Put the costs together and Strategy's choice of what to sell follows from two prices: the mNAV of the common and the price of the preferreds relative to $100.</p></div>
+<figure class="figure">
+<h4>Which security to sell (or buy back)</h4>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Preferreds at or above $100</th><th>Preferreds below $100</th></tr></thead>
+<tbody>
+<tr><td><b>Net mNAV above 1.0x</b></td><td>Sell either. Common adds bitcoin per share directly; preferreds add leverage</td><td class="hl"><b>Sell common, buy back preferreds.</b> The 2026 rotation</td></tr>
+<tr><td><b>Net mNAV below 1.0x</b></td><td>Sell preferreds; consider buying back common</td><td>Sell neither. Use the Reserve; buy back whichever is cheapest; bitcoin sales as a last resort</td></tr>
+</tbody></table></div>
+<figcaption>Day-one effects from the rules in <a class="xref" href="#ch3">Chapter 6</a>. Management keeps discretion; this is the logic, not a published policy.</figcaption>
+</figure>
+<div class="key"><b>The economics in one sentence</b>Strategy borrows at 0–12% against an asset it believes will grow faster than that, and it sells shares when the market pays more than the assets behind them. Both halves need confidence. One needs bitcoin to rise; the other needs a premium.</div>
+<div class="check"><p>Check yourself</p>
+<details><summary>Why is the 2.2% hurdle so much lower than STRC's 12%?</summary><p>The 2.2% spreads all charges across all the bitcoin, most of which was bought with common stock that costs no cash. The 12% applies only to the bitcoin bought with STRC money.</p></details>
+<details><summary>Bitcoin is flat for a year. Where does STRC's dividend come from?</summary><p>From the USD Reserve or from selling MSTR (if mNAV is above 1.0x). Either way, common holders bear the cost.</p></details>
+</div>
+</section>
+
+<section class="chapter" id="ch4">
+<span class="ch-num">Chapter 8</span>
+<h2>The capital stack: who gets paid first</h2>
+<div class="prose">
+<p>A <b>capital stack</b> lists everyone with a claim on a company, from first-paid to last-paid. If money runs short, the top gets paid in full before anyone below gets anything. Strategy's stack has seven layers: debt, five preferreds, and common stock at the bottom, which gets whatever is left.</p>
+</div>
+<figure class="figure">
+<h4>Strategy's claims, most senior at the top ($m)</h4>
+<p class="fl">Bar length is each claim's face value, all on one scale starting at zero. STRC is the biggest single claim after the debt.</p>
+<div class="ladder">
+  <div class="rung"><span class="rk">Debt</span><span class="nm"><b>Convertible notes</b><small>6 series, 0%–2.25% coupons</small></span><span class="bar-wrap"><div class="bar" style="width:76.8%"></div></span><span class="amt">6,750</span></div>
+  <div class="rung"><span class="rk">Pref 1</span><span class="nm"><b>STRF</b><small>10%, cumulative + step-up</small></span><span class="bar-wrap"><div class="bar" style="width:14.6%"></div></span><span class="amt">1,284</span></div>
+  <div class="rung"><span class="rk">Pref 2</span><span class="nm"><b>STRC</b><small>12% variable, cumulative</small></span><span class="bar-wrap"><div class="bar hot" style="width:100%"></div></span><span class="amt">≈ 8,792</span></div>
+  <div class="rung"><span class="rk">Pref 3</span><span class="nm"><b>STRE</b><small>10% in euros (€775M)</small></span><span class="bar-wrap"><div class="bar" style="width:9.9%"></div></span><span class="amt">≈ 872</span></div>
+  <div class="rung"><span class="rk">Pref 4</span><span class="nm"><b>STRK</b><small>8%, converts to MSTR</small></span><span class="bar-wrap"><div class="bar" style="width:15.9%"></div></span><span class="amt">1,402</span></div>
+  <div class="rung"><span class="rk">Pref 5</span><span class="nm"><b>STRD</b><small>10%, non-cumulative</small></span><span class="bar-wrap"><div class="bar" style="width:15.9%"></div></span><span class="amt">1,402</span></div>
+  <div class="rung eq"><span class="rk">Last</span><span class="nm"><b>MSTR common</b><small>Owns everything left over</small></span><span class="bar-wrap"><small>Residual: no face value</small></span><span class="amt">—</span></div>
+</div>
+<figcaption>Debt: Q2 10-Q. Preferreds: Q2 10-Q notional, with STRC rolled forward for 16.97m shares bought back through Oct 11 (estimate) and STRE at $1.1253/€. Total claims ahead of common ≈ $20.5B. Order from the certificates of designation and the 10-Q.</figcaption>
+</figure>
+
+<h3>How big is the cushion?</h3>
+<figure class="figure">
+<h4>Bitcoin vs the claims ahead of common stock ($B)</h4>
+<p class="fl">One scale. The bitcoin is worth about 3.4 times every dollar of debt and preferred combined.</p>
+<div class="hbar"><span>Bitcoin (848,250)</span><div><div class="b ink" style="width:100%"></div></div><span class="a">69.7</span></div>
+<div class="hbar"><span>Debt + preferreds</span><div><div class="b hot" style="width:29.4%"></div></div><span class="a">20.5</span></div>
+<div class="hbar"><span>MSTR market cap</span><div><div class="b" style="width:91.6%"></div></div><span class="a">63.8</span></div>
+<figcaption>Bitcoin at $82,131 (Oct 15 close). MSTR at $151.29 × ≈ 421.8m shares (estimate). Preferred holders have no legal claim on the coins themselves. This is a measure of headroom, not collateral.</figcaption>
+</figure>
+<div class="prose">
+<p>Two things fall out of this picture:</p>
+<ul>
+<li><b>Bitcoin would have to fall about 70%</b>, to roughly $24,000, before it was worth only as much as the claims ahead of common. Below that, the common stock is worth nothing on paper.</li>
+<li><b>The market values the common at $63.8B</b>, which is more than the $49.2B of bitcoin left after the claims (69.7 − 20.5), or $54.7B counting its $5.5B of cash. That gap is the premium from <a class="xref" href="#ch3">Chapter 6</a>.</li>
+</ul>
+</div>
+<div class="key"><b>Why seniority matters for the preferreds</b>STRF sits right under the debt and has a penalty rate if Strategy skips it, so it is the safest preferred. STRD is the most junior, and its dividends can be skipped forever without ever being owed. That's why it pays 10% while STRK, which is more senior and also converts into MSTR, pays 8%.</div>
+<p class="meta">Core source: <a href="https://www.sec.gov/Archives/edgar/data/1050446/000105044626000044/mstr-20260630.htm">filing or issuer capital framework</a>. Source dates and estimates are listed with the workbook inputs and in Appendix B.</p></section>
+
+<section class="chapter" id="ch5">
+<span class="ch-num">Chapter 9</span>
+<h2>Every product, one card each</h2>
+<div class="prose">
+<p>Why sell five different preferreds instead of one? Because each one is built for a different buyer. Some want safety, some want the highest yield, some want a bond-like price that barely moves, some want euros, and some want a piece of the upside. Strategy's pitch is that it can sell <b>"digital credit"</b> to all of them, each on different terms, all backed by the same bitcoin.</p>
+</div>
+
+<figure class="figure">
+<h4>The five preferreds side by side</h4>
+<p class="fl">Sorted by seniority. Annual cost is this book's estimate at current notional and rates ($m).</p>
+<div class="tbl"><table>
+<thead><tr><th>Ticker</th><th>Name</th><th>Rank</th><th>Rate</th><th>If a dividend is skipped</th><th>Extra feature</th><th>Currency</th><th class="r">Notional ($m)</th><th class="r">Annual cost ($m)</th><th>Launched</th></tr></thead>
+<tbody>
+<tr><td><b>STRF</b></td><td>Strife</td><td>1 (most senior)</td><td>10% fixed</td><td>Owed, compounding, rate steps up 1% a quarter to 18%</td><td>Penalty makes skipping very expensive</td><td>USD</td><td class="r">1,284</td><td class="r">128</td><td>Mar 2025</td></tr>
+<tr class="hl"><td><b>STRC</b></td><td>Stretch</td><td>2</td><td>12% variable, reset monthly</td><td>Owed, compounding</td><td>Rate managed to keep price near $100. Paid twice a month (daily if approved)</td><td>USD</td><td class="r">≈ 8,792</td><td class="r">1,055</td><td>Jul 2025</td></tr>
+<tr><td><b>STRE</b></td><td>Stream</td><td>3</td><td>10% fixed</td><td>Owed, compounding, same step-up as STRF</td><td>Euro investors; listed in Luxembourg</td><td>EUR</td><td class="r">≈ 872</td><td class="r">87</td><td>Nov 2025</td></tr>
+<tr><td><b>STRK</b></td><td>Strike</td><td>4</td><td>8% fixed</td><td>Owed, compounding</td><td>Converts into 0.1 MSTR; dividends can be paid in MSTR shares</td><td>USD</td><td class="r">1,402</td><td class="r">112</td><td>Jan 2025</td></tr>
+<tr><td><b>STRD</b></td><td>Stride</td><td>5 (most junior)</td><td>10% fixed</td><td><b>Not owed</b> (non-cumulative)</td><td>Highest risk of the five</td><td>USD</td><td class="r">1,402</td><td class="r">140</td><td>Jun 2025</td></tr>
+</tbody></table></div>
+<figcaption>Terms: Q2 2026 10-Q, certificates of designation, 10-K Exhibit 4.2. All are perpetual: they never mature, so Strategy never has to repay the principal. In exchange it pays the dividend forever, or until it buys them back.</figcaption>
+</figure>
+
+<div class="cards">
+<article class="card">
+<span class="tk">MSTR</span><span class="nm">Class A common stock</span>
+<p class="one">Owns whatever is left after everyone else is paid. The leveraged bet on bitcoin.</p>
+<dl>
+<div><dt>Pays</dt><dd>No dividend</dd></div>
+<div><dt>Upside</dt><dd>All of it, amplified by the debt and preferreds</dd></div>
+<div><dt>Role</dt><dd>Main fundraising tool when it trades above 1.0x net mNAV. $18.8B of unsold ATM capacity</dd></div>
+<div><dt>Watch</dt><dd>The premium (mNAV). Below 1.0x, selling it destroys value</dd></div>
+<div><dt>Control</dt><dd>Saylor holds Class B shares with extra votes (~33% of voting power)</dd></div>
+</dl></article>
+
+<article class="card">
+<span class="tk">Converts</span><span class="nm">Convertible senior notes, 2028–2032</span>
+<p class="one">Cheap debt with a built-in option to become MSTR shares.</p>
+<dl>
+<div><dt>Size</dt><dd>$6.7B across six series, coupons 0%–2.25% (≈ $35M a year of interest)</dd></div>
+<div><dt>Rank</dt><dd>Ahead of every preferred</dd></div>
+<div><dt>Trade-off</dt><dd>Low interest because buyers get the conversion option</dd></div>
+<div><dt>Watch</dt><dd>Holders can demand repayment ("put") on set dates: $5.9B becomes puttable Sep 2027–Sep 2028. They'll use it if MSTR is below the conversion price</dd></div>
+</dl></article>
+
+<article class="card">
+<span class="tk">STRF</span><span class="nm">Strife · 10% Series A Perpetual</span>
+<p class="one">The safest preferred: most senior, with a penalty if skipped.</p>
+<dl>
+<div><dt>Pays</dt><dd>10% a year, quarterly, cash</dd></div>
+<div><dt>Buyer</dt><dd>Wants income with the most protection</dd></div>
+<div><dt>If skipped</dt><dd>Owed with compounding; the rate rises 1% per period to 18%</dd></div>
+<div><dt>Cost</dt><dd>≈ $128M a year</dd></div>
+</dl></article>
+

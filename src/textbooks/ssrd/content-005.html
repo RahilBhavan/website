@@ -1,0 +1,132 @@
+<h3>6.2 The rule in the code is a little wider</h3>
+  <p><code>score.decide</code> alerts when there are strong signals in ≥ 2 of A/B/C, <strong>or</strong> strong signals in exactly one of A/B/C <strong>plus ≥ 2 other signals</strong> of any strength and any family, D included. The second clause isn't in the SPEC. It means one strong signal plus a shared ASN and shared nameservers alerts. Pick signals below to compare the two rules.</p>
+
+  <div class="figure" id="picker-widget">
+    <div class="fig-head"><span class="fig-no">Fig 6.1</span><p class="fig-title">Pick the signals two pages share, and compare the code's verdict with the SPEC's</p></div>
+    <div class="picker" id="picker">
+      <fieldset><legend>A · content</legend>
+        <label><input type="checkbox" data-f="A" data-s="3">tlsh<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="A" data-s="3">tag_jaccard<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="A" data-s="3">copy ≥ 30<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="A" data-s="2">copy ≥ 12<span class="st">medium</span></label>
+      </fieldset>
+      <fieldset><legend>B · assets</legend>
+        <label><input type="checkbox" data-f="B" data-s="3">favicon_mmh3<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="B" data-s="3">asset_sha256<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="B" data-s="3">inline_script<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="B" data-s="2">asset_paths<span class="st">medium</span></label>
+      </fieldset>
+      <fieldset><legend>C · page</legend>
+        <label><input type="checkbox" data-f="C" data-s="3">telegram / whatsapp<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="C" data-s="3">crypto_addresses<span class="st">strong</span></label>
+        <label><input type="checkbox" data-f="C" data-s="2">title<span class="st">medium</span></label>
+        <label><input type="checkbox" data-f="C" data-s="1">header_order<span class="st">weak</span></label>
+        <label><input type="checkbox" data-f="C" data-s="1">generator<span class="st">weak</span></label>
+      </fieldset>
+      <fieldset><legend>D · infrastructure</legend>
+        <label><input type="checkbox" data-f="D" data-s="1">asn<span class="st">weak</span></label>
+        <label><input type="checkbox" data-f="D" data-s="1">ns<span class="st">weak</span></label>
+      </fieldset>
+    </div>
+    <div class="widget">
+      <button type="button" data-preset="ab">Preset: tlsh + favicon</button>
+      <button type="button" data-preset="aa">Preset: tlsh + tag_jaccard</button>
+      <button type="button" data-preset="add">Preset: tlsh + asn + ns</button>
+      <button type="button" data-preset="clear">Clear</button>
+    </div>
+    <p class="readout" id="pickOut" aria-live="polite"></p>
+    <figcaption>The logic is a copy of <code>score.decide</code> and the SPEC sentence above, run in your browser. Score is the sum of strengths (strong 3, medium 2, weak 1) and only ranks matches; it doesn't decide them. Try "tlsh + asn + ns": the code alerts, the SPEC doesn't. Whether to close that gap is your call (Appendix A, item 1). CLAUDE.md says never to replace the two-family rule with a single-signal shortcut.</figcaption>
+  </div>
+
+  <h3>6.3 From pairs to kits: union-find</h3>
+  <p>A kit is built from seed pages, not defined by hand. <code>kits.cluster</code> compares every pair of seed pages on different registrable domains. When a pair is linked, their groups merge. Groups are tracked with a <strong>disjoint-set union</strong> (union-find): each page points to a parent, <code>find</code> follows pointers to a group's root (halving the path as it goes, so later lookups are fast), and <code>union</code> joins two roots. After all pairs, each root is one candidate kit. Groups spanning ≥ 2 registrable domains become kits, named <code>kit-NN</code>, plus <code>-KCDA</code> if any member is a KCDA seed. Kits whose median page has fewer than 3 investment terms are marked <code>excluded-non-investment</code> and never alert. That catches parking and hosting templates.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 6.2</span><p class="fig-title">Single linkage chains: one weak bridge can merge two unrelated kits <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 230" role="img" aria-label="Two groups of pages. Pages in each group are linked by two strong families. One page in each group shares only a chat widget, so a loose link rule would merge the two groups into one kit. The stricter clustering rule keeps them apart.">
+      <g class="ln">
+        <path d="M120 70L220 70L170 150Z"/>
+        <path d="M680 70L780 70L730 150Z"/>
+      </g>
+      <path class="lnm dash" d="M220 70C380 20 520 20 680 70" style="stroke-width:2"/>
+      <g class="bxw" style="stroke:#111214;stroke-width:1.5">
+        <circle cx="120" cy="70" r="20"/><circle cx="220" cy="70" r="20"/><circle cx="170" cy="150" r="20"/>
+        <circle cx="680" cy="70" r="20"/><circle cx="780" cy="70" r="20"/><circle cx="730" cy="150" r="20"/>
+      </g>
+      <g text-anchor="middle" class="ts tb"><text x="120" y="75">p1</text><text x="220" y="75">p2</text><text x="170" y="155">p3</text><text x="680" y="75">q1</text><text x="780" y="75">q2</text><text x="730" y="155">q3</text></g>
+      <text x="450" y="22" text-anchor="middle" class="ts tm">shared chat-widget hash only (one strong family: B)</text>
+      <text x="170" y="196" text-anchor="middle" class="ts">kit 1: copy + favicon on every link</text>
+      <text x="730" y="196" text-anchor="middle" class="ts">kit 2: tlsh + telegram on every link</text>
+      <rect class="acc" x="330" y="96" width="240" height="56" rx="8"/>
+      <text x="450" y="118" text-anchor="middle" class="tb">clustering link needs</text><text x="450" y="138" text-anchor="middle" class="tb">2 strong families</text>
+    </svg>
+    </div>
+    <figcaption>Union-find merges anything connected by any path. If one link were allowed on weaker evidence, p2–q1 would join the two kits, and every later alert against "the kit" would mix two programs. In the working tree, clustering uses the stricter test (<code>len(strong_families(sig)) ≥ 2</code>), not the alert rule. The fix followed the kit-01 chaining seen on Oct 17 (chapter 5.7).</figcaption>
+  </div>
+
+  <h3>6.4 What the library looks like now</h3>
+  <p>The first library (Oct 17) clustered 212 seed pages on 128 domains into 12 kits holding 72 member pages. The largest held 30 pages on 16 domains, all with the same title about "sustainable wealth through oil, real estate, and agriculture". After the copy fingerprint and the chaining fix, the library holds <strong>22 multi-domain kits</strong>, including <strong>kit-01-KCDA</strong>, plus <strong>138 single-site references</strong> (<code>ref-&lt;domain&gt;</code>): investment-content seed domains that didn't cluster, so a live page can still match one known listed site. A reference match is weaker evidence than a kit match and is labeled separately. Most kits are general CBR-listed investment kits, <em>not</em> the KCDA network. The README and memo must keep the two apart.</p>
+
+  <h3>6.5 The backtest: does the library recognize its own kits?</h3>
+  <p><code>evaluate.backtest</code> holds out about 20% of kit-member pages (page ID mod 5 = 0), re-clusters the rest, and checks whether each held-out page alerts against a group whose majority kit is the page's original kit. The history is a lesson in itself. It went 14 of 17, then 27 of 31 (87%) after the copy fingerprint. Then one 87-page "kit" turned out to be chaining: 4.8% pair density, held together by one inline-script hash (chapter 5.7). After the fix, the honest result is <strong>13 of 19 (68%, 95% CI 46–85%)</strong>. The 87% was inflated, because held-out pages were easy to "re-identify" inside one giant chained group.</p>
+  <div class="callout warn">
+    <p>What the backtest does and doesn't show</p>
+    <ul>
+      <li>It shows the rule and thresholds recognize <em>known</em> kits from a partial library. It does not measure precision on live CT traffic, where most candidates aren't in any kit.</li>
+      <li>Only pages that joined a kit in the full library are held out. Seed pages the rule never linked to anything are never tested, so 68% is recognition <em>given</em> a page is linkable. The held-out pages are excluded from re-clustering, but the common-value denylist is shared. Report it as recognition, beside live precision.</li>
+      <li>n = 19 is small, hence the wide interval, which reaches below the 60% target. Chapter 8.3 shows why.</li>
+    </ul>
+  </div>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>A candidate shares TLSH distance 40 and tag-Jaccard 0.91 with a kit member, and nothing else. Alert?</summary><div>No, under both rules. Both are family A, so there's one strong family and zero other signals. Same template doesn't mean same kit.</div></details>
+    <details><summary>Favicon + Telegram handle shared. Alert?</summary><div>Yes: strong B plus strong C. That's two families.</div></details>
+    <details><summary>Why is clustering stricter than alerting?</summary><div>Union-find is transitive. One loose link merges whole groups, and errors compound across the library. An alert is one pair, and its error stays local and goes to review.</div></details>
+    <details><summary>What does the 68% backtest let you claim in the memo?</summary><div>That the library re-identified 13 of 19 held-out seed pages to the correct kit (95% CI 46–85%), and that an earlier 87% was inflated by chaining. Nothing about live precision, and nothing about who runs the sites.</div></details>
+    <details><summary>Why did the inflated 87% look so good?</summary><div>A chained mega-group contains almost everything, so a held-out page almost always lands back in "its" kit. Big, loose clusters make recognition easy and meaningless. Check cluster density, not just the catch rate.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://cp-algorithms.com/data_structures/disjoint_set_union.html">cp-algorithms: disjoint set union</a> · on single-linkage chaining, any clustering textbook's chapter on hierarchical clustering (e.g. Manning, Raghavan &amp; Schütze, <a href="https://nlp.stanford.edu/IR-book/html/htmledition/single-link-and-complete-link-clustering-1.html">Introduction to IR, §17.2</a>)</div>
+</section>
+
+<section class="chapter" id="ch7" aria-labelledby="ch7-h">
+  <p class="issue-line">Chapter 7 · Fri Oct 23 · 30 minutes</p>
+  <h2 id="ch7-h">Where the known scams come from, and the lines you don't cross</h2>
+  <p class="lede">The kit library is only as good as its seeds, and every seed source comes with rules: terms of service, quotas, and legal lines about what a private researcher may do. This chapter covers both, because most of the ways SSRD could go wrong legally run through these sources.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>CBR, KCDA, DFPI and urlscan: what each gives you, its limits, and the legal and ethical boundaries.</dd></div>
+    <div><dt>Why it matters</dt><dd>Hard rules 4 to 6 and the data-handling rules. A mistake here can publish a domain or make you a government agent.</dd></div>
+    <div><dt>In the repo</dt><dd><code>seeds.py</code>, <code>urlscan.py</code>, <code>wayback.py</code>, <code>docs/research.md</code> "Seed sources" and "Legal".</dd></div>
+  </dl>
+
+  <h3>7.1 The seed sources</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Source</th><th>Gives you</th><th>Watch out for</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Bank of Russia (CBR) blacklist JSON</td><td>27,474 entries, 24,665 with a site, newest dated 2026-10-16, about 270–470 new entries a month. The main seed source <em>and</em> a ground-truth stream for the forward check (chapter 8.6).</td><td>The Site field needs cleaning (Telegram links, comma-separated lists, <code>mail.</code> hosts). Mostly English-named <code>.com</code> forex sites. In the memo they are "listed by CBR": indicators, not court findings.</td></tr>
+        <tr><td>KCDA seized set</td><td>13 seeds: domains showing the KCDA seizure banner (title "This Website Has Been Seized", <code>#KCDA</code>, NS at Shadowserver), plus VCU releases.</td><td>urlscan saw these only <em>after</em> seizure, so fingerprints come from Wayback pre-seizure copies (7 recovered). Seized and sinkholed pages are excluded from fingerprints and from live scoring.</td></tr>
+        <tr><td>DFPI Crypto Scam Tracker</td><td>A small US pig-butchering set.</td><td>No export, so collected by hand.</td></tr>
+        <tr><td>Chainabuse</td><td>Spot checks.</td><td>Free tier is 10 calls a month. Researcher access has been requested.</td></tr>
+        <tr><td><s>CFTC RED list</s>, <s>CryptoScamDB</s></td><td>Dropped.</td><td>The RED list has no URLs. CryptoScamDB is stale. ScamSniffer and MetaMask lists cover wallet drainers, not investment sites.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>One check you can run: the README counts 52,897 CBR domains, while the research notes count 24,665 entries with a site. The likely reason is that one entry can list several sites, and the cleaner splits them. Confirm that in <code>seeds.py</code> before the README quotes either number.</p>
+
+  <h3>7.2 urlscan: search and fetch, never submit</h3>
+  <p>urlscan.io is a public archive of browser scans other people submitted. SSRD uses it for history: what a seed domain looked like before it was seized or went dark. The free tier allowed 1,000 searches, 10,000 result fetches and some scans per day; the real limits come from <code>GET /user/quotas/</code>. Search sees only public scans, and anonymous result fetches return 403, so the API key in <code>data/.env</code> is required. The searches SSRD actually runs look like this:</p>
+  <div class="callout">
+    <p>urlscan search syntax (Elasticsearch query strings)</p>
+    <ul>
+      <li><code>page.title:"This Website Has Been Seized"</code>: every scan with that page title (finds seizure banners, many of them not KCDA).</li>
+      <li><code>hash:&lt;sha256&gt;</code>: every scan where some response body had this SHA-256. This is how you pivot from one known script or banner to other domains.</li>
+      <li><code>page.domain:"example.com"</code>: the history of one seed domain.</li>
+      <li>Also free: <code>page.asn</code>, <code>ip</code>. Pro only: similar-page search, <code>text.content</code>, <code>dom.hash</code>. There's no mmh3 favicon hash and no TLSH, so SSRD computes those itself.</li>
+    </ul>
+  </div>
+  <p>Hard rule 4 says never write code that submits a scan, in any visibility. A <strong>public</strong> or <strong>unlisted</strong> scan publishes the domain, and might warn the operator or expose an investigation. A <strong>private</strong> scan is urlscan's browser actively visiting the site with JS on, which goes beyond the passive-visit rule. A test enforces that the client has no submission code path. The ToS also say personal, non-commercial use and no "systematic retrieval" without permission. So: email urlscan about the research use before bulk pulls, keep to <code>min_interval_seconds = 2.0</code>, back off on 429, and cache every response locally.</p>
+
+  

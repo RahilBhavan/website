@@ -1,0 +1,188 @@
+<h2 class="section-title"><span class="sec-num">3.7</span>Hopper — TMA, <code>wgmma</code>, and Thread Block Clusters</h2>
+        <div class="section-subtitle">What sm_90 added on top of everything in this chapter</div>
+
+        <p>Most of this textbook targets Ampere. Hopper (H100, sm_90) keeps every Ampere primitive but adds four big features that change the kernel-engineering shape of GEMM. Even if you do not own an H100, you should know what these are because the next-generation public CUTLASS kernels assume them.</p>
+
+        <div class="atomic" id="A3.7.1-tma">
+            <div class="atomic-head"><span class="atomic-id">[[A3.7.1]]</span><h4 class="atomic-title">TMA — Tensor Memory Accelerator</h4><span class="atomic-tag">hopper</span></div>
+            <div class="atomic-body">
+                <p>The TMA is a hardware unit that copies multi-dimensional tiles from global memory to shared memory <em>described by a tensor descriptor</em>. Instead of one thread issuing one address per <code>cp.async</code>, one <em>elect-one</em> thread issues a single <code>cp.async.bulk.tensor</code> instruction with a tile descriptor and the unit fetches the entire 2D/3D/4D tile, optionally swizzled, into shared memory. The win: zero address-arithmetic instructions on the warps, perfect coalescing for free, asynchronous completion signaled by an <code>mbarrier</code>. Functionally, TMA replaces the entire load-prologue of an Ampere GEMM with a couple of PTX instructions. Required for <code>wgmma</code> performance.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#sec-3-5">[[§3.5 cp.async]]</a> <a class="rel-chip rel-prereq" href="#A2.9.4-mbarrier">[[A2.9.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A3.7.2-wgmma">[[A3.7.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.7.2-wgmma">
+            <div class="atomic-head"><span class="atomic-id">[[A3.7.2]]</span><h4 class="atomic-title"><code>wgmma</code> — warp-group MMA, async at the M-N tile level</h4><span class="atomic-tag">hopper</span></div>
+            <div class="atomic-body">
+                <p>Hopper's MMA instruction is <code>wgmma.mma_async</code>: it operates over a <em>warp group</em> (4 warps = 128 threads) and is <em>asynchronous</em>. The warp group issues the instruction, sets a fence, then can keep doing math while the Tensor Cores grind in the background. Combined with TMA-fed shared memory and async barriers, the inner loop of a Hopper GEMM is essentially three independent streams: TMA loads, wgmma execution, and accumulator updates — all overlapping. Output tile sizes are huge by Ampere standards (m64n256k16 is a common micro-tile). Ampere kernels do not port directly; Hopper requires a different scheduling model.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#sec-3-4">[[§3.4 mma.sync]]</a> <a class="rel-chip rel-prereq" href="#A3.7.1-tma">[[A3.7.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-6-4">[[§6.4 CUTLASS]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.7.3-cluster">
+            <div class="atomic-head"><span class="atomic-id">[[A3.7.3]]</span><h4 class="atomic-title">Thread block clusters and distributed shared memory</h4><span class="atomic-tag">hopper</span></div>
+            <div class="atomic-body">
+                <p>Hopper added a new layer above blocks: a <em>thread block cluster</em>, up to 8 (or 16) cooperating blocks that share access to each other's shared memory via "Distributed Shared Memory" (DSMEM). A block can directly load from a sibling block's SMEM without going to L2. The use case is split-K GEMMs and FlashAttention-class kernels where the natural tile sizes exceed one SM's SMEM budget: clusters let you spread one tile across multiple SMs while keeping data on-chip. The PTX is <code>ld.shared::cluster</code>, declared via <code>cluster_dim_x/y/z</code> in the launch grid.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#sec-1-4">[[§1.4 Memory]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-7">[[Ch7 — split-K]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A3.7.4-fp8-engine">
+            <div class="atomic-head"><span class="atomic-id">[[A3.7.4]]</span><h4 class="atomic-title">FP8 Transformer Engine — per-tensor amax scaling</h4><span class="atomic-tag">hopper</span></div>
+            <div class="atomic-body">
+                <p>Hopper Tensor Cores accept FP8 (E4M3/E5M2) inputs. To use them productively in training, NVIDIA's Transformer Engine library maintains running statistics of each tensor's amax (max absolute value), then rescales tensors per-step so they fit in the narrow FP8 range without overflow. The hardware does the matmul in FP8 but accumulates into FP32; the amax statistics live in extra small tensors that the framework keeps. The end-to-end speedup vs FP16 is roughly 2× at sufficient batch size; the engineering cost is non-trivial.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.2.7-fp8">[[A0.2.7]]</a> <a class="rel-chip rel-prereq" href="#A3.6.4-loss-scale">[[A3.6.4]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHECKPOINT -->
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 3 Checkpoint</div>
+        <div class="checkpoint-sub">Click each item to mark complete.</div>
+        <ul>
+            <li>On Ampere, what is the native <code>mma.sync</code> tile shape for FP16 input and FP32 accumulate?</li>
+            <li>What does the <code>sync</code> in <code>mma.sync</code> actually mean at the hardware level?</li>
+            <li>Why is raw <code>mma.sync</code> preferred over WMMA for the last 10&ndash;20% of performance?</li>
+            <li>What does <code>ldmatrix.sync</code> do, and why does it exist as a separate instruction?</li>
+            <li>Sketch double-buffering with <code>cp.async</code> in one sentence. Identify the one piece of state you ping-pong.</li>
+            <li>For each of {WMMA, <code>mma.sync</code>, CUTLASS, Hopper <code>wgmma</code>}, name one situation where it is the right tool.</li>
+        </ul>
+    </div>
+
+    <!-- REFS -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 3</div>
+        <ol>
+            <li>NVIDIA. <em>NVIDIA Ampere GA102 GPU Architecture Whitepaper.</em> 2020. — Tensor-Core throughput tables for consumer Ampere parts.</li>
+            <li>Jia, Z., Maggioni, M., Smith, J., Scarpazza, D. <em>Dissecting the NVIDIA Ampere GPU Architecture through Microbenchmarking.</em> arXiv:2106.10499. <a href="https://arxiv.org/abs/2106.10499" target="_blank" rel="noopener">arxiv.org/abs/2106.10499</a></li>
+            <li>NVIDIA. <em>PTX ISA — Warp Level Matrix Multiply-Accumulate Instructions.</em> <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">docs.nvidia.com/cuda/parallel-thread-execution/</a> §"Warp Level Matrix Multiply-Accumulate."</li>
+            <li>NVIDIA. <em>PTX ISA — <code>cp.async</code> instruction.</em> Same document, "Data Movement and Conversion Instructions" section.</li>
+            <li>NVIDIA Developer Blog. <em>Programming Tensor Cores in CUDA 9.</em> The canonical first source on WMMA. <a href="https://developer.nvidia.com/blog/programming-tensor-cores-cuda-9/" target="_blank" rel="noopener">developer.nvidia.com/blog/programming-tensor-cores-cuda-9/</a></li>
+            <li>NVIDIA Developer Blog. <em>CUTLASS: Fast Linear Algebra in CUDA C++.</em> <a href="https://developer.nvidia.com/blog/cutlass-linear-algebra-cuda/" target="_blank" rel="noopener">developer.nvidia.com/blog/cutlass-linear-algebra-cuda/</a></li>
+            <li>NVIDIA. <em>CUTLASS GitHub repository</em> — production reference for tiled <code>mma.sync</code>, <code>ldmatrix</code>, and pipelined <code>cp.async</code> patterns. <a href="https://github.com/NVIDIA/cutlass" target="_blank" rel="noopener">github.com/NVIDIA/cutlass</a></li>
+            <li>NVIDIA. <em>Hopper H100 Architecture Whitepaper</em> and <em>NVIDIA Hopper Tuning Guide</em> — the next generation's <code>wgmma</code> + TMA model.</li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-2"><span class="label">← Previous</span>CUDA Programming</a>
+        <a href="#chapter-4" class="next"><span class="label">Next →</span>Nsight Compute</a>
+    </nav>
+</article>
+<!-- =====================================================================
+     CHAPTER 4
+     ===================================================================== -->
+<article class="chapter" id="chapter-4">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">04</div>
+        <div class="chapter-eyebrow">Chapter 04</div>
+        <h1 class="chapter-title">Nsight Compute:<br>Seeing Inside Your Kernel</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Profile any CUDA kernel with Nsight Compute. Read every metric in the Summary, Memory Workload Analysis, Warp State Statistics, and Source views. Diagnose the dominant bottleneck and know which optimization to apply next — every time.</p>
+    </header>
+
+    <!-- 4.1 -->
+    <section class="section" id="sec-4-1">
+        <h2 class="section-title"><span class="sec-num">4.1</span>Nsight Compute Architecture</h2>
+        <div class="section-subtitle">What it does, and what its measurements are worth</div>
+
+        <p>NVIDIA ships two profilers. They sound similar, do different things, and you need both.</p>
+
+        <ul>
+            <li><strong>Nsight Systems</strong> (<code>nsys</code>): system-wide timeline. Shows CPU threads, CUDA API calls, kernel launches, memory copies, and CPU&hairsp;↔&hairsp;GPU synchronization. Use this to see the <em>shape</em> of your program — gaps between kernels, host-side bottlenecks, launch overhead, multi-stream behavior. Lightweight, almost no slowdown.</li>
+            <li><strong>Nsight Compute</strong> (<code>ncu</code>): per-kernel deep dive. Counts hundreds of hardware performance counters during kernel execution and gives you the data needed to diagnose <em>why</em> a kernel is slow. Heavy — it slows your program down enormously while profiling. Use this on the kernels Nsight Systems flagged.</li>
+        </ul>
+
+        <h3>How <code>ncu</code> gets its numbers — and why this matters</h3>
+        <p>The GPU has a fixed number of hardware counter slots — much smaller than the number of metrics you might want. When you ask <code>ncu</code> for a metric set that exceeds the slots in one pass, the tool transparently <strong>replays</strong> the kernel. Each replay collects a different subset of counters. <code>ncu</code> stitches the results together into a single report. This is called <em>kernel replay</em>, and it has two practical consequences:</p>
+
+        <ol>
+            <li><strong>Profiling makes the kernel run many times.</strong> If your kernel has side effects (e.g. writes to memory the next launch reads), enable <em>kernel replay isolation</em> (the default since recent versions) so each replay sees the same input state.</li>
+            <li><strong>Profiled timings are not real timings.</strong> Counter-collection inflates kernel duration by 2&ndash;100×. Use <code>ncu</code> timings <em>only relatively</em> — to compare two kernel versions in the same report. For absolute timing, use CUDA events.</li>
+        </ol>
+
+        <p>Other replay modes exist (Application Replay, Range Replay) and matter for complex workloads with cross-kernel state.<sup>[1]</sup></p>
+    </section>
+
+    <!-- 4.2 -->
+    <section class="section" id="sec-4-2">
+        <h2 class="section-title"><span class="sec-num">4.2</span>Running the Profiler</h2>
+        <div class="section-subtitle">The CLI commands you will use 95% of the time</div>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 4.2-A: Daily-driver ncu commands"># 1) Full profile of every kernel launch in the program.
+#    Writes report.ncu-rep, which opens in the Nsight Compute UI.
+ncu --set full -o report ./my_program
+
+# 2) Default profile (smaller metric set, much faster).
+ncu -o report ./my_program
+
+# 3) Profile just a few named metrics — fastest, scriptable.
+ncu --metrics sm__throughput.avg.pct_of_peak_sustained_active,\
+              dram__throughput.avg.pct_of_peak_sustained_elapsed,\
+              l1tex__throughput.avg.pct_of_peak_sustained_active \
+    ./my_program
+
+# 4) Skip warmup launches, profile only the steady-state kernel.
+#    --launch-skip N    : skip first N kernel launches
+#    --launch-count M   : then profile M of them
+ncu --launch-skip 5 --launch-count 1 -o report ./my_program
+
+# 5) Filter to a particular kernel by name (regex).
+ncu --kernel-name regex:gemmTiled.* --launch-count 1 -o report ./my_program
+
+# 6) Source-level profiling — requires nvcc -lineinfo at compile time.
+#    The Source view in the UI then shows per-line PTX and SASS with cycle counts.
+nvcc -O3 -arch=sm_86 -lineinfo -o my_program my_program.cu
+ncu --set full --import-source on -o report ./my_program
+
+# 7) Multi-process apps (e.g. distributed training): follow children.
+ncu --target-processes all -o report ./launch_script.sh
+
+# 8) Compare two builds. ncu does NOT have a --diff flag — comparison
+#    is done in the UI by adding a baseline:
+#       File -&gt; Open  baseline.ncu-rep
+#       File -&gt; Add Baseline  optimized.ncu-rep
+#    Or, equivalently, from the CLI summary table:
+ncu --import optimized.ncu-rep --baseline baseline.ncu-rep --csv > diff.csv
+</pre>
+
+        <div class="callout warn">
+            <div class="callout-label">The baseline workflow is the most underused feature</div>
+            Always profile both your old and new kernel into separate <code>.ncu-rep</code> files, then add the old one as a baseline when viewing the new one. The UI shows a delta column for every metric. <em>Every</em> optimization in this book should be validated by exactly this workflow: profile, change one thing, re-profile, verify the metric you targeted moved and nothing else regressed.
+        </div>
+
+        <h3>The key flags worth memorizing</h3>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+            <tbody>
+                <tr><td><code>--set full</code></td><td>Collect every metric in the "full" section set — the most comprehensive built-in set. Slow but complete.</td></tr>
+                <tr><td><code>--set default</code></td><td>Default. Balanced cost/coverage.</td></tr>
+                <tr><td><code>--set basic</code></td><td>Minimal. Fastest. Just SM and memory speed-of-light.</td></tr>
+                <tr><td><code>--metrics &lt;list&gt;</code></td><td>Comma-separated metric names (supports <code>regex:</code> prefix). Smallest cost.</td></tr>
+                <tr><td><code>--launch-skip N</code></td><td>Skip the first N kernel launches (after any filter is applied).</td></tr>
+                <tr><td><code>--launch-count M</code></td><td>Profile M kernels after the skip.</td></tr>
+                <tr><td><code>--kernel-name regex:&lt;pat&gt;</code></td><td>Profile only kernels whose mangled name matches.</td></tr>
+                <tr><td><code>--target-processes all</code></td><td>Follow child processes (for launchers, MPI, etc.).</td></tr>
+                <tr><td><code>-o &lt;file&gt;</code></td><td>Write a <code>.ncu-rep</code> file the UI can open.</td></tr>
+                <tr><td><code>--import &lt;file&gt; --baseline &lt;file&gt;</code></td><td>Load a report and compare against a baseline.</td></tr>
+                <tr><td><code>--csv</code></td><td>Dump metrics as CSV to stdout — for scripted regression checks.</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <!-- 4.3 -->
+    <section class="section" id="sec-4-3">
+        

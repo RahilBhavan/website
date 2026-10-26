@@ -1,0 +1,140 @@
+<h3>7.3 The legal and ethical lines</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>You may</th><th>You never</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Make unauthenticated GETs of public pages, at a polite rate</td><td>Log in, submit forms, run JS, or get around a block</td><td>Legal risk for public GETs is low (Van Buren, hiQ, the DOJ's 2022 CFAA charging policy). It rises when you circumvent barriers.</td></tr>
+        <tr><td>Record crypto addresses and chat handles as private evidence</td><td>Message, pay, look up or "test" them</td><td>Hard rule 5. Contact could tip off operators, harm victims or make you part of the case.</td></tr>
+        <tr><td>Use HTTP(S), DNS, RDAP/WHOIS</td><td>Port-scan or probe services</td><td>Hard rule 6. Your ISP's policy, and scanning looks like an attack.</td></tr>
+        <tr><td>Run the tool on your own initiative and send findings privately</td><td>Take collection instructions from the VCU</td><td>Once law enforcement directs your collection, it may count as state action, with Fourth Amendment limits, and you may become a witness. Stay independent and keep append-only logs.</td></tr>
+        <tr><td>Publish code, methods and aggregate metrics</td><td>Publish flagged domains, seeds, captures or labels</td><td>Everything under <code>data/</code> stays private and off third-party services.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The research notes also suggest an optional 30-minute check with UMich OGC or a faculty advisor before launch. It's cheap. Doing it after fetching has started is still worthwhile.</p>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>Why is even a <em>private</em> urlscan scan off-limits?</summary><div>It's an active browser visit with JavaScript, made on your behalf. That goes beyond the passive-visit rule, even though nothing is published.</div></details>
+    <details><summary>The VCU replies "great, can you watch for domains with this Telegram handle?" What do you do?</summary><div>Don't take it as a tasking. Thank them, say the tool runs independently on its own published method, and pass the request to Rahil before doing anything. Changing collection at their direction raises the state-action problem.</div></details>
+    <details><summary>Write the search that finds other domains serving a script whose SHA-256 you know.</summary><div><code>hash:&lt;the sha256&gt;</code>. Then fetch each result's JSON, cache it, and compute features from the stored DOM. Don't visit the domains from the host.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://urlscan.io/docs/search/">urlscan search docs</a> · <a href="https://urlscan.io/docs/api/">urlscan API docs</a> · <a href="https://www.cbr.ru/inside/warning-list/">CBR warning list</a> · <a href="https://www.justice.gov/opa/pr/department-justice-announces-new-policy-charging-cases-under-computer-fraud-and-abuse-act">DOJ 2022 CFAA policy</a> · <a href="https://www.supremecourt.gov/opinions/20pdf/19-783_k53l.pdf">Van Buren v. United States (2021)</a></div>
+</section>
+
+<section class="chapter" id="ch8" aria-labelledby="ch8-h">
+  <p class="issue-line">Chapter 8 · Sat Oct 24 (8.1–8.3) and week 3, Mon Nov 2 (8.4–8.8) · 60 + 45 minutes</p>
+  <h2 id="ch8-h">How sure are you, really?</h2>
+  <p class="lede">The SPEC promises "honest numbers". That means three habits. Say what the denominator is. Show how uncertain a number is. Never let the data you tuned on also grade you. This chapter is the toolkit for each.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Precision under low base rates, Wilson intervals, Cohen's kappa, leakage, external confirmation, and median and p90.</dd></div>
+    <div><dt>Why it matters</dt><dd>These are the four headline metrics in the README and the memo. A skeptical analyst will check every one.</dd></div>
+    <div><dt>In the repo</dt><dd><code>evaluate.py</code>: <code>wilson</code>, <code>precision</code>, <code>kappa</code>, <code>backtest</code>, <code>time_to_flag</code>, <code>cbr_forward</code>.</dd></div>
+  </dl>
+
+  <h3>8.1 Precision, and why the base rate decides it</h3>
+  <p><strong>Precision</strong> is the share of alerts that are real: true alerts ÷ all alerts. It's the headline because every false alert costs an investigator time. <strong>Recall</strong> is the share of real kit sites that alert. The trap is the <strong>base rate</strong>. If only 1 in 100 fetched pages is a kit site, even a rare false positive happens to the 99 others, so false alerts can outnumber real ones.</p>
+
+  <div class="figure" id="base-widget">
+    <div class="fig-head"><span class="fig-no">Fig 8.1</span><p class="fig-title" id="baseTitle">110 alerts from 10,000 fetched pages, and 55% of them are real</p><span class="illus">Illustration</span></div>
+    <div class="widget">
+      <label>Base rate: <output id="bRo"></output><input id="bR" type="range" min="1" max="200" value="10"></label>
+      <label>Recall: <output id="bTo"></output><input id="bT" type="range" min="10" max="100" value="60"></label>
+      <label>False-positive rate: <output id="bFo"></output><input id="bF" type="range" min="0" max="50" value="5"></label>
+    </div>
+    <svg class="d" viewBox="0 0 900 120" role="img" aria-labelledby="baseRead" id="baseSvg">
+      <rect id="bTP" x="20" y="20" width="471.2" height="44" class="acc"/>
+      <rect id="bFP" x="491.2" y="20" width="388.8" height="44" class="faint" style="stroke:#52545A;stroke-width:1"/>
+      <text id="bTPl" x="28" y="90" class="tb">true 60</text>
+      <text id="bFPl" x="872" y="90" text-anchor="end" class="tm">false 50</text>
+      <path class="ln" d="M20 16V68M880 16V68"/>
+    </svg>
+    <p class="readout" id="baseRead" aria-live="polite"></p>
+    <figcaption>The bar is all alerts, split into true (yellow) and false (gray), so the yellow share is the precision. The numbers are made up to show the mechanism. SSRD's real base rate among fetched pages isn't measured yet. Start at 1%, 60% and 0.5%: almost half the alerts are false. The two-family rule and the common-value denylist exist to push the false-positive rate toward zero.</figcaption>
+  </div>
+
+  <h3>8.2 Six labels, and why decoys don't count as wins</h3>
+  <p>Each alert gets one label in <code>ssrd review</code>: <code>scam-kit</code>, <code>not-scam</code>, <code>decoy-cloaked</code>, <code>parked</code>, <code>error</code> or <code>unsure</code>. Precision is <code>scam-kit</code> ÷ all labeled alerts. A decoy might well be a scam, but you didn't see the scam, so it counts as <strong>not confirmed</strong>, and the <strong>decoy share</strong> is reported beside precision. Label from the sanitized text, the matched signals and the nearest kit member. Write down your rules for each label <em>before</em> you start, so the second labeler gets the same instructions.</p>
+
+  <h3>8.3 Intervals: why 13 of 19 isn't simply "68%"</h3>
+  <p>A proportion from a small sample is uncertain. The textbook interval p ± 1.96·√(p(1 − p)/n) (the <strong>Wald</strong> interval) misbehaves when n is small or p is near 0 or 1. It can run past 100%, and its real coverage falls well short of 95%. The <strong>Wilson</strong> interval fixes this by solving for the range of true proportions that would make your result unsurprising. It's what <code>evaluate.wilson</code> computes:</p>
+  <p><code>centre = (p + z²/2n) / (1 + z²/n)</code> and <code>half = z·√(p(1−p)/n + z²/4n²) / (1 + z²/n)</code>, with z = 1.96.</p>
+
+  <div class="figure" id="wilson-widget">
+    <div class="fig-head"><span class="fig-no">Fig 8.2</span><p class="fig-title">Try your own counts: Wald vs Wilson</p></div>
+    <div class="widget">
+      <label>Successes k<input id="wK" type="number" min="0" value="13"></label>
+      <label>Out of n<input id="wN" type="number" min="1" value="19"></label>
+    </div>
+    <svg class="d" viewBox="0 0 900 150" role="img" aria-labelledby="wRead">
+      <text x="20" y="44" class="tm">Wald</text><text x="20" y="94" class="tb">Wilson</text>
+      <path class="lnf" d="M120 30V110M300 30V110M480 30V110M660 30V110M840 30V110"/>
+      <path id="wWald" class="lnm" d="M120 40H840" style="stroke-width:6"/>
+      <path id="wWil" class="ln" d="M120 90H840" style="stroke-width:6"/>
+      <circle id="wP1" cx="480" cy="40" r="6" class="mute"/><circle id="wP2" cx="480" cy="90" r="7" class="acc"/>
+      <g class="ts tm" text-anchor="middle"><text x="120" y="132">0%</text><text x="300" y="132">25%</text><text x="480" y="132">50%</text><text x="660" y="132">75%</text><text x="840" y="132">100%</text></g>
+    </svg>
+    <p class="readout" id="wRead" aria-live="polite"></p>
+    <figcaption>Try 10 of 10. Wald says 100% to 100%, which is absurd; Wilson says 72% to 100%. Try 35 of 50, the SPEC's minimum sample at a 70% precision: the interval still spans about 56% to 81%. That's why n ≥ 50 is the floor, not the goal.</figcaption>
+  </div>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 8.3</span><p class="fig-title">After the chaining fix the honest backtest is 13 of 19 (68%), and its interval reaches below the 60% target</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 170" role="img" aria-label="Backtest catch rate with 95% Wilson intervals. Inflated by chaining: 27 of 31, 87%, interval 71 to 95%. Honest after the fix: 13 of 19, 68%, interval 46 to 85%. The SPEC target is 60%.">
+      <path class="lnf" d="M300 24V120M480 24V120M660 24V120"/>
+      <text x="20" y="52" class="tm">Chained (inflated)</text><text x="20" y="68" class="ts tm">27 / 31</text>
+      <text x="20" y="102" class="tb">After fix (honest)</text><text x="20" y="118" class="ts">13 / 19</text>
+      <path class="lnm" d="M631.9 56H803.3" style="stroke-width:5"/><circle cx="747.1" cy="56" r="6" class="mute"/>
+      <text x="815" y="61" class="ts tm">87% (71–95)</text>
+      <path class="ln" d="M451.2 104H732.0" style="stroke-width:5"/><circle cx="612.6" cy="104" r="8" class="acc"/>
+      <text x="744" y="109" class="ts tb">68% (46–85)</text>
+      <path class="lnm dash" d="M552 24V124"/><text x="556" y="36" class="ts tm">target ≥ 60%</text>
+      <path class="ln" d="M120 130H840"/>
+      <g class="ts tm" text-anchor="middle"><text x="120" y="150">0%</text><text x="300" y="150">25%</text><text x="480" y="150">50%</text><text x="660" y="150">75%</text><text x="840" y="150">100%</text></g>
+    </svg>
+    </div>
+    <figcaption>Backtest: held-out seed pages re-identified to the correct kit. Dots are the observed rate, lines the 95% Wilson interval, on one 0–100% scale. Both measured Oct 17, before and after the cluster-chaining fix. The gray row is shown as a warning, not a result: a high catch rate from a loose, chained library measures nothing. The honest interval includes values below the 60% target, so "meets target" isn't supported yet.</figcaption>
+  </div>
+
+  <h3>8.4 Kappa: do two people agree beyond luck?</h3>
+  <p>If you label your own alerts, a skeptic can say the precision is circular. The SPEC answer: a second labeler independently labels 50 of the same items, and you report <strong>Cohen's kappa</strong>, κ = (p<sub>o</sub> − p<sub>e</sub>) ÷ (1 − p<sub>e</sub>). p<sub>o</sub> is how often you agree. p<sub>e</sub> is how often you'd agree by chance, given how often each of you uses each label.</p>
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 8.4</span><p class="fig-title">84% raw agreement is only κ = 0.63 once chance agreement is removed <span class="illus">Illustration</span></p></div>
+    <div class="tbl-wrap" style="margin:0">
+    <table class="tbl" style="max-width:560px">
+      <thead><tr><th></th><th class="n">Labeler 2: scam-kit</th><th class="n">Labeler 2: other</th><th class="n">Total</th></tr></thead>
+      <tbody>
+        <tr><td>Labeler 1: scam-kit</td><td class="n"><strong>30</strong></td><td class="n">5</td><td class="n">35</td></tr>
+        <tr><td>Labeler 1: other</td><td class="n">3</td><td class="n"><strong>12</strong></td><td class="n">15</td></tr>
+        <tr><td>Total</td><td class="n">33</td><td class="n">17</td><td class="n">50</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="readout" style="margin-top:14px">p<sub>o</sub> = (30 + 12) / 50 = 0.84 · p<sub>e</sub> = (35·33 + 15·17) / 50² = 0.564 · κ = (0.84 − 0.564) / (1 − 0.564) = <strong>0.63</strong></p>
+    <figcaption>Two categories for clarity. <code>evaluate.kappa</code> uses all six labels. Common rules of thumb call 0.61–0.80 "substantial", but those bands are a convention, not a test. Report κ, p<sub>o</sub> and n, and list the disagreements, because they show where your label rules are unclear.</figcaption>
+  </div>
+
+  <h3>8.5 Never let the tuning data grade you</h3>
+  <p>The thresholds marked "placeholder" (TLSH 70, Jaccard 0.80, copy 30) get chosen in week 3 by sweeping values on labeled data. Whatever data you sweep on, you'll fit, including its noise. So the precision you report must come from <strong>different</strong> alerts, labeled after the threshold was frozen. CLAUDE.md puts it as a rule: never tune thresholds on the evaluation set.</p>
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 8.5</span><p class="fig-title">Three datasets, three jobs, and the threshold freezes between the first two</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 190" role="img" aria-label="Timeline from Oct 19 to Nov 15. Week 3: about 100 labeled candidates used to sweep thresholds. Then the threshold is frozen. Week 4: a 7-day run labeled daily gives the reported precision. All along: CBR additions after Oct 19 give external confirmation.">
+      <path class="ln" d="M40 150H860"/>
+      <g class="ts tm" text-anchor="middle"><text x="40" y="172">Oct 19</text><text x="245" y="172">Oct 26</text><text x="450" y="172">Nov 2</text><text x="655" y="172">Nov 9</text><text x="860" y="172">Nov 15</text></g>
+      <path class="lnm" d="M245 146V154M450 146V154M655 146V154"/>
+      <rect class="bx" x="450" y="40" width="205" height="50" rx="6"/><text x="552" y="62" text-anchor="middle" class="tb">Tune</text><text x="552" y="80" text-anchor="middle" class="ts tm">~100 labeled · sweeps · kappa</text>
+      <rect class="acc" x="667" y="40" width="193" height="50" rx="6"/><text x="763" y="62" text-anchor="middle" class="tb">Evaluate</text><text x="763" y="80" text-anchor="middle" class="ts">7-day run · reported precision</text>
+      <path class="ln" d="M661 30V100" style="stroke-width:2.5"/><text x="661" y="22" text-anchor="middle" class="ts tb">freeze threshold</text>
+      <rect class="bxw" x="40" y="110" width="820" height="26" rx="6"/><text x="450" y="128" text-anchor="middle" class="ts">External: CBR adds domains on its own schedule. Any SSRD candidate listed later is an independent confirmation.</text>
+    </svg>
+    </div>
+    <figcaption>The backtest (chapter 6.5) lives on seed pages, separate from all three. The name filter's 0.55 recall breaks this rule a little, because its threshold was picked on its test table (chapter 3). Re-check it on post-Oct 17 CBR names.</figcaption>
+  </div>
+
+  <h3>8.6 Confirmation you didn't produce: the CBR forward check</h3>
+  <p><code>evaluate.cbr_forward</code> counts SSRD candidates that CBR lists <strong>on or after</strong> the day SSRD first saw them, and how many of those SSRD alerted on. It's independent of your labels, so it answers the circularity objection from a different direction. It confirms "a regulator later listed this domain", not "this matches kit X", and CBR's listing delay is unknown, so a short run will undercount.</p>
+
+  

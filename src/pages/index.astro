@@ -84,6 +84,11 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
       </ul>
     </section>
 
+    <section class="wrap-wide block" aria-labelledby="textbooks-title">
+      <div class="block-head"><h2 id="textbooks-title">Go deeper</h2><p class="block-links"><a href="/textbooks">Browse all 11 textbooks</a></p></div>
+      <p class="textbook-intro">The long version of the projects: RISC-V pipelines, commodity risk, tokenization, GPU kernels and the foundations underneath them. Worked examples, diagrams and questions to test what makes sense.</p>
+    </section>
+
     <section class="wrap-wide block contact" aria-labelledby="contact-title">
       <h2 id="contact-title">Contact</h2>
       <p>
@@ -246,6 +251,8 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
     color: var(--secondary);
     white-space: nowrap;
   }
+
+  .textbook-intro { max-width: 64ch; }
 
   .contact p {
     margin: 1rem 0 0;

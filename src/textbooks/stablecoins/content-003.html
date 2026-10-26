@@ -1,0 +1,102 @@
+<h3>Why this cannot be a causal claim</h3>
+<ul>
+<li><strong>Two episodes.</strong> Two data points cannot separate a rate effect from anything else that happened.</li>
+<li><strong>Anticipation.</strong> Markets price cuts before they happen, so the 12-week baseline may already contain the response.</li>
+<li><strong>Confounders.</strong> An election (November 2024), a law (July 2025) and shifting appetite for crypto all moved in the same windows.</li>
+<li><strong>Autocorrelation.</strong> Weekly flows are not independent, so "every other window" is a loose yardstick.</li>
+<li><strong>Choosing the windows after seeing the cuts.</strong> The comparison starts from the event, which flatters any pattern.</li>
+<li><strong>Short histories.</strong> USDY starts December 2025 and has no episode comparison. BUIDL starts March 2024.</li>
+<li><strong>Measurement error.</strong> Block-to-time interpolation has up to an hour of error. The newest week is dropped as partial.</li>
+</ul>
+<p>The honest phrase is "descriptive." Use it.</p>
+</div>
+
+<div class="repo"><b>In this repo:</b> <code>netSeries()</code>, <code>episodeResults()</code>, <code>PRE_WEEKS</code>, <code>TAIL_WEEKS</code> in <code>src/lib/issuance.ts</code>. The method is written out in <code>docs/METHODOLOGY.md</code> under "Event comparison".</div>
+
+<div class="check"><h3>Check yourself</h3>
+<details><summary>State the headline number in one honest sentence.</summary><p>"$1.01 trillion of gross mints and redemptions on Ethereum across five issuers, 85% of it USDC, with a separate net-issuance study around two Fed easing episodes."</p></details>
+<details><summary>Why does USDC show a negative net on Ethereum when its supply grew overall?</summary><p>Much of the growth was minted on other chains, and some Ethereum supply moved there. Ethereum logs alone see a part of the story. The supply data cover all chains.</p></details>
+<details><summary>Compute a z-score: an asset averages +$10M a week with a standard deviation of $20M. In a window it averages +$30M.</summary><p>z = (30 − 10) ÷ 20 = +1.0, one typical deviation above its normal week.</p></details>
+<details><summary>Give three reasons two easing episodes cannot prove that rate cuts move flows.</summary><p>Only two observations; other events in the same windows; markets price cuts early so the baseline is contaminated; weekly data are autocorrelated. Any three.</p></details>
+<details><summary>Why is CCTP excluded from issuance but kept in the data?</summary><p>It is real on-chain activity, but it moves existing money between chains. Keeping it separately lets a reader see the amount removed.</p></details>
+</div>
+</section>
+<section class="chapter" id="c6"><div class="ch-head"><div class="ch-num" aria-hidden="true">6</div><h2>Interest rates and why they might move flows</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>The Fed sets a target range for its policy rate. The study uses the upper bound and the dates the changes took effect.</li>
+<li>Lower rates make a zero-yield stablecoin cheaper to hold, and a Treasury fund less attractive. They also move risk appetite.</li>
+<li>These channels push in different directions. The data can show direction, not cause.</li>
+</ul></div>
+
+<div class="body">
+<h3>The vocabulary</h3>
+<p>The <strong>federal funds rate</strong> is the interest rate at which banks lend reserves to each other overnight. The Federal Open Market Committee (FOMC) sets a <strong>target range</strong> for it, such as 4.25% to 4.50%. A <strong>basis point</strong> (bp) is one hundredth of a percentage point, so a "25 bp cut" lowers the range by 0.25 points. <strong>Treasury bills</strong> are short-term US government debt; their yield tracks the expected path of the policy rate closely.</p>
+<p>The study uses the FRED series <code>DFEDTARU</code>, the upper bound of the range. FRED dates a change by the day it took <em>effect</em>, which is the day after the FOMC announcement.</p>
+
+<h3>The two easing episodes</h3>
+<p>The study joins cuts that came less than 120 days apart into one <strong>easing episode</strong>. That gives two:</p>
+<ul>
+<li><strong>Episode 1: Sep 2024 to Dec 2024.</strong> 3 cuts, 100 bp in total, first effective Sep 19, 2024.</li>
+<li><strong>Episode 2: Sep 2025 to Dec 2025.</strong> 3 cuts, 75 bp in total, first effective Sep 18, 2025.</li>
+</ul>
+<p>The series also shows a 25 bp <em>increase</em> effective 17 September 2026. It is not analyzed. If someone asks, say it is recorded and outside the study.</p>
+</div>
+<figure class="figure" id="fig-rates">
+<p class="fig-title">The Fed cut in two bursts, Sep 2024 to Dec 2024 and Sep 2025 to Dec 2025, with no cuts between them.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 320" role="img" aria-label="Step chart of the Fed target rate upper bound from 2023 to 2026, with two shaded easing episodes of 100 and 75 basis points."><defs><marker id="ar8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><rect x="362.2" y="34" width="57.7" height="246" class="band"/><text x="391.0888086642599" y="272" text-anchor="middle" class="strong">−100 bp</text><text x="391.0888086642599" y="24" text-anchor="middle" class="muted">Episode 1</text><rect x="538.8" y="34" width="54.3" height="246" class="band"/><text x="566.0028880866425" y="272" text-anchor="middle" class="strong">−75 bp</text><text x="566.0028880866425" y="24" text-anchor="middle" class="muted">Episode 2</text>
+<line x1="58" x2="58" y1="34" y2="280" class="axis"/>
+<text x="48" y="223.5" text-anchor="end" class="muted">4.00%</text><text x="48" y="162" text-anchor="end" class="muted">4.50%</text><text x="48" y="100.5" text-anchor="end" class="muted">5.00%</text><text x="48" y="39" text-anchor="end" class="muted">5.50%</text><text x="58" y="310" text-anchor="middle" class="muted">2023</text><text x="235.09747292418774" y="310" text-anchor="middle" class="muted">2024</text><text x="412.6801444043321" y="310" text-anchor="middle" class="muted">2025</text><text x="589.7776173285199" y="310" text-anchor="middle" class="muted">2026</text>
+<path d="M58.0 218.5 H58.0 V157.0 H73.5 V126.3 H97.3 V95.5 H117.7 V64.8 H158.4 V34.0 H362.2 V95.5 H386.5 V126.3 H406.4 V157.0 H538.8 V187.8 H559.2 V218.5 H579.6 V249.3 H715.4 V218.5 H730.0" class="series"/>
+<line x1="91.5" x2="91.5" y1="48" y2="280" class="event"/><text x="97.47870036101082" y="200.04999999999995" text-anchor="start" class="small"><tspan x="97.47870036101082" dy="0">Mar 2023:</tspan><tspan x="97.47870036101082" dy="19">SVB, USDC depeg</tspan></text><line x1="508.7" x2="508.7" y1="48" y2="280" class="event"/><text x="502.7494584837545" y="200.04999999999995" text-anchor="end" class="small"><tspan x="502.7494584837545" dy="0">Jul 2025:</tspan><tspan x="502.7494584837545" dy="19">GENIUS Act signed</tspan></text>
+<text x="738" y="223.5" text-anchor="start" class="strong">4.00% (hike, Sep 2026)</text>
+<text x="264.2093862815884" y="26" text-anchor="middle" class="muted">5.50% peak</text></svg></div>
+<figcaption>Compare the shaded windows with the flat stretches between them. Each shaded window runs from the first cut to 4 weeks after the last, the window the study measures. The vertical axis starts at 3.5%, not zero, which is fine for a line. Source: FRED DFEDTARU, <code>src/data/rates.json</code>.</figcaption>
+</figure>
+<div class="body">
+<h3>Why a cut could change flows</h3>
+</div>
+<figure class="figure" id="fig-transmission">
+<p class="fig-title">A cut might push stablecoin demand up and Treasury-fund demand down. These are guesses to test, not results.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 380" role="img" aria-label="Causal map from a Fed rate cut to lower yields, then to issuer income, stablecoin demand and Treasury fund demand, with question marks on the signs."><defs><marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<rect x="0" y="110" width="170" height="60" rx="6" class="box hi"/><text x="85" y="136" text-anchor="middle" class="strong"><tspan x="85" dy="0">The Fed cuts</tspan><tspan x="85" dy="19">its target rate</tspan></text>
+<path d="M174 140 H226" class="arrow" marker-end="url(#ar9)"/>
+<rect x="230" y="110" width="190" height="60" rx="6" class="box"/><text x="325" y="136" text-anchor="middle" class="strong"><tspan x="325" dy="0">T-bill and money</tspan><tspan x="325" dy="19">market yields fall</tspan></text>
+<path d="M424 128 L498 62" class="arrow" marker-end="url(#ar9)"/>
+<rect x="502" y="28" width="378" height="60" rx="6" class="box"/><text x="691" y="54" text-anchor="middle" class="strong"><tspan x="691" dy="0">Issuer reserve income falls</tspan><tspan x="691" dy="19">(Circle, Tether, Paxos keep it)</tspan></text>
+<path d="M424 140 H498" class="arrow" marker-end="url(#ar9)"/>
+<rect x="502" y="110" width="378" height="60" rx="6" class="box"/><text x="691" y="136" text-anchor="middle" class="strong"><tspan x="691" dy="0">Cash and stablecoins give up less</tspan><tspan x="691" dy="19">by paying 0 to holders</tspan></text>
+<path d="M690 174 V204" class="arrow" marker-end="url(#ar9)"/><text x="702" y="196" text-anchor="start" class="strong">+?</text>
+<rect x="502" y="208" width="378" height="46" rx="6" class="box"/><text x="691" y="234" text-anchor="middle" class="strong"><tspan x="691" dy="0">Demand for payment stablecoins may rise</tspan></text>
+<path d="M326 174 V286" class="arrow" marker-end="url(#ar9)"/><text x="338" y="236" text-anchor="start" class="small">funds pass</text><text x="338" y="254" text-anchor="start" class="small">the yield on</text>
+<rect x="230" y="290" width="190" height="50" rx="6" class="box"/><text x="325" y="316" text-anchor="middle" class="strong"><tspan x="325" dy="0">Treasury funds</tspan><tspan x="325" dy="19">yield less</tspan></text>
+<path d="M424 316 H498" class="arrow" marker-end="url(#ar9)"/>
+<rect x="502" y="290" width="378" height="50" rx="6" class="box"/><text x="691" y="316" text-anchor="middle" class="strong"><tspan x="691" dy="0">Demand for Treasury funds may fall</tspan></text>
+<text x="440" y="306" text-anchor="middle" class="strong">−?</text></svg></div>
+<figcaption>Every arrow here is a hypothesis. The tracker can show whether flows moved in these directions around the cuts; it cannot show why. Other things changed in the same weeks (an election, a law, stock-market risk appetite).</figcaption>
+</figure>
+<div class="body">
+<h4>Channel 1: the opportunity cost of holding a stablecoin</h4>
+<p>A stablecoin pays holders 0%. Cash elsewhere pays the Treasury bill rate. Holding the stablecoin therefore costs the rate each year. When rates fall, that cost falls. Standard money-demand logic says people hold more of a good when its holding cost drops, so <strong>net issuance of payment stablecoins may rise</strong>.</p>
+<h4>Channel 2: the yield advantage of the fund</h4>
+<p>A Treasury fund pays about the bill rate. Against a zero-yield stablecoin its advantage is the rate itself. When the rate falls, the advantage narrows, and <strong>fund demand may fall</strong> relative to stablecoins.</p>
+<h4>Channel 3: risk appetite</h4>
+<p>Cuts can lift stock and crypto prices. If traders then want more crypto exposure, they mint stablecoins to fund purchases. This works the same way as channel 1 on stablecoins but it is a different story and cannot be told apart in these data.</p>
+<h4>Channel 4: the issuer</h4>
+<p>Lower rates cut issuer income (chapter 2). That could change how aggressively issuers court new customers, but the logs cannot see it.</p>
+
+<h3>Anticipation</h3>
+<p>Markets move before the Fed does. Yields fall as soon as traders expect cuts, so the 12 weeks before the first cut may already contain the effect. The baseline is therefore not "before the policy". Whenever you describe the study, say it compares flows in windows around the dates, not the effect of the decision.</p>
+
+<h3>What about rate increases?</h3>
+<p>The sample also contains tightening. There were four hikes between February and July 2023, and one hike effective 2026-09-17. The same method applies, with two limits. Our data begin in January 2023, so the 2023 window has no 12-week baseline, and it overlaps the Silicon Valley Bank run (chapter 7), which dominates USDC that spring. The September 2026 window is only a few weeks old: the data end before the four-week tail, so the figure marks it partial.</p>
+</div>
+<figure class="figure" id="fig-tightening">
+<p class="fig-title">The tightening windows are weaker evidence than the easing ones.</p>
+<div class="table-wrap"><table class="data">
+<thead><tr><th rowspan="2">Asset</th><th class="num" colspan="2">Feb 2023 to Jul 2023 (4 hikes, 100 bp)</th><th class="num" colspan="2">Sep 2026 to Sep 2026 (1 hike, 25 bp)</th></tr><tr><th class="num">12 weeks before</th><th class="num">during</th><th class="num">12 weeks before</th><th class="num">during</th></tr></thead>
+<tbody><tr><th scope="row">USDC</th><td class="num"><span class="na">n/a</span></td><td class="num">−0.6 σ</td><td class="num">−0.2 σ</td><td class="num">−0.4 σ <small>partial</small></td></tr><tr><th scope="row">USDT</th><td class="num"><span class="na">n/a</span></td><td class="num">−0.1 σ</td><td class="num">−0.8 σ</td><td class="num">−0.4 σ <small>partial</small></td></tr><tr><th scope="row">PYUSD</th><td class="num"><span class="na">n/a</span></td><td class="num"><span class="na">n/a</span></td><td class="num">−0.1 σ</td><td class="num">+0.1 σ <small>partial</small></td></tr><tr><th scope="row">BUIDL</th><td class="num"><span class="na">n/a</span></td><td class="num"><span class="na">n/a</span></td><td class="num">+0.0 σ</td><td class="num">−0.1 σ <small>partial</small></td></tr><tr><th scope="row">OUSG</th><td class="num"><span class="na">n/a</span></td><td class="num"><span class="na">n/a</span></td><td class="num">−0.2 σ</td><td class="num">−0.4 σ <small>partial</small></td></tr><tr><th scope="row">USDY</th><td class="num"><span class="na">n/a</span></td><td class="num"><span class="na">n/a</span></td><td class="num">−0.1 σ</td><td class="num">+1.5 σ <small>partial</small></td></tr></tbody></table></div>
+<figcaption>Mean weekly net issuance in standard deviations of each asset's own normal week, same method as the easing figure. The 2023 window overlaps the Silicon Valley Bank run (chapter 7), and the sample starts in January 2023, so there is no 12-week baseline. The September 2026 window is cut short: 4 weeks, because the data end before 4 weeks after the hike. n/a means too little history for that asset.</figcaption>
+</figure>
+<div class="body">
+<p>Read this as a record of what happened, not a test. If cuts raised stablecoin issuance and lowered Treasury-fund issuance, a symmetric story would say the reverse in tightening. The 2023 window cannot show it, because of the bank run. The 2026 window is too short to show anything. Say that when asked about hikes.</p>
+

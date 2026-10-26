@@ -1,0 +1,160 @@
+<h2 class="section-title"><span class="sec-num">4.7</span>Profiler Theory — Sampling, Replay, and PM Counters</h2>
+        <div class="section-subtitle">What the numbers in Nsight Compute actually are</div>
+
+        <div class="cluster">
+            <strong>Why this section exists.</strong> The default Nsight Compute output looks like a stream of dashboard numbers. Each one is the output of a specific measurement strategy with specific costs and biases. The atomic notes below let you read the dashboard with the right amount of skepticism — and choose the right tool (NCU vs Nsight Systems vs nvbprof vs CUPTI) for each question.
+        </div>
+
+        <div class="atomic" id="A4.7.1-sampling-vs-instr">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.1]]</span><h4 class="atomic-title">Sampling vs instrumentation — two ways to measure code</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <p><strong>Sampling</strong> profilers interrupt the program at fixed intervals and record the PC. They are cheap (≤ 1% overhead), statistical, and miss anything rarer than the sample interval. <strong>Instrumentation</strong> profilers insert measurement code at events of interest (entry/exit of every function, every memory access). Exact, but slow — orders of magnitude. <strong>Nsight Systems is a sampler</strong>; it answers "what is the GPU doing over time?" <strong>Nsight Compute is hardware-instrumented via PM counters</strong>; it answers "what exactly happened inside one kernel launch?" Use them in that order: Sys to find which kernel matters, Compute to dissect that kernel.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A4.7.2-pm-counters">[[A4.7.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A4.7.2-pm-counters">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.2]]</span><h4 class="atomic-title">PM counters — the silicon's measurement hardware</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <p>Each SM has a fixed set of Performance Monitoring counters: free-running integers wired to events (cycles where the warp scheduler issued an instruction, sectors hitting L1, etc). There are far more interesting events than counters, so Nsight Compute <em>replays</em> the kernel many times, configuring different counter sets each pass and stitching the results into one report. The kernel-replay strategy explains two NCU quirks: (1) profiling makes a kernel run 20–100× longer wall-clock; (2) the kernel must be deterministic across replays or the report is garbage (set deterministic CUDA random seeds, lock graphics clocks, run on an idle GPU).</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A4.7.1-sampling-vs-instr">[[A4.7.1]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-4">[[§5.4 Benchmark protocol]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A4.7.3-subsystems">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.3]]</span><h4 class="atomic-title">The SM subsystems NCU names — L1TEX, LTS, FBPA, MIO, IDC</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">L1TEX</span> The L1 cache + texture pipeline. Where shared memory accesses, vector loads, and read-only caches show up.</li>
+                    <li><span class="def-term">LTS</span> L2 Texture/Scalar — the L2 slice. <code>lts__t_sectors_op_read</code> = L2 sector reads.</li>
+                    <li><span class="def-term">FBPA</span> Frame Buffer Partition — the HBM controller. <code>dram__bytes</code> events live here.</li>
+                    <li><span class="def-term">MIO</span> Memory I/O scheduler within the SM. Issue stalls show up as MIO throttle metrics.</li>
+                    <li><span class="def-term">IDC</span> Indexed Constant cache. Almost always saturated by constant-memory loads; rarely a bottleneck.</li>
+                </ul>
+                <p>Knowing which sub-system a metric belongs to is the difference between "L2 hit rate is 80%" being good or bad. If your kernel's bandwidth bottleneck is at FBPA, an LTS hit rate of 100% would not save you. Read top-down: SM → L1TEX → LTS → FBPA — the answer is at whichever level is closest to saturated.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A1.4.3-l2-policy">[[A1.4.3]]</a> <a class="rel-chip rel-builds" href="#A1.4.4-dram-internals">[[A1.4.4]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-4-5">[[§4.5]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A4.7.4-warp-states">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.4]]</span><h4 class="atomic-title">Warp state taxonomy — selected, eligible, stalled, the three big stall reasons</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <p>Every cycle, the warp scheduler classifies each resident warp into one of three states: <strong>selected</strong> (this warp issued an instruction), <strong>eligible</strong> (ready but not picked), <strong>stalled</strong> (waiting). The stall reasons NCU exposes most usefully:</p>
+                <ul class="def-list">
+                    <li><span class="def-term">long_scoreboard</span> Waiting on a global or shared memory load. The single most common stall in a memory-bound kernel.</li>
+                    <li><span class="def-term">short_scoreboard</span> Waiting on a math result (e.g., a register-dependent instruction). High share = ILP-bound.</li>
+                    <li><span class="def-term">mio_throttle</span> Memory I/O pipeline is backed up. Usually means too many memory ops issued per cycle.</li>
+                    <li><span class="def-term">barrier</span> Waiting on <code>__syncthreads</code>. High share = imbalanced work across the block.</li>
+                    <li><span class="def-term">not_selected</span> Warp is ready but the scheduler picked someone else. Counterintuitively, <em>some not_selected is good</em>; it means TLP is doing its job.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A1.3.2-issue">[[A1.3.2]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-4-3">[[§4.3 Summary]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A4.7.5-cupti-nvtx">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.5]]</span><h4 class="atomic-title">CUPTI and NVTX — your own custom tooling layer</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <p><strong>CUPTI</strong> (CUDA Profiling Tools Interface) is the library Nsight is built on. Your code can use it to subscribe to events ("kernel started", "memcpy began"), read counters at runtime, and inject custom metrics. Few application engineers touch CUPTI directly; library authors (PyTorch's profiler, TensorRT's diagnostics) do. <strong>NVTX</strong> (NVIDIA Tools Extension) is the lighter-weight API: <code>nvtxRangePushA("forward")</code> ... <code>nvtxRangePop()</code> turns your code's logical structure into colored ranges in Nsight Systems' timeline. Always wrap your training/inference loop's logical phases in NVTX ranges; it makes Nsight Systems' output legible.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A4.7.1-sampling-vs-instr">[[A4.7.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A4.7.6-clock-locking">
+            <div class="atomic-head"><span class="atomic-id">[[A4.7.6]]</span><h4 class="atomic-title">Clock locking — why every benchmark needs it</h4><span class="atomic-tag">profiling</span></div>
+            <div class="atomic-body">
+                <p>Modern GPUs change their clock based on temperature, power, and workload. If you benchmark a kernel cold, then again warm, the second run will sit at a higher boost clock and look faster — even if your "optimization" is just running it twice. <code>nvidia-smi -lgc &lt;min,max&gt;</code> locks the graphics clock; <code>nvidia-smi -lmc</code> locks the memory clock. For consumer cards, the application clocks may be capped by power limits — check <code>nvidia-smi -q -d CLOCK</code> after locking to verify what you actually got. Without clock locking your before/after numbers are not comparable.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#sec-5-4">[[§5.4 Benchmark]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHECKPOINT -->
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 4 Checkpoint</div>
+        <div class="checkpoint-sub">Click to check off each item.</div>
+        <ul>
+            <li>Write the <code>ncu</code> command to profile your program, skip the first two warmup kernels, and save the report.</li>
+            <li>If SM throughput is 40% and DRAM throughput is 85%, what is the bottleneck and what is your next move?</li>
+            <li>What does <code>stalled_long_scoreboard</code> mean? <code>short_scoreboard</code>? <code>not_selected</code> — and why is the last one a good sign?</li>
+            <li>Which compile flag enables source-level profiling in Nsight Compute, and what does it cost at run time?</li>
+            <li>What does a 4:1 <em>Sectors / Request</em> ratio in L1 mean? What about a 32:1 <em>Wavefronts / Request</em> in shared memory?</li>
+            <li>Show the workflow for comparing two builds: which flags and which UI action?</li>
+            <li>How do you ask cuBLAS to tell you which internal kernel it picked for a given GEMM shape?</li>
+        </ul>
+    </div>
+
+    <!-- REFS -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 4</div>
+        <ol>
+            <li>NVIDIA. <em>Nsight Compute Profiling Guide.</em> <a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/" target="_blank" rel="noopener">docs.nvidia.com/nsight-compute/ProfilingGuide/</a> — the authoritative reference for sections, metrics, kernel/range replay, and the Roofline page.</li>
+            <li>NVIDIA. <em>Nsight Compute — Warp Scheduler States table.</em> Same Profiling Guide, "Statistical Sampler" section. Lists every stall reason and its meaning.</li>
+            <li>NVIDIA. <em>CUDA Binary Utilities — Instruction Set Reference.</em> <a href="https://docs.nvidia.com/cuda/cuda-binary-utilities/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cuda-binary-utilities/</a> — the full SASS mnemonic list per architecture.</li>
+            <li>NVIDIA. <em>cuBLAS — Logging API.</em> <a href="https://docs.nvidia.com/cuda/cublas/index.html#cublas-logging" target="_blank" rel="noopener">docs.nvidia.com/cuda/cublas/#cublas-logging</a> — the exact list of <code>CUBLAS_LOG*</code> environment variables.</li>
+            <li>NVIDIA. <em>Nsight Compute CLI Reference.</em> <a href="https://docs.nvidia.com/nsight-compute/NsightComputeCli/" target="_blank" rel="noopener">docs.nvidia.com/nsight-compute/NsightComputeCli/</a> — every command-line flag, every metric set.</li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-3"><span class="label">← Previous</span>Tensor Cores &amp; PTX</a>
+        <a href="#chapter-5" class="next"><span class="label">Next →</span>Beating cuBLAS</a>
+    </nav>
+</article>
+<!-- =====================================================================
+     CHAPTER 5
+     ===================================================================== -->
+<article class="chapter" id="chapter-5">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">05</div>
+        <div class="chapter-eyebrow">Chapter 05</div>
+        <h1 class="chapter-title">Beating cuBLAS:<br>The Strategy and the Execution</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Understand exactly why cuBLAS does not win every shape, identify a shape where a custom kernel can beat it, execute the full optimization stack, and validate the result with a benchmark protocol a stranger could reproduce.</p>
+    </header>
+
+    <!-- 5.1 -->
+    <section class="section" id="sec-5-1">
+        <h2 class="section-title"><span class="sec-num">5.1</span>How cuBLAS Actually Works</h2>
+        <div class="section-subtitle">A library of pre-compiled kernels and a dispatch heuristic</div>
+
+        <p>cuBLAS is a closed-source CUDA library that ships pre-compiled GEMM kernels for many common shapes, dtypes, and transposition modes. When you call <code>cublasGemmEx</code> for a specific configuration, an internal heuristic picks a kernel from the library based on (M, N, K, dtype, transpose flags, alpha/beta, hardware). The picked kernel is then launched.</p>
+
+        <p>Three properties of this design matter for your strategy:</p>
+        <ol>
+            <li><strong>cuBLAS kernels are extraordinarily good</strong> for "large square" shapes in common dtypes (FP32, TF32, FP16) — they routinely hit 90&ndash;95% of the corresponding Tensor-Core peak. Beating them on these shapes is hard.</li>
+            <li><strong>The dispatch heuristic is fallible.</strong> For atypical (M, N, K) — small batch sizes, non-power-of-two dims, very tall/skinny matrices — the heuristic sometimes picks a tiled kernel whose tile shape mismatches your problem and leaves a lot on the table.</li>
+            <li><strong>cuBLAS only does GEMM.</strong> It does not fuse subsequent elementwise operations (bias add, activation, scaling). For any kernel that follows GEMM with arithmetic, a fused custom kernel saves one full pass over the output matrix in global memory.</li>
+        </ol>
+
+        <p>You can see which internal kernel cuBLAS picked by enabling its logging (see §4.6). The kernel name encodes its tile shape and architecture. Knowing this is genuinely useful: if cuBLAS picked a 128×128 tile for a problem where 64×256 would obviously fit better, you have your opening.</p>
+    </section>
+
+    <!-- 5.2 -->
+    <section class="section" id="sec-5-2">
+        <h2 class="section-title"><span class="sec-num">5.2</span>Where cuBLAS Is Vulnerable</h2>
+        <div class="section-subtitle">The four families of shapes that admit a custom win</div>
+
+        <h3>1. Small batch / decode shapes (M = 1, GEMV-like)</h3>
+        <p>During LLM inference's decode phase, you compute one token at a time. The GEMM degenerates to a vector-matrix product with M = 1 and N, K in the thousands. The arithmetic intensity is near 1 FLOP/byte — fundamentally memory-bound. cuBLAS exposes <code>cublasGemv</code> for this shape but the wrapper has fixed overheads, and the dispatched kernel is not specialized to your specific N/K. A custom kernel that hand-tunes the load pattern (vectorized 128-bit reads of B, K-direction reduction in registers) can outpace it by 10&ndash;30%, especially for batch=1 inference.</p>
+
+        <h3>2. Non-power-of-two shapes</h3>
+        <p>cuBLAS tiles are typically 64, 128, or 256 elements wide. For M = N = K = 3072 (= 1024×3, not a power of two), the dispatcher may pick a 128-tile kernel and pay the cost of partial last-tile padding on three sides. A custom kernel tiled at, say, 96×96 — divides evenly — avoids the padding entirely and can win by a few percent.</p>
+
+        <h3>3. Fused operations</h3>
+        <p>Almost every neural-network linear layer is followed by add-bias-and-activate. cuBLAS computes <code>C = α·A·B + β·C</code>; it does not apply ReLU or GELU. The follow-on elementwise pass reads C from DRAM and writes it back — at 4096² FP16, ~33 MB in and out, costing roughly 0.07 ms at 936 GB/s. A fused kernel does the activation while C is still in registers and saves the entire DRAM round-trip. <strong>This is the single most consistent way to beat cuBLAS in real ML workloads.</strong></p>
+
+        

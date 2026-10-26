@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fig 5.3 · MinHash: agreeing wheels estimate overlap</title><style>
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(900px,100% - 32px);margin:64px auto 96px}
+</style><link rel="stylesheet" href="/textbooks/reader.css"></head><body class="iso" data-theme="light"><main class="iso-page"><style>
+
+
+.iso[data-theme="light"]{
+  --anatomy-page:#F5F5EF;--anatomy-card:#F5F5EF;--anatomy-text:#52545A;--anatomy-strong:#111214;--anatomy-muted:#52545A;
+  --anatomy-paper:#F5F5EF;--anatomy-face:#FFE500;--anatomy-top:#FCFCF8;
+  --anatomy-shade-0:#D9D9D1;--anatomy-shade-1:#E2E2DA;--anatomy-shade-2:#EAEAE3;--anatomy-shade-3:#F0F0EA;
+  --anatomy-lit-top:#FFE500;--anatomy-lit-shade:#EDD300;
+  --anatomy-hi:#111214;--anatomy-mid:#84868B;--anatomy-lo:#AEAEA9;--anatomy-faint:#D1D1CA;--anatomy-lit:#111214;
+  --anatomy-halo:#86867C;--anatomy-halo-opacity:.3;--anatomy-dot:#2B2C30;
+  --mh-sans:"IBM Plex Sans",sans-serif;
+}
+html,body{overflow-x:hidden}
+body{font-family:var(--mh-sans)}
+.iso-page{width:min(900px,100% - 24px);margin:12px auto 14px}
+.iso-figure{margin:0}
+.iso-plate{padding:46px 18px 44px;box-shadow:0 0 0 1px #C9C9C1}
+.iso-plate-corners{inset:16px 18px}
+.iso-plate-corner{font-family:var(--mh-sans);font-size:12px;letter-spacing:0;text-transform:none!important;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="fig"]{font-weight:600;color:var(--anatomy-strong)}
+.iso-plate-corner[data-corner="title"]{font-weight:600;color:var(--anatomy-strong);letter-spacing:0}
+.iso-plate-corner[data-corner="hint"]{letter-spacing:0}
+.iso-plate-corner[data-corner="readout"]{color:var(--anatomy-strong);font-variant-numeric:tabular-nums}
+.iso-legend{font-size:13.5px;line-height:1.5;color:var(--anatomy-text);margin-top:10px}
+.iso-caption{display:block}
+.mh-note{margin-top:6px;font-weight:600;color:var(--anatomy-strong)}
+.iso-swatch[data-mark="lit"] path{fill:#FFE500;stroke:#111214}
+.iso-stage{outline:none;touch-action:pan-y;cursor:ew-resize;-webkit-user-select:none;user-select:none}
+.iso-stage:focus-visible{outline:1px solid var(--anatomy-muted);outline-offset:6px}
+.mh-rim{fill:var(--anatomy-top);stroke:none}
+.mh-digit{font-family:var(--mh-sans);font-weight:600;font-size:3.15px;fill:var(--anatomy-hi);text-anchor:middle;letter-spacing:0}
+.mh-name{font-family:var(--mh-sans);font-weight:600;font-size:2.9px;fill:var(--anatomy-mid);text-anchor:middle;letter-spacing:.06em}
+.mh-count{font-family:var(--mh-sans);font-weight:600;font-size:4.4px;fill:var(--anatomy-hi);text-anchor:middle;font-variant-numeric:tabular-nums}
+.mh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:620px){
+  .iso-plate{padding:58px 6px 58px;overflow:hidden}
+  .iso-plate .iso-svg{width:112%;margin:0 -6%}
+  .iso-plate-corners{inset:14px 12px}
+  .iso-plate-corner{font-size:11.5px}
+  .iso-plate-corner[data-corner="title"]{top:19px;left:0;right:auto}
+  .iso-plate-corner[data-corner="hint"]{bottom:19px}
+  .iso-legend{font-size:13px}
+}
+</style><figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 5.3</span><span class="iso-plate-corner" data-corner="title">MinHash: agreeing wheels estimate overlap</span><span class="iso-plate-corner" data-corner="hint">Drag or use ← → to set the true overlap</span><span class="iso-plate-corner" data-corner="readout" data-readout>J 0.80 · agree 28/32 → 0.88 · passes 0.80</span></div><div class="iso-stage" tabindex="0" role="slider" aria-label="True Jaccard overlap of the two synthetic shingle sets. Left and right arrows change it by 0.01, Shift with an arrow by 0.1, Home and End go to 0 and 1." aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.8" aria-valuetext="True overlap 0.80; 28 of 32 wheel pairs agree; estimate 0.88"><svg xmlns="http://www.w3.org/2000/svg" class="iso-svg" viewBox="0 0 600 296" role="img" aria-label="A bench comparator with two banks of 32 numbered wheels, Page A at the back on a raised step and Page B in front. Each wheel shows, in a window, the shingle with the smallest hash for that wheel's hash function. Between the banks, a yellow pin rises wherever the two wheels of a pair show the same shingle. A slide on rails in front sets the true Jaccard overlap of the two synthetic shingle sets; a counter and a dial on the right read how many pairs agree and the resulting estimate, with the 0.80 alert line marked on the slide scale and the dial."><path class="iso-halo" d="M25.9 141.5L26.2 140.3L27 139.3L99.8 64.7L100.9 63.8L102.5 62.9L104.3 62.3L106.3 61.8L108.5 61.5L110.8 61.5L113 61.7L115.1 62.1L567.7 172.5L569.6 173L571.3 173.8L572.6 174.7L573.5 175.7L574 176.8L574.1 178L574.1 190.3L573.8 191.4L573 192.5L500.2 267.1L499.1 268L497.5 268.9L495.7 269.5L493.7 270L491.5 270.2L489.2 270.3L487 270.1L484.9 269.7L32.3 159.3L30.4 158.7L28.7 158L27.4 157.1L26.5 156.1L26 155L25.9 153.8Z"/><g class="iso-solid"><path class="iso-fill" d="M107.9 89.1L108.2 88L109 86.9L110.2 86L111.8 85.2L113.7 84.6L115.8 84.2L118 84.1L120.2 84.2L122.4 84.6L124.2 85.2L125.8 86L127 87L127.7 88L128 89.1L128 91.1L127.7 92.2L127 93.3L125.8 94.2L124.2 95L122.3 95.6L120.1 96L117.9 96.1L115.7 96L113.6 95.6L111.7 95L110.1 94.2L108.9 93.2L108.2 92.2L107.9 91.1Z"/><path class="iso-shade" data-shade="0" d="M127 93.3L125.8 94.2L125.8 92.2L127 91.3ZM125.8 94.2L124.2 95L124.2 93L125.8 92.2ZM124.2 95L122.3 95.6L122.3 93.6L124.2 93ZM128 91.1L127.7 92.2L127.7 90.2L128 89.1ZM127.7 92.2L127 93.3L127 91.3L127.7 90.2Z"/><path class="iso-shade" data-shade="1" d="M122.3 95.6L120.1 96L120.1 94L122.3 93.6ZM120.1 96L117.9 96.1L117.9 94.1L120.1 94Z"/><path class="iso-shade" data-shade="2" d="M117.9 96.1L115.7 96L115.7 94L117.9 94.1ZM115.7 96L113.6 95.6L113.6 93.6L115.7 94Z"/><path class="iso-shade" data-shade="3" d="M113.6 95.6L111.7 95L111.7 93L113.6 93.6ZM111.7 95L110.1 94.2L110.1 92.2L111.7 93ZM110.1 94.2L108.9 93.2L108.9 91.3L110.1 92.2ZM108.9 93.2L108.2 92.2L108.2 90.2L108.9 91.3ZM108.2 92.2L107.9 91.1L107.9 89.1L108.2 90.2Z"/><path class="iso-top" d="M127 91.3L125.8 92.2L124.2 93L122.3 93.6L120.1 94L117.9 94.1L115.7 94L113.6 93.6L111.7 93L110.1 92.2L108.9 91.3L108.2 90.2L107.9 89.1L108.2 88L109 86.9L110.2 86L111.8 85.2L113.7 84.6L115.8 84.2L118 84.1L120.2 84.2L122.4 84.6L124.2 85.2L125.8 86L127 87L127.7 88L128 89.1L127.7 90.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M128 89.1L127.7 90.2L127 91.3L125.8 92.2L124.2 93L122.3 93.6L120.1 94L117.9 94.1L115.7 94L113.6 93.6L111.7 93L110.1 92.2L108.9 91.3L108.2 90.2L107.9 89.1"/><path class="iso-line iso-edge" data-tone="lo" d="M107.9 89.1L108.2 88L109 86.9L110.2 86L111.8 85.2L113.7 84.6L115.8 84.2L118 84.1L120.2 84.2L122.4 84.6L124.2 85.2L125.8 86L127 87L127.7 88L128 89.1M128 91.1L127.7 92.2L127 93.3L125.8 94.2L124.2 95L122.3 95.6L120.1 96L117.9 96.1L115.7 96L113.6 95.6L111.7 95L110.1 94.2L108.9 93.2L108.2 92.2L107.9 91.1M107.9 89.1L107.9 91.1M128 89.1L128 91.1"/></g><g class="iso-solid"><path class="iso-fill" d="M110.2 84.9L110.4 84L111 83.2L111.9 82.5L113.2 81.9L114.6 81.4L116.3 81.1L118 81L119.7 81.1L121.3 81.4L122.8 81.9L124 82.5L124.9 83.2L125.5 84.1L125.7 84.9L125.7 89.1L125.5 90L124.9 90.8L124 91.5L122.7 92.1L121.3 92.6L119.6 92.9L117.9 93L116.2 92.9L114.6 92.6L113.1 92.1L111.9 91.5L111 90.8L110.4 89.9L110.2 89.1Z"/><path class="iso-shade" data-shade="0" d="M124.9 90.8L124 91.5L124 87.3L124.9 86.6ZM124 91.5L122.7 92.1L122.7 87.9L124 87.3ZM122.7 92.1L121.3 92.6L121.3 88.4L122.7 87.9ZM125.7 89.1L125.5 90L125.5 85.8L125.7 84.9ZM125.5 90L124.9 90.8L124.9 86.6L125.5 85.8Z"/><path class="iso-shade" data-shade="1" d="M121.3 92.6L119.6 92.9L119.6 88.7L121.3 88.4ZM119.6 92.9L117.9 93L117.9 88.8L119.6 88.7Z"/><path class="iso-shade" data-shade="2" d="M117.9 93L116.2 92.9L116.2 88.7L117.9 88.8ZM116.2 92.9L114.6 92.6L114.6 88.4L116.2 88.7Z"/><path class="iso-shade" data-shade="3" d="M114.6 92.6L113.1 92.1L113.1 87.9L114.6 88.4ZM113.1 92.1L111.9 91.5L111.9 87.3L113.1 87.9ZM111.9 91.5L111 90.8L111 86.6L111.9 87.3ZM111 90.8L110.4 89.9L110.4 85.7L111 86.6ZM110.4 89.9L110.2 89.1L110.2 84.9L110.4 85.7Z"/><path class="iso-top" d="M124.9 86.6L124 87.3L122.7 87.9L121.3 88.4L119.6 88.7L117.9 88.8L116.2 88.7L114.6 88.4L113.1 87.9L111.9 87.3L111 86.6L110.4 85.7L110.2 84.9L110.4 84L111 83.2L111.9 82.5L113.2 81.9L114.6 81.4L116.3 81.1L118 81L119.7 81.1L121.3 81.4L122.8 81.9L124 82.5L124.9 83.2L125.5 84.1L125.7 84.9L125.5 85.8Z"/><path class="iso-line iso-crease" data-tone="faint" d="M125.7 84.9L125.5 85.8L124.9 86.6L124 87.3L122.7 87.9L121.3 88.4L119.6 88.7L117.9 88.8L116.2 88.7L114.6 88.4L113.1 87.9L111.9 87.3L111 86.6L110.4 85.7L110.2 84.9"/>

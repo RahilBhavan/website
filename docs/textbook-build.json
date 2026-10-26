@@ -1,0 +1,77 @@
+{
+  "design": "rahil-design@3.3.1",
+  "books": [
+    {
+      "slug": "cortex-m",
+      "sections": 16,
+      "source_sha256": "a39bc99468f3d99d1109e0101978062698e4e11b6e1fdd8731809280a2ebafde",
+      "output_sha256": "3dc60c521c43b1b6e0dd0c9b5ade530956b94ff4c659c1ec0958fef90aefdbc6"
+    },
+    {
+      "slug": "ctrm",
+      "sections": 17,
+      "source_sha256": "a07db4e1fd95a4402a24a93958ae8af0ce64e1e0910d9923b8a1e46e1cf5a72c",
+      "output_sha256": "b13960d01e89296d75af6211a0e5db155561a5eb910be47ad8d6931c030a43fe"
+    },
+    {
+      "slug": "cuda",
+      "sections": 145,
+      "source_sha256": "65f67a65d477d4328097c72b6adbd2c4184ccddb3a3aff56425aa0aeaa0b5ec0",
+      "output_sha256": "d8c679dfc24c91cd3df1af4e12a1c36c459848c4704704da0ccd35e4216661bb"
+    },
+    {
+      "slug": "ib27",
+      "sections": 71,
+      "source_sha256": "ca01eb29c40cfe750d5b4f96cfe9f1547373fa96ebad0a3e15b4db81af567ae9",
+      "output_sha256": "87006b71f1726d90015eb9dc1fad67078c189e53ac27b75da5f0544b51e4e70d"
+    },
+    {
+      "slug": "mev",
+      "sections": 15,
+      "source_sha256": "bc3bedaf1affb816aebce92785ce3fe0ec155f554b4b52da04e2785b00d61328",
+      "output_sha256": "9c171f7de68a1b99266aa2356d4738ce2645528ca37598940018f21ebbb049d9"
+    },
+    {
+      "slug": "riscv",
+      "sections": 35,
+      "source_sha256": "ba0382328ec6d253039825d61914adc977546c807dbcef3b731b8f0ce34d64e0",
+      "output_sha256": "95eb959396d890eed6c080190a08d392a423c9dafb56f0f28cef272dbdb48637"
+    },
+    {
+      "slug": "rwa-regression",
+      "sections": 123,
+      "source_sha256": "14a6b19c0ecd4cf06a0ff858543b9f05042cc7c63335ff1052e89b0b976a669c",
+      "output_sha256": "318f43556dd760f253cb1d7a6d49dcc9e60587af54cbeb6bacd0bc138081e961"
+    },
+    {
+      "slug": "ssrd",
+      "sections": 13,
+      "source_sha256": "da98710c254c34fcabb4d6306e1bd0120d3e0df3c49ecd2d9c4b324420c729c8",
+      "output_sha256": "03341c4e279a9767d5763a2f37c55c38b2e724eac7ea55bd7303e2f9f88097de"
+    },
+    {
+      "slug": "stablecoins",
+      "sections": 14,
+      "source_sha256": "cb7c1bcfda1e0339012d82009854889565c07a18657ef5a3b82dd371d313f0a4",
+      "output_sha256": "508259f3e547380241ec75f5425d5e3087e78f3a3e663d138f07e37636156587"
+    },
+    {
+      "slug": "strategy",
+      "sections": 34,
+      "source_sha256": "2ee9b8fbf90dfcb5984cf0d77192dee0e804a98505e0c02c1899c11801f2317b",
+      "output_sha256": "f5368b2185ab16b78c5c42e3d1aaebfae0a934e1ed17726ce0872bf2a1b822d4"
+    },
+    {
+      "slug": "strategy-bitcoin",
+      "sections": 42,
+      "source_sha256": "7830db87dcd0d1c5e2e2b7187aa2871a4e4190a7a96e5286a650709f8ddc8dc5",
+      "output_sha256": "441c4c231137d2a1a2fcd6efda5939ec32d38808daefc9e5d3c5e501795bd79e"
+    },
+    {
+      "slug": "tokenization",
+      "sections": 33,
+      "source_sha256": "cec6e47a88d24b04dfc873fd55d405553873feeb18bd8a98ddd1724d984bcaba",
+      "output_sha256": "eba45f39eef1d9f55e43d852e38c791c787701582103ad0fb83de03a46b47d42"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+<h1 class="chapter-title">Foundations:<br>The Atoms Beneath the GPU</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Build the conceptual atoms the rest of the book stands on: how numbers are stored in hardware, what a matrix multiply <em>is</em> as an operation count and a memory-traffic problem, the laws of parallel speedup, the architectural lineage that produced the modern GPU, and the vocabulary (latency, throughput, intensity, occupancy) you will use on every page that follows. Each idea is an <strong>atomic note</strong> with explicit links to what it depends on and what it leads into.</p>
+    </header>
+
+    <div class="learning-path">
+        <div class="learning-path-label">How to read this chapter</div>
+        <p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px;">If you've taken an undergraduate "computer organization" plus a numerical-methods course, skim §0.2 and §0.4, then read §0.5 (parallelism laws) and §0.6 (GPU lineage) carefully. If you came from pure software, read every atomic note in order. Each note is short on purpose — return to them as reference cards while reading later chapters.</p>
+        <div class="learning-path-track">
+            <a class="learning-path-step" href="#sec-0-1">0.1 Reading Map</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-0-2">0.2 Numbers</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-0-3">0.3 Linear Algebra</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-0-4">0.4 Computer Arch.</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-0-5">0.5 Parallelism Laws</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#sec-0-6">0.6 GPU Lineage</a>
+            <span class="learning-path-arrow">→</span>
+            <a class="learning-path-step" href="#chapter-1">Ch 1</a>
+        </div>
+    </div>
+
+    <!-- ============== 0.1 Reading Map ============== -->
+    <section class="section" id="sec-0-1">
+        <h2 class="section-title"><span class="sec-num">0.1</span>The Reading Map — How the Atoms Connect</h2>
+        <p class="section-subtitle">Concept dependency graph for the entire book</p>
+
+        <p>The textbook is laid out as a directed graph of <em>atomic notes</em>. Each note explains exactly one idea — what it is, why it exists, the smallest example that makes it true, and a short list of the other notes that lead into and out of it. The links carry semantics:</p>
+
+        <div class="atomic" id="A0.1.1-rel-types">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.1.1]]</span>
+                <h4 class="atomic-title">The four link types you will see everywhere</h4>
+                <span class="atomic-tag">meta</span>
+            </div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">prereq</span> "You cannot meaningfully understand <em>this</em> note without first understanding the linked one." The linked note answers a sub-question the current note assumes.</li>
+                    <li><span class="def-term">builds-on</span> "This note <em>uses</em> the linked one as a black box." Not strictly a prerequisite — you can read this note with only a one-sentence summary of what it builds on — but the formal definitions live in the linked note.</li>
+                    <li><span class="def-term">used-by</span> "These later notes apply or extend this one." Forward edges in the graph; how to navigate <em>downstream</em>.</li>
+                    <li><span class="def-term">related</span> "Sibling concept worth comparing." No direct dependency — usually a contrast or an alternative formulation.</li>
+                    <li><span class="def-term">contrast</span> "Easy to confuse with this one." When the two concepts share vocabulary but have different mechanics (e.g. occupancy vs utilization, latency vs latency-hiding).</li>
+                </ul>
+                <p>The visual concept map at the end of the book (<a href="#chapter-9" class="note-ref">Ch 9 — Knowledge Graph</a>) renders these edges as a force-directed diagram. Until then, the chips at the bottom of each card are the graph.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-9">[[Ch9-graph]]</a> <a class="rel-chip rel-usedby" href="#A0.2.1-positional">[[A0.2.1]]</a> <a class="rel-chip rel-usedby" href="#A0.5.1-amdahl">[[A0.5.1]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A0.1.2-canonical-question">
+            <div class="atomic-head">
+                <span class="atomic-id">[[A0.1.2]]</span>
+                <h4 class="atomic-title">The canonical question the book answers</h4>
+                <span class="atomic-tag">framing</span>
+            </div>
+            <div class="atomic-body">
+                <p>"Given a matrix multiply of a chosen shape, write a CUDA kernel that runs faster than NVIDIA's cuBLAS on the same GPU, and prove it." Every chapter is a layer of context that question demands:</p>
+                <ul>
+                    <li><strong>What is a matrix multiply, exactly?</strong> → §0.3 (linear algebra) and <a href="#A0.3.4-gemm" class="note-ref">[[A0.3.4]]</a>.</li>
+                    <li><strong>What is the machine running it?</strong> → <a href="#chapter-1" class="note-ref">Ch 1 — GPU architecture</a>.</li>
+                    <li><strong>How do I tell the machine to do it?</strong> → <a href="#chapter-2" class="note-ref">Ch 2 — CUDA programming</a>.</li>
+                    <li><strong>What does dedicated MM hardware do?</strong> → <a href="#chapter-3" class="note-ref">Ch 3 — Tensor cores &amp; PTX</a>.</li>
+                    <li><strong>How do I see what my kernel is actually doing?</strong> → <a href="#chapter-4" class="note-ref">Ch 4 — Nsight Compute</a>.</li>
+                    <li><strong>Where does cuBLAS lose, and how do I prove I beat it?</strong> → <a href="#chapter-5" class="note-ref">Ch 5 — Beating cuBLAS</a>.</li>
+                    <li><strong>Building blocks you'll need anyway</strong> → <a href="#chapter-7" class="note-ref">Ch 7 — reductions/scans</a>, <a href="#chapter-8" class="note-ref">Ch 8 — multi-GPU</a>.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A0.3.4-gemm">[[A0.3.4-gemm]]</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#chapter-5">[[Ch5]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 0.2 Numbers ============== -->
+    <section class="section" id="sec-0-2">
+        

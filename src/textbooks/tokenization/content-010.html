@@ -1,0 +1,94 @@
+<h3>What the documents support</h3>
+<p>Each row has a locator you can reproduce. These are paraphrases, not quotations. Open the document and use its contents or search for the named heading.</p>
+<dl class="evidence-list">
+<div><dt>Record authority</dt><dd>The official share register combines conventional records and public blockchains under transfer-agent control. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926000970/c485bpos.htm" target="_blank" rel="noopener">Full prospectus: Use of Blockchain, pp. 14–19</a></dd></div>
+<div><dt>Privileged powers</dt><dd>The transfer agent can correct errors and restrict transfers. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926000970/c485bpos.htm" target="_blank" rel="noopener">Full prospectus: Use of Blockchain</a></dd></div>
+<div><dt>Peer transfers</dt><dd>Permissioned wallets can transfer outside normal business hours; this is not a public trading market. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926000970/c485bpos.htm" target="_blank" rel="noopener">Full prospectus: Peer-to-Peer Transfer of Shares, pp. 38–41</a></dd></div>
+<div><dt>Cash exit</dt><dd>Redemptions process during business hours on business days. Automated Clearing House (ACH) bank-transfer proceeds generally take two to three business days under the stated conditions. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926000970/c485bpos.htm" target="_blank" rel="noopener">Full prospectus: Selling Shares, pp. 36–37</a></dd></div>
+<div><dt>Investment policy</dt><dd>The summary describes at least 99.5% in government securities, cash and specified collateralized repurchase agreements. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926001138/c497k.htm" target="_blank" rel="noopener">Summary: Principal Investment Strategies, pp. 3–4</a></dd></div>
+<div><dt>Operating expenses</dt><dd>The summary lists 0.22% before waiver and 0.20% after waiver/reimbursement; the stated limit runs through 31 July 2027 with exclusions. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926001138/c497k.htm" target="_blank" rel="noopener">Summary: Fees and Expenses, p. 2 and footnote</a></dd></div>
+<div><dt>Value protection</dt><dd>A stable $1 share value is sought, not guaranteed; fund investment lacks FDIC (U.S. deposit) insurance. <a href="https://www.sec.gov/Archives/edgar/data/1786958/000165558926000970/c485bpos.htm" target="_blank" rel="noopener">Full prospectus: Principal Risks, p. 7</a></dd></div>
+</dl>
+<p class="meta">A filing is issuer disclosure. Its existence does not establish regulatory endorsement, present asset coverage or successful operation of every described control.</p>
+</section>
+
+<section id="dossier-method" class="advanced-module">
+<h3>Three lenses, three different conclusions</h3>
+<p><strong>Tokenomics lens:</strong> identify the instrument that receives investment income, the entities that receive fees, and the party that pays operating costs. Do not substitute a blockchain’s native coin for the instrument being analyzed. Draw separate columns for customer payments, asset income and issuance. They need not flow to the same holder.</p>
+<p><strong>RWA lens:</strong> name the legal issuer or vehicle and the investor’s exact interest. Separate the portfolio from the share representing exposure to it. Then ask who holds the assets, what liabilities exist, how value is measured and what governs recovery. A document about an intended policy cannot substitute for current holdings and liability evidence.</p>
+<p><strong>Tokenization lens:</strong> enumerate the actors that can approve a holder, alter a record, authorize a transaction or recover an account. Define when the asset leg completes and when cash becomes usable. A transfer receipt proves a narrower event than completion of the whole investment lifecycle.</p>
+<p>These are analytical procedures. They do not add unverified rights to this product. Use the <a href="#fig-claim">claim-chain diagram</a> and <a href="#fig-redemption">sale-versus-redemption diagram</a> as templates, then label every uncertain edge.</p>
+<h4>Build a six-line evidence memo</h4>
+<ol class="method-list">
+<li><strong>Question:</strong> write one proposition you want to establish, such as whether a specific holder can exit on a particular date.</li>
+<li><strong>Claim:</strong> write what the document actually supports, including eligibility, timing and exceptions.</li>
+<li><strong>Source:</strong> retain the document date, exact locator and observation date. Separate the source version from the date you opened it.</li>
+<li><strong>Inference:</strong> state the reasoning that connects the document to your conclusion. Mark assumptions explicitly.</li>
+<li><strong>Missing evidence:</strong> name the report, legal analysis, role configuration or observed transaction that could settle the remaining question.</li>
+<li><strong>Disconfirmation:</strong> describe the evidence that would make you reject or revise your conclusion.</li>
+</ol>
+<p><strong>Worked analytical conclusion:</strong> “I can identify a documented process. I have not established its present operating performance.” This statement is more useful than “the project works” because it tells the next investigator exactly where verification must begin.</p>
+<p>Do not assume this case implements ERC-3643 or ERC-4626 merely because the textbook teaches those interfaces. Standards are comparison tools; an implementation claim needs its own evidence.</p>
+</section>
+
+<section id="dossier-math" class="advanced-module">
+<h3>Work the economics without inventing a yield.</h3>
+<p><strong>Illustration, not product performance:</strong> assume a $25,000 constant balance for a year, 4% gross asset income, 0.20% annual operating costs and no other charges, losses, taxes or compounding. These simplified assumptions isolate fee arithmetic. The 4% is invented for this exercise.</p>
+<dl class="calculation-list">
+<div><dt>Gross income</dt><dd>$25,000 × 0.04 = $1,000</dd></div>
+<div><dt>Operating costs</dt><dd>$25,000 × 0.002 = $50</dd></div>
+<div><dt>Simplified residual</dt><dd>$1,000 − $50 = $950</dd></div>
+<div><dt>Residual rate</dt><dd>$950 ÷ $25,000 = 3.8%</dd></div>
+</dl>
+<p>The subtraction does not establish a quoted yield, a dividend, total return or the actual charge on a changing balance. Identify the real accrual method and relevant exclusions before translating a simplified rate into money received.</p>
+<p><strong>Fresh variation:</strong> change only the assumed gross rate to 2%. Predict the new residual before opening the answer.</p>
+<details><summary>Check the variation</summary><p>Gross income becomes $500. The assumed $50 cost leaves $450, or 1.8%. The $50 is 5% of the first scenario’s gross income and 10% of the second’s. A fixed rate against assets can consume a larger fraction of income when income falls.</p></details>
+<p><strong>Another variation:</strong> use the original assumptions but add a hypothetical $30 exit charge. Show income after that charge and explain why the holding period matters.</p>
+<details><summary>Check the exit-cost variation</summary><p>The simplified year leaves $920 after the additional charge, or 3.68% of starting balance. A flat cost is a larger fraction of income over a shorter holding period. Do not annualize this example into a guaranteed return.</p></details>
+</section>
+
+<section id="dossier-stress" class="advanced-module">
+<h3>Try to break your own analysis.</h3>
+<p>These are hypothetical investigation prompts, not reports of incidents at this fund. For each scenario, separate a possible loss of value from a delay in access.</p>
+<details><summary>A holder loses control of a wallet.</summary><p>Identify the documented recovery authority and the evidence needed to establish the rightful holder. Determine whether the old wallet can still spend. Test a recovery only in an authorized sandbox. A stated power does not prove a successful recovery or a particular recovery time.</p></details>
+<details><summary>The asset leg completes before the buyer’s payment.</summary><p>Locate the missing settlement condition. Identify which party performed first and which counterparty it now relies on. Request the actual cash-leg mechanism and evidence of final settlement. A confirmed asset transfer does not establish that the buyer paid.</p></details>
+<details><summary>A valuation looks smooth while executable prices fall.</summary><p>Compare valuation policy, observation times and available market evidence. Recalculate the consequence under a clearly labelled loss scenario. Do not diagnose insolvency from a discount alone, and do not infer economic stability from a slowly updating display.</p></details>
+<details><summary>The operator’s website is unavailable.</summary><p>List the records, authority, communication channels and account access needed to service investors. Ask which functions depend on the website and which have independent continuity procedures. A public ledger can remain visible while a servicing workflow is unavailable.</p></details>
+<p><strong>What remains unknown in this dossier:</strong> present holdings and liabilities, exact deployed roles, an investor’s current eligibility, actual fulfillment times, live incident recovery and a case-specific insolvency opinion. Each unknown needs different evidence. Do not silently promote a document review into a live product audit.</p>
+</section>
+
+<section id="transfer-case" class="advanced-module">
+<h3>Independent transfer test: a different asset, a different claim.</h3>
+<p>Close the worked case. Analyze the following fictional product without copying its conclusions. Preserve your original answer before checking the guide.</p>
+<p><strong>Fictional Atlas Note:</strong> an issuer owns $2 million of one-year business loans. It owes $1.2 million of secured senior debt and issues $800,000 of unsecured junior note tokens. The terms give note holders the residual recovery after senior debt and enforcement costs. Ordinary transfers require approved wallets. Redemptions are unavailable before maturity. One operator can pause transfers and replace the implementation.</p>
+<p>At maturity, assume gross loan recoveries of $1.6 million and enforcement costs of $100,000 paid before senior debt. Assume no other claims or cash flows. These are the complete assumptions for the arithmetic, not a template for actual legal priorities.</p>
+<ol class="method-list">
+<li>Identify the asset, legal claim, ranking and economic source of repayment.</li>
+<li>Allocate recovery. Calculate the junior loss in dollars and as a percentage of its $800,000 principal.</li>
+<li>Explain why wallet approval and token transfer do not promise an early cash exit.</li>
+<li>Identify effective technical control and one independent check needed before trusting the claimed powers.</li>
+<li>List three documents or observations needed to analyze a real product with these features.</li>
+<li>Write the strongest reason this product should use a conventional register instead. State what evidence could overcome that objection.</li>
+</ol>
+<label for="dossier-attempt">Your analysis: claim → cash → control → failure → missing evidence</label>
+<textarea id="dossier-attempt" data-attempt="dossier" rows="8" placeholder="Write your independent reasoning here. Separate arithmetic from legal assumptions."></textarea>
+<details><summary>Reveal the answer guide after your attempt</summary>
+<p><strong>Claim:</strong> the holder has the stated junior note claim against the issuer. The tokens are not direct personal title to each business loan.</p>
+<p><strong>Recovery:</strong> $1.6M minus $0.1M costs leaves $1.5M. Senior receives $1.2M; junior receives $0.3M. Junior loses $0.5M, or 62.5% of $0.8M.</p>
+<p><strong>Exit:</strong> before maturity the assumed terms provide no redemption route. A sale requires an eligible buyer and acceptable terms; a valid transfer alone does not supply one.</p>
+<p><strong>Control:</strong> the operator’s pause and replacement powers are central. Verify deployed addresses, implementation and role holders against the documented rules. An interface description is insufficient.</p>
+<p><strong>Evidence:</strong> examples include executed note and security documents, borrower and collateral records, complete liabilities, custody/control evidence, a servicing plan and current deployment configuration. Each resolves a different uncertainty.</p>
+<p><strong>Counterfactual:</strong> sparse transfers and concentrated control may make a normal register simpler. A tokenized design needs an observed integration, settlement or servicing benefit sufficient to justify its added costs and dependencies.</p>
+</details>
+<h4>Grade the evidence, not the confidence.</h4>
+<p>Score each of the six questions from 0 to 3: 0 = absent; 1 = plausible assertion; 2 = correct mechanism or arithmetic; 3 = correct result plus assumptions, limits and needed evidence. A suggested study pass is 15/18, with all essential distinctions correct.</p>
+<p><strong>Essential distinctions:</strong> junior claim versus direct loan ownership; transfer versus cash exit; documented power versus observed behavior. If any is wrong, revisit the relevant loop before attempting a fresh case. A self-assigned score remains provisional; it is not an expert credential.</p>
+<p><strong>Next independent step:</strong> select a different real instrument and recreate this six-question memo from its own primary documents. Do not submit an AI-written answer as your independent attempt.</p>
+</section>
+</section>
+<section class="reading" id="practice"><h2>More problems. Different numbers.</h2><h3>Tokenomics: distinguish the mechanism</h3>
+<p class="">A. A protocol burns 5 million tokens but issues 9 million. Beginning supply is 100 million. Calculate ending supply and net issuance rate using beginning supply.<br>B. A holder has 4% voting power but only 1% economic distribution rights. A proposal changes fees. Which percentage determines each effect?<br>C. A treasury reports $8 million, but $6 million is its own token. Cash burn is $250,000 per month. Calculate cash-only runway before receipts or sales.<br>D. Compare a 20% token reward with a 20% dollar return when token price falls 30%. Begin with 100 tokens at $10 and end with 120.<br>E. A bond deters cheating only if detection is credible. Describe a counterexample with a large stated penalty and zero collectible recovery.</p>
+<h3>RWA: follow the claim</h3>
+<p class="">A. A $10 million pool loses $1 million. Junior capital is $2 million. With $8 million senior claims and no costs, calculate junior recovery and loss rate.<br>B. A vehicle has $4 million cash and $16 million assets valued monthly. Half of investors request cash. Identify the two missing facts needed to quantify the shortfall.<br>C. A token promises exposure to a building&#x27;s price but no rent entitlement. Can annual building rent be treated as token income?<br>D. A receipt says one token represents one ounce of gold. Write five independent questions about custody, allocation, liens, redemption and fees.<br>E. A court freezes the issuer&#x27;s account. Explain why the blockchain&#x27;s continued operation does not establish access to redemption cash.</p>
+<h3>Tokenization: prove the lifecycle</h3>
+<p class="">A. A bank webhook arrives three times. Create an observable acceptance condition for a single $1,000 subscription.<br>B. A vault quote returns 100 assets but maxWithdraw is zero. What should a user infer?<br>C. Original supply is 1,000. A bridge locks 200 and mints 200 representations. How many independent economic claims should exist under a correctly backed one-to-one design?<br>D. The official register and contract disagree about a holder. List the documents and evidence required to determine the authoritative correction process.<br>E. An administrator can pause all transfers but cannot stop an external bank payment already sent. What is the boundary of its emergency power?</p></section><section class="reading" id="quiz"><div class="eyebrow">Quick diagnostic / six questions</div>

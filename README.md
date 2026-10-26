@@ -61,3 +61,9 @@ bunx playwright install firefox && bun run test:e2e   # smoke test of the built 
 MIT, see [LICENSE](LICENSE). It covers this site's code and writing. The fonts keep their own SIL OFL licenses in `public/fonts/`.
 
 Part of [Rahil Bhavan's projects](https://github.com/RahilBhavan).
+
+## Textbooks
+
+`/textbooks` indexes eleven project textbooks and one shorter Strategy companion. `/books` redirects there. Reading editions are generated before development/build from `src/textbooks/`; generated HTML and vendor assets are ignored. Chart.js, D3 and KaTeX are pinned and copied locally, including their licenses, so readers do not need a CDN. The source books' external evidence links still require internet access.
+
+Run `bun run check` for the normal build/link suite. With the development server on port 4332, run `bun run check:textbooks` for the Firefox behavior checks; `TEXTBOOK_BASE_URL` changes the origin and `FIREFOX_EXECUTABLE` selects an installed Firefox binary. The checks use isolated browser storage. The exact check results and limits are recorded in `docs/textbook-verification/`.

@@ -1,0 +1,192 @@
+<h1 class="chapter-title">Compiler &amp; Toolchain:<br>From <code>.cu</code> to Bare-Metal SASS</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Stop treating <code>nvcc</code> as a black box. By the end of this chapter you can name every binary on the compilation path, read PTX and SASS side-by-side with the C++ that produced them, control register usage and spill behavior, JIT-compile kernels at runtime with NVRTC, and use <code>cuobjdump</code> / <code>nvdisasm</code> / <code>cu++filt</code> to extract the truth from any compiled binary. The compiler is not your enemy — once you can read it, it is the single most reliable source of information about what your kernel will do.</p>
+    </header>
+
+    <section class="section" id="sec-10-1">
+        <h2 class="section-title"><span class="sec-num">10.1</span>The nvcc Pipeline — Every Stage Named</h2>
+        <p class="section-subtitle">What happens between <code>nvcc kernel.cu</code> and a runnable binary</p>
+
+        <div class="cluster"><strong>Cluster.</strong> <code>nvcc</code> is a <em>driver</em>, not a compiler. It dispatches host code to your system C++ compiler (g++, clang, MSVC) and device code through <em>three</em> dedicated front- and back-end stages. Understanding the boundaries between them is what turns "the compiler stripped my variable" from a mystery into a debuggable event.</div>
+
+        <div class="atomic" id="A10.1.1-stages">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.1.1]</span>
+                <h3 class="atomic-title">The Six-Stage Compilation Pipeline</h3>
+                <span class="atomic-tag">toolchain · pipeline</span>
+            </div>
+            <div class="atomic-body">
+                <p>A single <code>foo.cu</code> traverses six logical phases. Each stage has a binary you can invoke directly when debugging.</p>
+                <ol>
+                    <li><strong>cudafe++</strong> — a CUDA-aware C++ front-end. Splits the <code>.cu</code> source into a host stub (calls to <code>cudaLaunchKernel</code>) and a device stub (kernels and <code>__device__</code> functions). Produces <code>foo.cpp1.ii</code> (host) and <code>foo.cpp4.ii</code> (device).</li>
+                    <li><strong>cicc</strong> — the NVVM (LLVM-IR) optimizer. Translates the C++ AST to NVVM IR, runs optimization passes (inlining, SROA, GVN, loop unrolling, instruction selection), emits PTX (<code>foo.ptx</code>).</li>
+                    <li><strong>ptxas</strong> — assembles PTX into SASS (machine code) for one or more SM architectures. This is where register allocation, instruction scheduling, and the final ABI are decided. Output is a <em>cubin</em> (ELF) per architecture.</li>
+                    <li><strong>fatbinary</strong> — concatenates multiple cubins (and optionally the PTX itself for forward compat) into a single fat-binary blob.</li>
+                    <li><strong>Host C++ compiler</strong> — gcc/clang/MSVC processes the host stub, embedding the fatbinary as a const array via <code>__cudaRegisterFatBinary</code>.</li>
+                    <li><strong>Host linker</strong> — links the host objects with <code>libcudart</code> (or statically with <code>cudadevrt</code> for device-side new/printf). Final ELF/PE has both host CPU code and embedded device code.</li>
+                </ol>
+                <p>The fat-binary embedded in your executable is read at load time by the CUDA driver. If a section matches your GPU's compute capability, the driver maps that cubin directly. Otherwise the driver JIT-compiles the embedded PTX. This is why distributing PTX makes your binary forward-compatible — and why omitting PTX (<code>-arch=sm_80 --no-ptx</code>) makes it smaller but architecture-locked.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span><a class="rel-chip rel-builds" href="#sec-2-8">§2.8 Software stack</a></div>
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-10-2">§10.2 ptxas</a><a class="rel-chip rel-usedby" href="#sec-10-4">§10.4 NVRTC</a></div>
+            </div>
+        </div>
+
+        <div class="figure figure-dense">
+            <div class="figure-label">Figure 10.1 — Interactive</div>
+            <div class="figure-title">The full <code>nvcc</code> pipeline as a directed graph</div>
+            <svg viewBox="0 0 920 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <marker id="arr10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#52545a"/>
+                    </marker>
+                </defs>
+                <g font-family="JetBrains Mono, monospace" font-size="11" fill="#52545a">
+                    <g data-tip="**foo.cu** — your CUDA source file. Mixed host + device code; nvcc's job is to split it.">
+                    <rect x="10" y="100" width="100" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="60" y="125" text-anchor="middle" fill="#111214">foo.cu</text>
+                    </g>
+
+                    <g data-tip="**cudafe++ (host pass)** — front-end splitter; extracts host C++ and emits a stub that registers each kernel with the runtime.">
+                    <rect x="135" y="40" width="120" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="195" y="65" text-anchor="middle">cudafe++ (host)</text>
+                    </g>
+                    <g data-tip="**cudafe++ (device pass)** — extracts device code (`__global__` / `__device__` functions) for the device toolchain.">
+                    <rect x="135" y="160" width="120" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="195" y="185" text-anchor="middle">cudafe++ (dev)</text>
+                    </g>
+
+                    <g data-tip="**cicc** — the proprietary C-to-PTX device compiler (LLVM-based internally). Output is virtual ISA (PTX).">
+                    <rect x="285" y="160" width="90" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="330" y="185" text-anchor="middle">cicc</text>
+                    </g>
+
+                    <g data-tip="**ptxas** — PTX → SASS assembler. This is where register allocation, scheduling, and most peephole optimization happen. Use `-arch=sm_86 --ptxas-options=-v` to inspect.">
+                    <rect x="405" y="160" width="90" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="450" y="180" text-anchor="middle">ptxas</text>
+                    <text x="450" y="194" text-anchor="middle" font-size="9" fill="#52545a">sm_80, sm_86…</text>
+                    </g>
+
+                    <g data-tip="**fatbinary** — bundles the per-arch SASS + the parent PTX into one blob. The runtime JITs PTX on first use if no matching cubin is present.">
+                    <rect x="525" y="160" width="100" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="575" y="185" text-anchor="middle">fatbinary</text>
+                    </g>
+
+                    <g data-tip="**g++ / clang (host)** — your platform's C++ compiler. Compiles the host stub plus user host code into a normal object file.">
+                    <rect x="285" y="40" width="200" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="385" y="65" text-anchor="middle">g++/clang (host C++)</text>
+                    </g>
+
+                    <g data-tip="**linker (ld)** — links the host object with libcudart and the fatbinary into the final executable. Symbol resolution + section merge; the fatbinary becomes a data section.">
+                    <rect x="655" y="100" width="120" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="715" y="120" text-anchor="middle">linker (ld)</text>
+                    <text x="715" y="134" text-anchor="middle" font-size="9" fill="#52545a">+libcudart</text>
+                    </g>
+
+                    <g data-tip="**a.out / .exe** — final binary. Contains host code, libcudart, and the fatbinary blob with embedded SASS/PTX for the target architectures.">
+                    <rect x="800" y="100" width="110" height="40" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <text x="855" y="125" text-anchor="middle">a.out / .exe</text>
+                    </g>
+
+                    <line x1="110" y1="115" x2="135" y2="60" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="110" y1="125" x2="135" y2="180" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="255" y1="60" x2="285" y2="60" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="255" y1="180" x2="285" y2="180" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="375" y1="180" x2="405" y2="180" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="495" y1="180" x2="525" y2="180" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="575" y1="160" x2="655" y2="125" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="485" y1="60" x2="655" y2="115" stroke="#52545a" marker-end="url(#arr10)"/>
+                    <line x1="775" y1="120" x2="800" y2="120" stroke="#52545a" marker-end="url(#arr10)"/>
+                </g>
+            </svg>
+            <div class="figure-caption">Top track is host code (CPU). Bottom track is device code (GPU). They merge in the fatbinary and finally at the linker. Every arrow is a separate process you can intercept with <code>--keep --verbose</code>.</div>
+        </div>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 10.1-A: Inspect the nvcc pipeline"># --verbose prints every subprocess; --keep retains intermediate files
+nvcc --verbose --keep -arch=sm_80 kernel.cu -o kernel 2&gt;&amp;1 | grep -E "cudafe|cicc|ptxas|fatbinary"
+
+# Files left behind by --keep:
+ls kernel.cudafe1.cpp     # host stub
+ls kernel.cpp1.ii         # preprocessed host
+ls kernel.ptx             # PTX
+ls kernel.cubin           # SASS (binary)
+ls kernel.fatbin          # fatbinary blob
+
+# Dump the PTX to stdout
+nvcc -arch=sm_80 -ptx kernel.cu -o /dev/stdout | head -80
+
+# Only emit a cubin (skip linking)
+nvcc -arch=sm_80 -cubin kernel.cu -o kernel.cubin
+</pre>
+
+        <div class="callout tip">
+            <div class="callout-label">Tip</div>
+            <p>Add <code>-Xptxas -v</code> to any compile to print per-kernel <em>register count, spill stores/loads, shared-memory bytes, and constant-memory bytes</em>. This single flag is the difference between guessing and knowing whether your latest tile-size change blew the register budget.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-10-2">
+        <h2 class="section-title"><span class="sec-num">10.2</span>ptxas, Register Pressure, and Spills</h2>
+        <p class="section-subtitle">Why the same C++ runs 2× faster depending on a single <code>__launch_bounds__</code></p>
+
+        <div class="atomic" id="A10.2.1-regfile">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.2.1]</span>
+                <h3 class="atomic-title">The Register File Is a Shared Resource</h3>
+                <span class="atomic-tag">registers · occupancy</span>
+            </div>
+            <div class="atomic-body">
+                <p>Each SM owns a fixed register file: <strong>65,536 × 32-bit registers</strong> on Ampere (sm_80/86) and Hopper (sm_90). All threads resident on that SM split it. If your kernel uses 64 registers/thread, an SM can host at most <code>65536 / 64 = 1024</code> threads — i.e. 32 warps, or 50% of the architectural max of 2048. Use 128 registers/thread and you crash to 25% occupancy.</p>
+                <p>The trade-off is <em>spilling</em>. If ptxas cannot allocate everything you need into registers, it generates loads and stores to <code>local memory</code> — which on the GPU is actually <em>global memory</em> backed by L1/L2. A single spill can cost 100s of cycles per access. The compiler does its best, but you set the budget.</p>
+                <p>Three knobs control this:</p>
+                <ul>
+                    <li><code>-maxrregcount=N</code> — hard cap, applies to every kernel in the TU.</li>
+                    <li><code>__launch_bounds__(maxThreadsPerBlock, minBlocksPerSM)</code> — per-kernel, ptxas computes the register cap from the desired occupancy.</li>
+                    <li><code>-Xptxas -O3</code> (default) vs <code>-O0</code> — affects how aggressively cicc/ptxas inline and unroll, which directly grows register pressure.</li>
+                </ul>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span><a class="rel-chip rel-prereq" href="#sec-1-5">§1.5 Occupancy</a></div>
+                <div class="rel-row"><span class="rel-label">Related</span><a class="rel-chip rel-related" href="#A10.2.2-spills">spills</a><a class="rel-chip rel-related" href="#sec-2-5">§2.5 Register tiling</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A10.2.2-spills">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.2.2]</span>
+                <h3 class="atomic-title">Reading a <code>-Xptxas -v</code> Report</h3>
+                <span class="atomic-tag">diagnostics</span>
+            </div>
+            <div class="atomic-body">
+                <p>The verbose output is one line per kernel and tells you everything that matters in two seconds:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:12px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+ptxas info    : Compiling entry function 'sgemm_kernel' for 'sm_80'
+ptxas info    : Function properties for sgemm_kernel
+    1024 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, 16384 bytes smem, 388 bytes cmem[0]
+                </pre>
+                <p><strong>Decode:</strong></p>
+                <ul>
+                    <li><strong>Stack frame</strong> — non-zero means you have local arrays or a recursive call. Try to drive to 0; even 0 spill stores can mask large stack frames.</li>
+                    <li><strong>Spill stores/loads</strong> — bytes per thread written/read to local memory because the register allocator ran out. <em>Anything &gt; 0 is a red flag.</em></li>
+                    <li><strong>Used registers</strong> — divide 65,536 by this to find max threads/SM, then divide by your block size for blocks/SM.</li>
+                    <li><strong>smem</strong> — bytes of static shared memory. Combine with dynamic shared mem to validate against the 100 KB/SM limit (sm_80) or 228 KB/SM (sm_90).</li>
+                    <li><strong>cmem[0]</strong> — bytes loaded from kernel param + global constant memory bank 0.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="worked">
+            <div class="worked-label">Worked Example — Pushing a Kernel Over the Spill Cliff</div>
+            <p>Suppose you have an 8×8 register-tiled GEMM (§2.5) using 72 registers/thread, 256 threads/block. Per-SM occupancy: <code>65536 / 72 ≈ 910 threads</code> → 3 blocks of 256 → 768 threads → 37.5% occupancy. You want more occupancy so you set <code>__launch_bounds__(256, 4)</code>, asking for 4 blocks/SM = 1024 threads.</p>
+            <p>ptxas must now squeeze into <code>65536 / 1024 = 64</code> registers/thread. The compiler spills 8 bytes/thread to local memory. Profiling shows a 3× slowdown despite the "higher occupancy." Spills moved hot operands to global memory and burned bandwidth that was already saturated.</p>
+            <p><strong>Lesson:</strong> Occupancy is a <em>secondary</em> metric. The primary metric is "no spills, instructions per cycle high, memory throughput high." Pick the register count that lets your inner loop keep its operands in registers; let occupancy fall out of that decision, not lead it.</p>
+        </div>
+
+        <div class="pitfall">
+            <div class="pitfall-label">Pitfall</div>
+            <p>A struct passed by value to a <code>__device__</code> function may force ptxas to reserve a stack frame even with no spills. Pass by <code>const&amp;</code> or break the function up. Symptom: non-zero "bytes stack frame" with zero spills.</p>
+        </div>
+    </section>
+
+    

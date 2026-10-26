@@ -1,0 +1,271 @@
+<h2 class="section-title"><span class="sec-num">19.1</span>The Hopper SM — What Changed from Ampere</h2>
+        <p class="section-subtitle">Every relevant per-SM number, side-by-side</p>
+
+        <div class="table-wrap"><table>
+            <thead><tr><th>Per-SM resource</th><th>A100 (sm_80)</th><th>H100 (sm_90)</th><th>Δ</th></tr></thead>
+            <tbody>
+                <tr><td>FP32 cores</td><td class="num">64</td><td class="num">128</td><td>2×</td></tr>
+                <tr><td>FP64 cores</td><td class="num">32</td><td class="num">64</td><td>2×</td></tr>
+                <tr><td>Tensor Cores</td><td class="num">4 (Gen 3)</td><td class="num">4 (Gen 4)</td><td>~2× throughput</td></tr>
+                <tr><td>Register file</td><td class="num">64K × 32-bit</td><td class="num">64K × 32-bit</td><td>—</td></tr>
+                <tr><td>Shared memory + L1</td><td class="num">192 KB</td><td class="num">256 KB</td><td>+33%</td></tr>
+                <tr><td>Max shared memory</td><td class="num">164 KB</td><td class="num">228 KB</td><td>+39%</td></tr>
+                <tr><td>Max threads</td><td class="num">2048</td><td class="num">2048</td><td>—</td></tr>
+                <tr><td>Warps / SM</td><td class="num">64</td><td class="num">64</td><td>—</td></tr>
+                <tr><td>L2 cache (chip)</td><td class="num">40 MB</td><td class="num">50 MB</td><td>+25%</td></tr>
+                <tr><td>TMA engines</td><td class="num">0</td><td class="num">1 per SM</td><td>new</td></tr>
+                <tr><td>Cluster support</td><td>no</td><td>yes</td><td>new</td></tr>
+                <tr><td>DSMEM</td><td>no</td><td>yes</td><td>new</td></tr>
+                <tr><td>FP8 Tensor Cores</td><td>no</td><td>yes (E4M3, E5M2)</td><td>new</td></tr>
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="section" id="sec-19-2">
+        <h2 class="section-title"><span class="sec-num">19.2</span>TMA in Detail</h2>
+        <p class="section-subtitle">The async-bulk-copy instruction that replaces a warp of cp.asyncs</p>
+
+        <div class="atomic" id="A19.2.1-tma-desc">
+            <div class="atomic-head">
+                <span class="atomic-id">[A19.2.1]</span>
+                <h3 class="atomic-title">The Tensor Map Descriptor</h3>
+                <span class="atomic-tag">tma</span>
+            </div>
+            <div class="atomic-body">
+                <p>A TMA descriptor is a 128-byte opaque struct (<code>CUtensorMap</code>) created on the host with <code>cuTensorMapEncodeTiled</code> and passed to the kernel as a kernel param (which the driver staged into constant memory). It encodes:</p>
+                <ul>
+                    <li>Global base, per-dimension extents and strides.</li>
+                    <li>Box size per dimension (the tile shape).</li>
+                    <li>Element type (FP16/BF16/FP8/INT8/…).</li>
+                    <li>Interleave mode (NONE, 32B, 64B, 128B — for image data).</li>
+                    <li>Swizzle pattern (NONE / 32B / 64B / 128B).</li>
+                    <li>L2 promotion policy and OOB fill behavior (zero, constant, copy).</li>
+                </ul>
+                <p>A single PTX <code>cp.async.bulk.tensor.{1d,2d,3d,4d,5d}.shared::cluster.global</code> instruction, issued by one thread, kicks off the entire tile copy and signals an mbarrier on completion.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span><a class="rel-chip rel-builds" href="#sec-11-6">§11.6 TMA</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-19-3">
+        <h2 class="section-title"><span class="sec-num">19.3</span><code>wgmma</code> — Warp-Group MMA</h2>
+        <p class="section-subtitle">Hopper's new instruction that operates on 4 warps at once</p>
+
+        <div class="atomic" id="A19.3.1-wgmma">
+            <div class="atomic-head">
+                <span class="atomic-id">[A19.3.1]</span>
+                <h3 class="atomic-title">128 Threads, One MMA</h3>
+                <span class="atomic-tag">wgmma · hopper</span>
+            </div>
+            <div class="atomic-body">
+                <p>Ampere's <code>mma.sync</code> issues 1 instruction per warp (32 threads). Hopper introduces <code>wgmma.mma_async</code> which issues 1 instruction per <em>warp group</em> (4 warps = 128 threads), with the operands implicitly distributed across the warps. Sample shape: <code>m64n128k16 fp16fp16fp32</code>.</p>
+                <p>Asynchronous semantics: the wgmma fires off, the warps continue, and later commit/wait instructions stall until results are ready. This enables tighter overlap with the TMA loads above.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="ptx" data-title="Listing 19.3-A: wgmma issue pattern">// Producer warp issues TMA copy and arrives on mbarrier.
+cp.async.bulk.tensor.2d.shared::cluster.global  [smem],   [desc, coords], [mbar];
+mbarrier.arrive.expect_tx.b64                  [mbar],    bytes;
+
+// Consumer warp group waits, then issues wgmma.
+mbarrier.try_wait.parity.b64  P0, [mbar], phase;
+@P0 bra wait;
+
+wgmma.fence.sync.aligned;
+wgmma.mma_async.sync.aligned.m64n128k16.f32.f16.f16.f32  {d…}, descA, descB, scaleD, scaleC;
+wgmma.commit_group.sync.aligned;
+wgmma.wait_group.sync.aligned  0;
+</pre>
+    </section>
+
+    <section class="section" id="sec-19-4">
+        <h2 class="section-title"><span class="sec-num">19.4</span>Thread-Block Clusters &amp; DSMEM</h2>
+        <p class="section-subtitle">A new level above the threadblock</p>
+
+        <div class="atomic" id="A19.4.1-cluster">
+            <div class="atomic-head">
+                <span class="atomic-id">[A19.4.1]</span>
+                <h3 class="atomic-title">Clusters: 16 Blocks That Talk Directly</h3>
+                <span class="atomic-tag">cluster</span>
+            </div>
+            <div class="atomic-body">
+                <p>A Hopper cluster is a group of up to 16 thread blocks (8 portably) that are guaranteed to be co-scheduled on adjacent SMs and can directly read/write each other's shared memory via <strong>DSMEM (Distributed Shared Memory)</strong>. New launch syntax:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:8px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+__cluster_dims__(2, 2)
+__global__ void clustered_gemm(...) {
+    namespace cg = cooperative_groups;
+    cg::cluster_group cluster = cg::this_cluster();
+    cluster.sync();      // cluster-wide barrier
+    int* peer = cluster.map_shared_rank(my_smem_ptr, peer_rank);
+    *peer = value;       // write into another block's SMEM
+}
+                </pre>
+                <p>Why it matters: a 256×256 output tile that was too big for one block's SMEM can now span 4 blocks × 64×64 SMEM each, with one-hop DSMEM access. Used heavily in FlashAttention-3 and Hopper CUTLASS GEMMs.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-19-5">
+        <h2 class="section-title"><span class="sec-num">19.5</span>The Transformer Engine</h2>
+        <p class="section-subtitle">Dynamic FP8 scale management at run time</p>
+
+        <div class="atomic" id="A19.5.1-te">
+            <div class="atomic-head">
+                <span class="atomic-id">[A19.5.1]</span>
+                <h3 class="atomic-title">What the TE Library Actually Does</h3>
+                <span class="atomic-tag">transformer engine</span>
+            </div>
+            <div class="atomic-body">
+                <p>NVIDIA's Transformer Engine library wraps Hopper's FP8 Tensor Cores. Each forward pass:</p>
+                <ol>
+                    <li>Reads a histogram of recent activation magnitudes for each tensor.</li>
+                    <li>Picks an FP8 scale per tensor that maximizes representable range without saturating.</li>
+                    <li>Quantizes the tensor to FP8 with that scale.</li>
+                    <li>Issues the FP8 Tensor-Core GEMM.</li>
+                    <li>Records new statistics for the next iteration.</li>
+                </ol>
+                <p>Without TE-style adaptive scaling, FP8 training diverges. With it, models train to within 0.1 perplexity of FP16/BF16 at &gt;2× the throughput.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-13-3">§13.3 FP8</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-19-6">
+        <h2 class="section-title"><span class="sec-num">19.6</span>Blackwell Preview</h2>
+        <p class="section-subtitle">What's already known about sm_100 / B200</p>
+
+        <div class="atomic" id="A19.6.1-blackwell">
+            <div class="atomic-head">
+                <span class="atomic-id">[A19.6.1]</span>
+                <h3 class="atomic-title">FP4, Generation-5 Tensor Cores, 5th-Gen NVLink</h3>
+                <span class="atomic-tag">blackwell</span>
+            </div>
+            <div class="atomic-body">
+                <ul>
+                    <li><strong>FP4 (NVFP4)</strong> — 4-bit float with two-level scaling. ~2× FP8 throughput on Tensor Cores. New PTX <code>mma.sync</code> shapes.</li>
+                    <li><strong>Tensor Memory</strong> — a new dedicated on-chip storage feeding Tensor Cores, separate from the register file. Reduces register pressure dramatically.</li>
+                    <li><strong>2nd-Gen Transformer Engine</strong> — adds dynamic FP4 scaling, supports MX (microscaling) formats.</li>
+                    <li><strong>5th-gen NVLink</strong> — 1.8 TB/s per GPU, 18-link NVSwitch fabric scaling to 576-GPU domains.</li>
+                    <li><strong>2-die "chiplet" GPU</strong> — first NVIDIA GPU built as two reticle-limit dies stitched with a 10 TB/s NV-HBI link, presented to software as a single device.</li>
+                </ul>
+                <p>What stays the same: the SIMT execution model, the shared-memory bank layout, the CUDA C++ surface. Everything you learned in chapters 1–17 still applies — Blackwell mostly adds more dimensions to the same Tensor-Core / TMA / cluster axes Hopper opened.</p>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 19</div>
+            <div class="checkpoint-sub">Forward compatibility</div>
+            <ul>
+                <li>List the four new features Hopper added over Ampere.</li>
+                <li>Outline the TMA descriptor's fields.</li>
+                <li>Explain why <code>wgmma</code> is async and how that helps overlap.</li>
+                <li>Predict the kernel-design changes Blackwell's FP4 will require.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-18"><span class="label">← Previous</span>Performance Methodology</a>
+            <a href="#chapter-20" class="next"><span class="label">Next →</span>Appendix &amp; Cheat Sheets</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 20 — APPENDIX & CHEAT SHEETS
+     ===================================================================== -->
+<article class="chapter" id="chapter-20">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">20</div>
+        <div class="chapter-eyebrow">Chapter 20</div>
+        <h1 class="chapter-title">Appendix:<br>C++, Tooling, Statistics, &amp; the Final Self-Test</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> A working reference: the modern-C++ features your kernels rely on, how to set up a clean CUDA toolkit and lock the GPU for benchmarking, the statistical method to defend a benchmark claim, a master cheat sheet of every number in the book, and a 50-question self-test that you should be able to answer without notes if you've worked through every chapter.</p>
+    </header>
+
+    <section class="section" id="sec-20-1">
+        <h2 class="section-title"><span class="sec-num">20.1</span>C++ for CUDA Kernel Writers</h2>
+        <p class="section-subtitle">The subset you actually need</p>
+
+        <div class="atomic" id="A20.1.1-cpp">
+            <div class="atomic-head">
+                <span class="atomic-id">[A20.1.1]</span>
+                <h3 class="atomic-title">Templates, constexpr, and Why CUTLASS Looks Like That</h3>
+                <span class="atomic-tag">c++</span>
+            </div>
+            <div class="atomic-body">
+                <p>The C++ features every CUDA kernel author should know:</p>
+                <ul>
+                    <li><strong>Function templates</strong> — let one kernel cover multiple tile sizes. <code>template &lt;int BM, int BN, int BK&gt; __global__ void gemm(...)</code>.</li>
+                    <li><strong>constexpr</strong> — compile-time computation; the compiler folds <code>BM * BK</code> into an immediate.</li>
+                    <li><strong>auto + decltype</strong> — concise return types; useful for cooperative-groups / cute lambdas.</li>
+                    <li><strong>std::integer_sequence / index_sequence</strong> — unrolled loops at compile time without macros.</li>
+                    <li><strong>if constexpr</strong> — pick code paths based on template params with no branch in the binary.</li>
+                    <li><strong>CRTP</strong> (Curiously Recurring Template Pattern) — static polymorphism for epilogues without virtual cost.</li>
+                    <li><strong>SFINAE / concepts</strong> — overload resolution that respects device constraints.</li>
+                </ul>
+                <p>Keep away from: exceptions (forbidden on device), RTTI, virtual functions across host/device, anything that allocates with global <code>new</code> in a kernel.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 20.1-A: A constexpr-driven unrolled inner loop">template &lt;int BM, int BN, int BK, int TM, int TN&gt;
+__global__ void gemm(const float* A, const float* B, float* C, int M, int N, int K) {
+    float acc[TM][TN] = {};
+
+    #pragma unroll
+    for (int k = 0; k &lt; BK; ++k) {
+        #pragma unroll
+        for (int i = 0; i &lt; TM; ++i) {
+            #pragma unroll
+            for (int j = 0; j &lt; TN; ++j) {
+                acc[i][j] = __fmaf_rn(/* loads */, /* loads */, acc[i][j]);
+            }
+        }
+    }
+    // ...store acc to C
+}
+</pre>
+    </section>
+
+    <section class="section" id="sec-20-2">
+        <h2 class="section-title"><span class="sec-num">20.2</span>Driver, Toolkit, Install</h2>
+        <p class="section-subtitle">How to set up a benchmark-ready box</p>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 20.2-A: Reproducible CUDA install on Ubuntu"># 1. Match driver to toolkit. CUDA 12.4 needs &gt;= 550.54.
+sudo apt-get install -y nvidia-driver-555
+sudo reboot
+
+# 2. Install the toolkit, not the bundled driver.
+wget https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run
+sudo sh cuda_12.4.1_550.54.15_linux.run --toolkit --silent
+
+# 3. Path setup.
+echo 'export PATH=/usr/local/cuda-12.4/bin:$PATH' &gt;&gt; ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64:$LD_LIBRARY_PATH' &gt;&gt; ~/.bashrc
+source ~/.bashrc
+
+# 4. Verify.
+nvidia-smi
+nvcc -V
+nsight-compute --version
+
+# 5. (Benchmark prep) Lock the clocks.
+sudo nvidia-smi -pm 1
+sudo nvidia-smi --lock-gpu-clocks=1410,1410   # set to the boost clock you want
+sudo nvidia-smi --lock-memory-clocks=1593,1593
+
+# 6. (Optional) Enable persistence and disable autoboost.
+sudo nvidia-smi --auto-boost-default=0
+</pre>
+    </section>
+
+    <section class="section" id="sec-20-3">
+        <h2 class="section-title"><span class="sec-num">20.3</span>Statistical Benchmarking</h2>
+        <p class="section-subtitle">How to defend "12% faster than cuBLAS" against a skeptical reviewer</p>
+
+        <div class="atomic" id="A20.3.1-statistics">
+            <div class="atomic-head">
+                <span class="atomic-id">[A20.3.1]</span>
+                

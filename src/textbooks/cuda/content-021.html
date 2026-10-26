@@ -1,0 +1,188 @@
+<h2 class="section-title"><span class="sec-num">4.3</span>Reading the Summary View</h2>
+        <div class="section-subtitle">What each section means and what it tells you to do</div>
+
+        <p>Opening a <code>.ncu-rep</code> in the UI, the kernel's <em>Summary</em> page is your first stop. It is organized into named sections; here is what each one means and how to read it.</p>
+
+        <h3>GPU Speed Of Light (SOL)</h3>
+        <p>The single most important section. Two numbers:</p>
+        <ul>
+            <li><strong>Compute (SM) Throughput</strong> &mdash; metric <code>sm__throughput.avg.pct_of_peak_sustained_active</code>. The fraction of peak SM throughput your kernel achieved.</li>
+            <li><strong>Memory Throughput</strong> &mdash; the equivalent for the memory subsystem; on most reports this rolls up DRAM, L2, and L1.</li>
+        </ul>
+        <p>The diagnostic table is short:</p>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>SM %</th><th>Memory %</th><th>Diagnosis</th><th>What to try next</th></tr></thead>
+            <tbody>
+                <tr><td class="num">&gt; 80%</td><td class="num">any</td><td><strong>Compute-bound.</strong> You are near peak.</td><td>Switch to a lower-precision Tensor Core. Reduce instruction count. Better mma fragments. Approach the roof.</td></tr>
+                <tr><td class="num">&lt; 60%</td><td class="num">&gt; 80%</td><td><strong>Memory-bound.</strong> Bandwidth is your bottleneck.</td><td>Tile bigger. Increase reuse (more output per input byte). Coalesce. Vectorize loads. Consider <code>cp.async</code> pipelining.</td></tr>
+                <tr><td class="num">&lt; 60%</td><td class="num">&lt; 60%</td><td><strong>Latency-bound.</strong> Neither pipe is busy; warps are stalled.</td><td>Check warp-state statistics — what are they waiting on? Increase occupancy. Increase ILP. Reduce per-thread sync.</td></tr>
+                <tr><td class="num">&gt; 60% both</td><td class="num">&gt; 60% both</td><td>Balanced; both pipes have headroom. Likely launch-overhead or occupancy issue.</td><td>Increase work per kernel. Use streams. Increase block count.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h3>Compute Workload Analysis</h3>
+        <p>Per-pipe utilization: <em>ALU</em> (FP32/INT32 CUDA cores), <em>FMA</em>, <em>TENSOR</em>, <em>FP64</em>, <em>FP16</em>, <em>XU</em> (transcendentals), <em>LSU</em> (load/store), <em>ADU</em> (address). If you wrote a Tensor-Core kernel and TENSOR throughput is low, you are not actually hitting the Tensor Cores — usually because <code>mma.sync</code> issue is starved by SMEM bandwidth or the wrong fragment layout.</p>
+
+        <h3>Memory Workload Analysis</h3>
+        <p>Per memory level: traffic in/out, request counts, sector counts, hit rates. The most diagnostic numbers:</p>
+        <ul>
+            <li><strong>L1/TEX Hit Rate.</strong> Low = your global-memory access pattern is wasting cache. Often a coalescing issue.</li>
+            <li><strong>L2 Hit Rate.</strong> Low = the working set is not living in L2. Often a tiling issue.</li>
+            <li><strong>Sectors / Request.</strong> 1.0 is perfect. 4.0 means every load is fetching 4× the cache lines it needed. Coalescing failure.</li>
+            <li><strong>Shared Memory Wavefronts.</strong> The bank-conflict counter. A 32-way conflict shows up as 32× more wavefronts than requests for that load.</li>
+        </ul>
+
+        <h3>Warp State Statistics</h3>
+        <p>Where your warps spend cycles when they are <em>not</em> issuing. Each "stall reason" is its own metric and each tells a different story:<sup>[2]</sup></p>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Stall reason</th><th>What it means</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td><code>long_scoreboard</code></td><td>Waiting on an L1TEX (global/local/surface/tex) operation. Effectively: global memory latency.</td><td>Hide it with more outstanding warps (occupancy) or more outstanding loads per warp (ILP). Or just reduce loads (tile).</td></tr>
+                <tr><td><code>short_scoreboard</code></td><td>Waiting on an MIO operation — shared memory, special math units, or dynamic branching.</td><td>Usually shared-memory access dominates. Check bank conflicts; reduce SMEM traffic via register reuse.</td></tr>
+                <tr><td><code>mio_throttle</code></td><td>The MIO pipe queue is saturated. Too many shared/special instructions piling up.</td><td>Reduce shared-memory pressure. Replace SMEM ops with register-resident accumulators.</td></tr>
+                <tr><td><code>barrier</code></td><td>Waiting at <code>__syncthreads</code> for slower threads in the block.</td><td>Balance work across threads; check for divergent paths converging at the barrier.</td></tr>
+                <tr><td><code>wait</code></td><td>Generic dependency wait (e.g. <code>mma.sync</code> result not yet available).</td><td>More ILP between dependent instructions; double-buffer the operands.</td></tr>
+                <tr><td><code>not_selected</code></td><td>Warp was eligible but scheduler chose another. <strong>This is good</strong> — means you have issue slack.</td><td>Nothing. High values here are a healthy signal.</td></tr>
+                <tr><td><code>imc_miss</code></td><td>Constant-memory cache miss.</td><td>Move data out of <code>__constant__</code> or restructure access pattern.</td></tr>
+                <tr><td><code>tex_throttle</code></td><td>Texture pipe saturated.</td><td>Rarely relevant for GEMM. Indicates over-use of texture loads.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <div class="figure">
+            <div class="figure-label">Figure 4.3 — Interactive Mock UI</div>
+            <div class="figure-title">Nsight Compute Summary view, three kernels compared</div>
+            <div class="chart-controls" style="margin-bottom:14px">
+                <div class="ctrl-group" style="min-width: 0">
+                    <span class="ctrl-label">Show kernel</span>
+                </div>
+                <button class="ctrl-btn active" data-kernel="naive" id="ncu-mock-naive">Naive</button>
+                <button class="ctrl-btn" data-kernel="tiled" id="ncu-mock-tiled">Tiled SMEM</button>
+                <button class="ctrl-btn" data-kernel="tc"    id="ncu-mock-tc">Tensor Core</button>
+            </div>
+            <div id="ncu-mock" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <!-- populated by JS -->
+            </div>
+            <div class="figure-caption">Mock-up of the metrics you would see in Nsight Compute for three versions of the GEMM. The shape of the table — SOL ratios, stall reasons, throughput per pipe — is what you should be able to read at a glance. Numbers are illustrative.</div>
+        </div>
+    </section>
+
+    <!-- 4.4 -->
+    <section class="section" id="sec-4-4">
+        <h2 class="section-title"><span class="sec-num">4.4</span>The Roofline in Nsight Compute</h2>
+        <div class="section-subtitle">Same plot as §1.6, now with your real kernel</div>
+
+        <p>Recent <code>ncu</code> versions include a built-in roofline plot in the GPU Speed Of Light Roofline Chart section (it is generated whenever the relevant metrics are collected, which they are with <code>--set full</code> and most analysis sets). The plot has the same shape as §1.6: arithmetic intensity on the x axis, GFLOPS on the y axis, the compute roof horizontal, the memory roof diagonal, your kernel as a single dot.</p>
+
+        <p>The diagnostic is simple. If the dot is on the diagonal, you are memory-bound. If it is below the horizontal roof on the right, you are compute-bound but not at peak — instruction mix or fragment layout. If it is in free space below both roofs, you are latency-bound — too few outstanding warps. Hopper-era reports also show hierarchical rooflines (DRAM, L2, L1, SMEM) so you can see which memory level you are bounded by.</p>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 4.4-A: Force roofline metric collection (older versions)"># If your default set does not include roofline, the explicit metrics are:
+ncu --metrics \
+  sm__sass_thread_inst_executed_op_fadd_pred_on.sum,\
+sm__sass_thread_inst_executed_op_fmul_pred_on.sum,\
+sm__sass_thread_inst_executed_op_ffma_pred_on.sum,\
+dram__bytes.sum.per_second,\
+gpc__cycles_elapsed.avg.per_second \
+  --launch-count 1 \
+  -o roofline_report ./my_program
+</pre>
+    </section>
+
+    <!-- 4.5 -->
+    <section class="section" id="sec-4-5">
+        <h2 class="section-title"><span class="sec-num">4.5</span>Memory Workload Analysis Deep Dive</h2>
+        <div class="section-subtitle">Diagnosing the memory subsystem in detail</div>
+
+        <p>The Memory Workload Analysis page shows traffic at every level: instructions issued, requests sent to each cache, sectors hit and missed, wavefronts on shared memory, and bytes ultimately reaching DRAM.</p>
+
+        <h3>Reading the request → wavefront → sector cascade</h3>
+        <p>When a warp issues a memory instruction, the L1TEX unit produces <strong>requests</strong>. Each request is split into <strong>sectors</strong> (32 bytes each on Ampere) and serviced as <strong>wavefronts</strong> through the cache. In the ideal case — perfectly coalesced 32-thread reads of contiguous floats — one request becomes one wavefront becomes four 32-byte sectors all in one cache line.</p>
+
+        <p>Two ratios reveal trouble:</p>
+        <ul>
+            <li><strong>Sectors / Request &gt; 1</strong>: cache lines being only partially used (uncoalesced or strided access). A ratio of 4× means you are doing four trips for the data of one.</li>
+            <li><strong>Wavefronts / Request &gt; 1 in shared memory</strong>: bank conflicts. A 32-way conflict shows up as 32 wavefronts per request. The fix is padding or restructured indexing.</li>
+        </ul>
+
+        <h3>Hit rates by level</h3>
+        <ul>
+            <li><strong>L1 Hit Rate.</strong> High = your global reads are being served by L1 thanks to spatial locality. Low + uncoalesced sectors = coalescing problem. Low + already coalesced = the working set is bigger than L1.</li>
+            <li><strong>L2 Hit Rate.</strong> The cross-SM cache. High = different blocks are sharing data. Low + large working set = you are saturating DRAM. Low + small working set = you are evicting your own data; try a smaller tile or persistent kernels.</li>
+            <li><strong>Texture cache hit rate</strong> (if you use texture loads or <code>__ldg</code>): same idea, separate unit.</li>
+        </ul>
+    </section>
+
+    <!-- 4.6 -->
+    <section class="section" id="sec-4-6">
+        <h2 class="section-title"><span class="sec-num">4.6</span>Source-Level Profiling</h2>
+        <div class="section-subtitle">Per-line PTX and SASS with cycle counts</div>
+
+        <p>The Source view in Nsight Compute is the closest thing GPU programming has to <code>perf annotate</code>. With <code>-lineinfo</code> at compile time, every SASS instruction can be traced back to a source line, and counters tell you how many cycles were spent at each line.</p>
+
+        <p>The view has three correlated columns — <strong>source</strong>, <strong>PTX</strong>, <strong>SASS</strong> — that scroll in lock-step. Click a source line to highlight the SASS instructions it generated and see their per-instruction execution counts and stall reasons.</p>
+
+        <h3>Reading SASS</h3>
+        <p>SASS (Streaming Assembler) is the actual machine code for a specific compute capability. Reading it tells you whether the compiler made good decisions. The mnemonics that matter for GEMM:<sup>[3]</sup></p>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Mnemonic</th><th>What it does</th><th>Why you care</th></tr></thead>
+            <tbody>
+                <tr><td><code>FFMA</code></td><td>Float-32 fused multiply-add. The CUDA-core workhorse.</td><td>Many <code>FFMA</code>s per <code>LDG</code> = compute-bound work.</td></tr>
+                <tr><td><code>HFMA2</code></td><td>Packed half-precision FMA.</td><td>Indicates the compiler vectorized your FP16 path.</td></tr>
+                <tr><td><code>HMMA</code></td><td>Half-precision MMA — the Tensor-Core instruction at the SASS level.</td><td>Appears if and only if your kernel actually uses Tensor Cores. No <code>HMMA</code>s = no tensor-core work.</td></tr>
+                <tr><td><code>BMMA</code> / <code>IMMA</code> / <code>QMMA</code></td><td>Bit / integer / FP8 variants of MMA.</td><td>For quantized kernels.</td></tr>
+                <tr><td><code>LDG</code></td><td>Load from global memory.</td><td>Many <code>LDG</code>s per <code>FFMA</code> = memory-bound.</td></tr>
+                <tr><td><code>LDS</code></td><td>Load from shared memory.</td><td>SMEM throughput cost; look for high <code>LDS</code> counts paired with <code>short_scoreboard</code> stalls.</td></tr>
+                <tr><td><code>STG</code> / <code>STS</code></td><td>Store global / shared.</td><td>Output traffic. <code>STG</code> outside the inner loop is good; inside is suspect.</td></tr>
+                <tr><td><code>BAR</code></td><td><code>__syncthreads</code> barrier.</td><td>Count of <code>BAR</code>s tells you how synchronization-heavy the kernel is.</td></tr>
+                <tr><td><code>BRA</code> / <code>SSY</code></td><td>Branch / set sync point (for handling divergence).</td><td>Many of these in the inner loop = divergent code paths.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p>The key ratio to internalize: <strong>FFMA (or HMMA) count vs LDG count</strong>. In a well-tiled GEMM, this ratio should be in the tens or hundreds — many compute instructions per global load. In a naive kernel the ratio is close to 1:1, and you can see it directly in the SASS listing.</p>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 4.6-A: Compile with line info; inspect SASS"># Compile with line correlation
+nvcc -O3 -arch=sm_86 -lineinfo -o gemm gemm.cu
+
+# Dump SASS to a file you can read
+cuobjdump --dump-sass gemm > gemm.sass
+
+# Or just look at one kernel:
+cuobjdump --dump-sass --function gemmTiled gemm
+
+# Or look at the intermediate PTX:
+nvcc -O3 -arch=sm_86 -ptx -o gemm.ptx gemm.cu
+
+# In ncu, open the .ncu-rep, navigate to the Source view, and you will
+# see per-line counts of: FFMA, LDG/STG, LDS/STS, HMMA, BAR, BRA, ...
+</pre>
+
+        <div class="callout tip">
+            <div class="callout-label">The fastest debugging loop</div>
+            For tight optimization work: write the kernel, run a single-pass profile (<code>ncu --launch-count 1 -o r.ncu-rep ./prog</code>), open in UI, jump to the Source view, find the hot line, ask "is the SASS what I expected?" If yes, look at the warp-state metric for that line. If no, change the C++ to coax the compiler. Repeat.
+        </div>
+
+        <h3>cuBLAS API logging — what the dispatcher chose</h3>
+        <p>cuBLAS picks an internal kernel based on (M, N, K, dtype, transposition). To see which it picked — sometimes you can learn the right tile size from this — enable cuBLAS API logging via environment variables:</p>
+        <pre class="cb" data-lang="bash" data-title="Listing 4.6-B: cuBLAS internal kernel logging">export CUBLAS_LOGINFO_DBG=1
+export CUBLAS_LOGDEST_DBG=stdout    # or a filename
+# Optional, newer versions: verbosity 1..5
+export CUBLAS_LOGLEVEL_DBG=5
+
+./my_cublas_program
+# stdout will now show the cuBLAS internal kernel name, tile size,
+# and dispatch heuristic for every cuBLAS call.
+</pre>
+
+        <p>Note: the precise env-var names are <code>CUBLAS_LOGINFO_DBG</code> and <code>CUBLAS_LOGDEST_DBG</code>. Some older blog posts say <code>CUBLASAPI</code>; that is not the actual variable. Use NVIDIA's cuBLAS documentation page on logging as the authoritative reference.<sup>[4]</sup></p>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4.7 — PROFILER THEORY DEEP DIVE
+         ============================================================ -->
+    <section class="section" id="sec-4-7">
+        

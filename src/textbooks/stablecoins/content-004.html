@@ -1,0 +1,83 @@
+<h3>A first pass at the better test</h3>
+<p>The two-episode comparison uses a handful of weeks. A weekly regression uses all of them. For each asset it relates weekly net issuance to the change in the 3-month Treasury bill yield (a market rate, so it includes anticipation), to last week's change, and to Bitcoin's return as a rough control for crypto risk appetite.</p>
+</div>
+<figure class="figure" id="fig-regression">
+<p class="fig-title">Across all weeks, a falling yield goes with more USDC and USDT issuance, but the fit is weak.</p>
+<div class="table-wrap"><table class="data">
+<thead><tr><th>Asset</th><th class="num">Same-week yield change<small>per +10 bp</small></th><th class="num">Previous week's yield change<small>per +10 bp</small></th><th class="num">Bitcoin return<small>per +10%</small></th><th class="num">Weeks</th><th class="num">R²</th></tr></thead>
+<tbody><tr><th scope="row">USDC</th><td class="num"><strong>−0.19 <small>t −2.1</small></strong></td><td class="num"><strong>−0.23 <small>t −2.2</small></strong></td><td class="num">+0.16 <small>t 0.9</small></td><td class="num">198</td><td class="num">0.04</td></tr><tr><th scope="row">USDT</th><td class="num">−0.19 <small>t −1.6</small></td><td class="num"><strong>−0.28 <small>t −2.3</small></strong></td><td class="num"><strong>+0.56 <small>t 3.6</small></strong></td><td class="num">198</td><td class="num">0.16</td></tr><tr><th scope="row">PYUSD</th><td class="num">−0.18 <small>t −1.0</small></td><td class="num">−0.12 <small>t −0.6</small></td><td class="num">−0.08 <small>t −0.6</small></td><td class="num">165</td><td class="num">0.01</td></tr><tr><th scope="row">BUIDL</th><td class="num">−0.13 <small>t −1.0</small></td><td class="num">+0.37 <small>t 1.9</small></td><td class="num">+0.11 <small>t 0.7</small></td><td class="num">136</td><td class="num">0.03</td></tr><tr><th scope="row">OUSG</th><td class="num">+0.07 <small>t 0.4</small></td><td class="num">+0.00 <small>t 0.0</small></td><td class="num">+0.05 <small>t 0.4</small></td><td class="num">129</td><td class="num">0.00</td></tr><tr><th scope="row">USDY</th><td class="num"><strong>+0.96 <small>t 4.1</small></strong></td><td class="num"><strong>+0.51 <small>t 2.3</small></strong></td><td class="num"><strong>+0.43 <small>t 3.3</small></strong></td><td class="num">43</td><td class="num">0.24</td></tr></tbody></table></div>
+<figcaption>Each row is one regression of weekly net issuance (in standard deviations of that asset's own weeks) on the change in the 3-month Treasury bill yield, last week's change and Bitcoin's weekly return. Cells are the change in σ for the stated move; <em>t</em> uses Newey–West errors with 4 lags; bold means |t| ≥ 2. Six assets and three coefficients each means a few large |t| appear by chance. Exploratory, not causal. Sources: FRED DTB3, DefiLlama coins, <code>src/lib/regression.ts</code>.</figcaption>
+</figure>
+<div class="body">
+<p>How to read it: for USDC and USDT the yield terms are negative. Weeks in which yields fell are weeks of more issuance, which agrees with the first easing episode. The fit is weak (R² near zero for most rows), and Bitcoin matters more for USDT than the yield does, so risk appetite is a real competing story. OUSG shows nothing. USDY has under a year of weeks, so its row is noise.</p>
+<div class="callout"><h4>Why this is still not causal</h4><p>Yields and stablecoin demand both react to the same news. Six assets with three coefficients each will throw up a few large <em>t</em> values by chance. Bitcoin is a crude control. A real design would use the surprise component of FOMC announcements, or an instrument, and Tron and Solana flows for the full picture of USDT and USDC. Offer that as the next step, not as a finding.</p></div>
+</div>
+
+<div class="repo"><b>In this repo:</b> <code>scripts/backfill-context.mjs</code> writes <code>src/data/rates.json</code> from FRED; <code>episodes()</code> in <code>src/lib/issuance.ts</code> groups the cuts.</div>
+
+<div class="check"><h3>Check yourself</h3>
+<details><summary>What is a basis point, and how large was episode 1 in them?</summary><p>One hundredth of a percentage point. Episode 1 was 100 bp, or 100 hundredths of a point.</p></details>
+<details><summary>State channel 1 in one sentence.</summary><p>When the interest rate on cash falls, it costs less to hold a zero-yield stablecoin, so people may want more of them.</p></details>
+<details><summary>Why does anticipation weaken the pre/during comparison?</summary><p>The market has already priced in the cuts, so behavior may change before the first cut. The pre-window is not clean "before".</p></details>
+<details><summary>What does the study do about the September 2026 rate increase?</summary><p>Nothing. It is recorded in the data and left out of the analysis. State that, and offer to extend.</p></details>
+</div>
+</section>
+<section class="chapter" id="c7"><div class="ch-head"><div class="ch-num" aria-hidden="true">7</div><h2>Runs, depegs and news events</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>A stablecoin run is a bank-run story: redeeming first is better than redeeming last.</li>
+<li>The March 2023 episode is the clearest run-like event in the sample.</li>
+<li>An event window shows what happened around a date. It does not show why.</li>
+</ul></div>
+
+<div class="body">
+<h3>The bank-run logic</h3>
+<p>In 1983 Douglas Diamond and Philip Dybvig modeled why banks are fragile. Depositors can withdraw any time, but the bank's assets cannot be sold at full value instantly. If you think others will withdraw, withdrawing first is the safe choice. When enough people think so, the run happens, even at a healthy bank.</p>
+<p>A stablecoin copies the structure. Holders can redeem at $1 on demand, but the reserves are only worth $1 if sold at full value. If a holder worries that part of the reserves is stuck or lost, redeeming early is rational. Gary Gorton and Jeffery Zhang have argued that stablecoins resemble the "wildcat" banks of the 19th century for this reason (see the reading list).</p>
+
+<h3>Case: March 2023</h3>
+<p>Silicon Valley Bank was closed by regulators on Friday 10 March 2023. On Saturday 11 March, Circle disclosed that $3.3 billion of USDC's reserves were held at the bank. USDC fell to about $0.88 at its lowest. Banks were shut for the weekend, so the dollar side of arbitrage could not run: nobody could wire dollars to Circle to redeem. Once the US authorities backed the bank's depositors, USDC returned to $1 within a few days.</p>
+</div>
+<figure class="figure" id="fig-shock">
+<p class="fig-title">Around the March 2023 USDC depeg, USDC supply shrank for weeks while USDT supply grew.</p>
+<div class="scroll"><svg class="diagram" viewBox="0 0 880 432" role="img" aria-label="Two bar panels of weekly change in circulating supply for USDC and USDT, eight weeks either side of the SVB week, on one scale."><defs><marker id="ar10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><text x="70" y="24" text-anchor="start" class="strong">USDC, weekly change in supply</text><line x1="70" x2="860" y1="111" y2="111" class="zero"/><text x="62" y="191" text-anchor="end" class="muted">−$5B</text><text x="62" y="116" text-anchor="end" class="muted">$0B</text><text x="62" y="41" text-anchor="end" class="muted">+$5B</text><rect x="77.0" y="111.0" width="32.5" height="0.9" class="seg" style="fill:#A9AAA2"><title>2023-01-09: −$56.7M</title></rect><rect x="123.4" y="111.0" width="32.5" height="6.1" class="seg" style="fill:#A9AAA2"><title>2023-01-16: −$404M</title></rect><rect x="169.9" y="111.0" width="32.5" height="7.5" class="seg" style="fill:#A9AAA2"><title>2023-01-23: −$502M</title></rect><rect x="216.4" y="111.0" width="32.5" height="16.1" class="seg" style="fill:#A9AAA2"><title>2023-01-30: −$1.1B</title></rect><rect x="262.9" y="111.0" width="32.5" height="11.8" class="seg" style="fill:#A9AAA2"><title>2023-02-06: −$786M</title></rect><rect x="309.3" y="100.5" width="32.5" height="10.5" class="seg" style="fill:#A9AAA2"><title>2023-02-13: $700M</title></rect><rect x="355.8" y="99.7" width="32.5" height="11.3" class="seg" style="fill:#A9AAA2"><title>2023-02-20: $752M</title></rect><rect x="402.3" y="91.1" width="32.5" height="19.9" class="seg" style="fill:#A9AAA2"><title>2023-02-27: $1.3B</title></rect><rect x="448.7" y="111.0" width="32.5" height="45.3" class="seg-hi" style=""><title>2023-03-06: −$3.0B</title></rect><text x="465" y="174.295939365" text-anchor="middle" class="strong">−3.0B</text><rect x="495.2" y="111.0" width="32.5" height="69.1" class="seg" style="fill:#A9AAA2"><title>2023-03-13: −$4.6B</title></rect><rect x="541.7" y="111.0" width="32.5" height="33.2" class="seg" style="fill:#A9AAA2"><title>2023-03-20: −$2.2B</title></rect><rect x="588.1" y="111.0" width="32.5" height="21.2" class="seg" style="fill:#A9AAA2"><title>2023-03-27: −$1.4B</title></rect><rect x="634.6" y="109.4" width="32.5" height="1.6" class="seg" style="fill:#A9AAA2"><title>2023-04-03: $106M</title></rect><rect x="681.1" y="111.0" width="32.5" height="10.1" class="seg" style="fill:#A9AAA2"><title>2023-04-10: −$676M</title></rect><rect x="727.6" y="111.0" width="32.5" height="15.1" class="seg" style="fill:#A9AAA2"><title>2023-04-17: −$1.0B</title></rect><rect x="774.0" y="111.0" width="32.5" height="4.3" class="seg" style="fill:#A9AAA2"><title>2023-04-24: −$287M</title></rect><rect x="820.5" y="111.0" width="32.5" height="2.0" class="seg" style="fill:#A9AAA2"><title>2023-05-01: −$132M</title></rect><text x="70" y="230" text-anchor="start" class="strong">USDT, weekly change in supply</text><line x1="70" x2="860" y1="317" y2="317" class="zero"/><text x="62" y="397" text-anchor="end" class="muted">−$5B</text><text x="62" y="322" text-anchor="end" class="muted">$0B</text><text x="62" y="247" text-anchor="end" class="muted">+$5B</text><rect x="77.0" y="315.8" width="32.5" height="1.2" class="seg" style="fill:#A9AAA2"><title>2023-01-09: $82.9M</title></rect><rect x="123.4" y="311.2" width="32.5" height="5.8" class="seg" style="fill:#A9AAA2"><title>2023-01-16: $389M</title></rect><rect x="169.9" y="301.5" width="32.5" height="15.5" class="seg" style="fill:#A9AAA2"><title>2023-01-23: $1.0B</title></rect><rect x="216.4" y="312.7" width="32.5" height="4.3" class="seg" style="fill:#A9AAA2"><title>2023-01-30: $289M</title></rect><rect x="262.9" y="311.8" width="32.5" height="5.2" class="seg" style="fill:#A9AAA2"><title>2023-02-06: $347M</title></rect><rect x="309.3" y="287.1" width="32.5" height="29.9" class="seg" style="fill:#A9AAA2"><title>2023-02-13: $2.0B</title></rect><rect x="355.8" y="309.8" width="32.5" height="7.2" class="seg" style="fill:#A9AAA2"><title>2023-02-20: $481M</title></rect><rect x="402.3" y="308.1" width="32.5" height="8.9" class="seg" style="fill:#A9AAA2"><title>2023-02-27: $596M</title></rect><rect x="448.7" y="300.7" width="32.5" height="16.3" class="seg-hi" style=""><title>2023-03-06: $1.1B</title></rect><text x="465" y="294.71995454" text-anchor="middle" class="strong">+1.1B</text><rect x="495.2" y="263.8" width="32.5" height="53.2" class="seg" style="fill:#A9AAA2"><title>2023-03-13: $3.5B</title></rect><rect x="541.7" y="272.1" width="32.5" height="44.9" class="seg" style="fill:#A9AAA2"><title>2023-03-20: $3.0B</title></rect><rect x="588.1" y="306.5" width="32.5" height="10.5" class="seg" style="fill:#A9AAA2"><title>2023-03-27: $698M</title></rect><rect x="634.6" y="310.9" width="32.5" height="6.1" class="seg" style="fill:#A9AAA2"><title>2023-04-03: $408M</title></rect><rect x="681.1" y="306.2" width="32.5" height="10.8" class="seg" style="fill:#A9AAA2"><title>2023-04-10: $720M</title></rect><rect x="727.6" y="309.2" width="32.5" height="7.8" class="seg" style="fill:#A9AAA2"><title>2023-04-17: $518M</title></rect><rect x="774.0" y="313.0" width="32.5" height="4.0" class="seg" style="fill:#A9AAA2"><title>2023-04-24: $266M</title></rect><rect x="820.5" y="311.4" width="32.5" height="5.6" class="seg" style="fill:#A9AAA2"><title>2023-05-01: $373M</title></rect><text x="93.23529411764706" y="410" text-anchor="middle" class="muted">−8 wk</text><text x="279.11764705882354" y="410" text-anchor="middle" class="muted">−4 wk</text><text x="465" y="410" text-anchor="middle" class="muted">depeg week</text><text x="650.8823529411765" y="410" text-anchor="middle" class="muted">+4 wk</text><text x="836.7647058823529" y="410" text-anchor="middle" class="muted">+8 wk</text></svg></div>
+<figcaption>Weekly change in circulating supply on all chains, eight weeks either side of the week of 2023-03-06 (yellow). Both panels share one scale. This is the clearest run-like episode in the sample: money left one stablecoin and entered another. Source: DefiLlama via <code>netSeries()</code>.</figcaption>
+</figure>
+<div class="body">
+<p>In the weeks around the event, USDC's circulating supply changed by about <strong>$498M per week before</strong> and <strong>−$2.8B per week from the event week</strong>. USDT moved from <strong>$854M</strong> to <strong>$2.1B</strong> per week. Redemptions of one coin and mints of another happened together: money moved between stablecoins.</p>
+<p>What you can say: the flows fit a flight from the stablecoin with the problem to the one without it. What you cannot say: how much of the move was panic and how much was ordinary rebalancing, or why Tether's supply grew.</p>
+
+<h3>Case: the GENIUS Act</h3>
+<p>The GENIUS Act was signed on 18 July 2025. The study measures USDC, USDT and PYUSD net issuance for four weeks before and four weeks from the event week. The law passed Congress in the days and weeks before, so any response may sit before the signing date. Treat the window as a descriptive check, not a measurement of the law's effect.</p>
+
+<h3>Case: an operational error</h3>
+<p>The PYUSD 300 trillion mint on 15 October 2025 is a data point about <em>operational risk</em> at an issuer, not demand. It is useful to mention, because it shows why the tracker excludes it by transaction hash instead of by a statistical filter.</p>
+
+<h3>Event windows: a short recipe</h3>
+<ol>
+<li>Fix the date from a source before you look at the data.</li>
+<li>Pick the window length (four weeks each side here) before you look.</li>
+<li>Compute the average weekly net issuance before and from the event.</li>
+<li>Compare to how large a typical week is. Use the standard deviation, or percentile.</li>
+<li>List the other things that happened in the window.</li>
+</ol>
+
+<div class="callout"><h4>Limit</h4><p>Both event dates were checked against news reports on 2026-10-17. They are not fetched during the build. The chosen events are famous ones; a skeptic would ask how they were selected.</p></div>
+</div>
+
+<div class="repo"><b>In this repo:</b> <code>NEWS_EVENTS</code>, <code>eventWindow()</code> in <code>src/lib/issuance.ts</code>; the news table on <code>/issuance</code>.</div>
+
+<div class="check"><h3>Check yourself</h3>
+<details><summary>Why is the run logic rational for each holder but harmful for the group?</summary><p>If the others redeem, the reserves may not cover the late ones, so each wants to be early. Everyone acting that way creates the run.</p></details>
+<details><summary>Why did the SVB weekend make the depeg worse?</summary><p>Banks were closed, so arbitrageurs could not send dollars to redeem tokens. The mechanism that pins the price was switched off.</p></details>
+<details><summary>What can an event window not tell you?</summary><p>The cause. Other events share the window, news is often anticipated, and the event choice may be biased.</p></details>
+<details><summary>Why is the 300T PYUSD mint excluded by hash and not by a size filter?</summary><p>A size filter could remove real large mints. Two known transactions were an issuer error, so removing exactly them is transparent and testable.</p></details>
+</div>
+</section>
+<section class="chapter" id="c8"><div class="ch-head"><div class="ch-num" aria-hidden="true">8</div><h2>What the tracker found</h2></div>
+<div class="keep"><h4>Leave with</h4><ul>
+<li>$1.01 trillion gross on Ethereum, 85% of it USDC. Net issuance differs a lot by asset.</li>
+<li>2024: stablecoin issuance rose around the cuts and Treasury funds' fell. 2025: the pattern blurred.</li>
+<li>Ethereum is the home of most USDC and PYUSD but not USDT. Tether's Tron events are read separately.</li>
+</ul></div>
+
+<div class="body">

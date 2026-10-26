@@ -1,0 +1,155 @@
+<h2 class="section-title"><span class="sec-num">2.11</span>Unified Memory and the Allocator Stack</h2>
+        <div class="section-subtitle">When to <code>cudaMallocManaged</code>, when to stay explicit</div>
+
+        <div class="atomic" id="A2.11.1-um">
+            <div class="atomic-head"><span class="atomic-id">[[A2.11.1]]</span><h4 class="atomic-title">Unified memory — one pointer, two physical homes</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p><code>cudaMallocManaged</code> returns a pointer valid on both host and device. The driver page-faults data between host and device on first touch, transparent to the program. Productivity-wise, brilliant; performance-wise, treacherous: every page fault is ~10 µs, and a 4 KB page fault to load a single FP32 row hides nothing. Mitigations: <code>cudaMemPrefetchAsync</code> to push data ahead of time, <code>cudaMemAdvise</code> with <code>cudaMemAdviseSetReadMostly</code> or <code>SetPreferredLocation</code> to bias placement, and oversubscription support on Pascal+ for problems that don't fit. For peak performance use explicit <code>cudaMalloc</code> + <code>cudaMemcpyAsync</code>; for prototyping or for codes whose access patterns the driver can predict, managed memory is fine.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A2.11.2-async-alloc">[[A2.11.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.11.2-async-alloc">
+            <div class="atomic-head"><span class="atomic-id">[[A2.11.2]]</span><h4 class="atomic-title">Stream-ordered allocator (<code>cudaMallocAsync</code>) — the modern default</h4><span class="atomic-tag">memory</span></div>
+            <div class="atomic-body">
+                <p>Since CUDA 11.2, <code>cudaMallocAsync</code> / <code>cudaFreeAsync</code> allocate and free <em>in a stream</em>, using a per-device memory pool. Three wins: (1) freed memory can be reused by a later allocation in the same stream without synchronizing, (2) the pool can be size-trimmed via <code>cudaMemPoolSetAttribute</code>, (3) allocations are dirt cheap after the first one of a size class. Use this as the default; fall back to <code>cudaMalloc</code> only when integrating with code that needs a synchronous allocator.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span> <a class="rel-chip rel-builds" href="#A2.10.1-streams">[[A2.10.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2.12 — ERROR HANDLING & SANITIZERS
+         ============================================================ -->
+    <section class="section" id="sec-2-12">
+        <h2 class="section-title"><span class="sec-num">2.12</span>Error Handling and Sanitizers</h2>
+        <div class="section-subtitle">The five tools that turn UB into a fix-ticket</div>
+
+        <div class="atomic" id="A2.12.1-error-model">
+            <div class="atomic-head"><span class="atomic-id">[[A2.12.1]]</span><h4 class="atomic-title">Sticky errors — why one bad kernel breaks every later call</h4><span class="atomic-tag">debugging</span></div>
+            <div class="atomic-body">
+                <p>CUDA errors are <em>sticky</em>: once a kernel triggers a fault (illegal memory access, misaligned address), every subsequent runtime call on the same context returns the same error until you <code>cudaDeviceReset()</code>. That's why the error you actually print is rarely from the line that caused the problem; it is from the next <code>cudaMemcpy</code> that propagates the sticky state. Always wrap launches with <code>cudaGetLastError()</code> immediately afterward, and call <code>cudaDeviceSynchronize()</code> before declaring success in a unit test — kernels return asynchronously, and a fault inside one can land in the <em>next</em> Test's setup.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span> <a class="rel-chip rel-usedby" href="#A2.12.2-sanitizers">[[A2.12.2]]</a></div>
+            </div>
+        </div>
+
+        <div class="atomic" id="A2.12.2-sanitizers">
+            <div class="atomic-head"><span class="atomic-id">[[A2.12.2]]</span><h4 class="atomic-title"><code>compute-sanitizer</code> — five tools, one binary</h4><span class="atomic-tag">debugging</span></div>
+            <div class="atomic-body">
+                <ul class="def-list">
+                    <li><span class="def-term">memcheck</span> Out-of-bounds, misaligned, leaked allocations.</li>
+                    <li><span class="def-term">racecheck</span> Shared-memory data races, including the subtle "missing __syncthreads" pattern.</li>
+                    <li><span class="def-term">initcheck</span> Reads of uninitialized memory.</li>
+                    <li><span class="def-term">synccheck</span> Misuse of <code>__syncthreads</code> across divergent paths.</li>
+                    <li><span class="def-term">leakcheck</span> Allocations never freed before context teardown.</li>
+                </ul>
+                <p>Run them on every new kernel before benchmarking; the overhead is large (5–50×) but the output is the difference between "ship it" and "two days of git-bisect."</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Prereq</span> <a class="rel-chip rel-prereq" href="#A0.5.5-race">[[A0.5.5]]</a> <a class="rel-chip rel-prereq" href="#A2.12.1-error-model">[[A2.12.1]]</a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHECKPOINT -->
+    <div class="checkpoint">
+        <div class="checkpoint-header">◆ Chapter 2 Checkpoint</div>
+        <div class="checkpoint-sub">Click each item to check it off as you confirm.</div>
+        <ul>
+            <li>Write the 2D thread→element index calculation for a matmul kernel from memory, including bounds checking.</li>
+            <li>Explain what <code>__syncthreads()</code> does and prove that the tiled algorithm needs exactly two of them per phase.</li>
+            <li>Define a bank conflict, show one source-level pattern that causes a 32-way conflict, and one common pattern that avoids it.</li>
+            <li>Calculate the arithmetic intensity of your tiled kernel with <code>TILE = 32</code>. Compare against the naive kernel.</li>
+            <li>Write a correct CUDA-events timing block, including warmup, multiple iterations, and a correctness check.</li>
+            <li>List four <code>nvcc</code> compile flags and what each does for kernel performance or debugging.</li>
+        </ul>
+    </div>
+
+    <!-- REFS -->
+    <div class="refs">
+        <div class="refs-label">References — Chapter 2</div>
+        <ol>
+            <li>Boehm, S. <em>How to Optimize a CUDA Matmul Kernel for cuBLAS-like Performance: a Worklog.</em> 2022. <a href="https://siboehm.com/articles/22/CUDA-MMM" target="_blank" rel="noopener">siboehm.com/articles/22/CUDA-MMM</a> — ten-kernel SGEMM walkthrough on a single Ampere consumer card; the closest public companion to this chapter.</li>
+            <li>Lei Mao. <em>CUDA Matrix Multiplication Optimization.</em> <a href="https://leimao.github.io/article/CUDA-Matrix-Multiplication-Optimization/" target="_blank" rel="noopener">leimao.github.io/article/CUDA-Matrix-Multiplication-Optimization/</a> — kernel-by-kernel SGEMM article with measured numbers.</li>
+            <li>NVIDIA. <em>CUDA C++ Programming Guide — Performance Guidelines.</em> <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#performance-guidelines" target="_blank" rel="noopener">docs.nvidia.com — Performance Guidelines</a></li>
+            <li>NVIDIA. <em>CUDA C++ Best Practices Guide.</em> <a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/" target="_blank" rel="noopener">docs.nvidia.com/cuda/cuda-c-best-practices-guide/</a></li>
+            <li>NVIDIA Developer Blog. <em>Using Shared Memory in CUDA C/C++.</em> Mark Harris. <a href="https://developer.nvidia.com/blog/using-shared-memory-cuda-cc/" target="_blank" rel="noopener">developer.nvidia.com/blog/using-shared-memory-cuda-cc/</a></li>
+            <li>NVIDIA Developer Blog. <em>How to Access Global Memory Efficiently in CUDA C/C++ Kernels.</em> <a href="https://developer.nvidia.com/blog/how-access-global-memory-efficiently-cuda-c-kernels/" target="_blank" rel="noopener">developer.nvidia.com</a></li>
+            <li>Volkov, V., Demmel, J. <em>Benchmarking GPUs to Tune Dense Linear Algebra.</em> SC'08. The foundational SGEMM-on-GPU paper; still relevant for the reuse arguments.</li>
+        </ol>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-1"><span class="label">← Previous</span>The Machine Underneath</a>
+        <a href="#chapter-3" class="next"><span class="label">Next →</span>Tensor Cores &amp; PTX</a>
+    </nav>
+</article>
+<!-- =====================================================================
+     CHAPTER 3
+     ===================================================================== -->
+<article class="chapter" id="chapter-3">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">03</div>
+        <div class="chapter-eyebrow">Chapter 03</div>
+        <h1 class="chapter-title">Tensor Cores &amp; PTX:<br>The Hardware Acceleration Layer</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Understand what a Tensor Core actually is at the hardware level. Write a working WMMA kernel. Drop down to raw PTX <code>mma.sync</code> and <code>cp.async</code> to extract the last 10&ndash;20% of performance that the high-level API leaves on the table.</p>
+    </header>
+
+    <!-- 3.1 -->
+    <section class="section" id="sec-3-1">
+        <h2 class="section-title"><span class="sec-num">3.1</span>What Tensor Cores Are</h2>
+        <div class="section-subtitle">Specialized silicon for one operation, executed brilliantly</div>
+
+        <p>A Tensor Core is a piece of silicon that performs a small matrix multiply-accumulate in a single hardware instruction. Where a CUDA core does one scalar FMA per clock — <code>d = a·b + c</code>, three inputs, one output — a Tensor Core does <code>D = A·B + C</code> with <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code> all small dense matrices. One instruction; several hundred FMAs of useful work.</p>
+
+        <h3>Generations</h3>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Gen</th><th>Architecture</th><th>Year</th><th>First Card</th><th>Native shapes</th><th>Notable additions</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td>Volta (sm_70)</td><td>2017</td><td>V100</td><td>m16n16k16 (FP16→FP32)</td><td>The original. Hidden behind WMMA in CUDA 9.</td></tr>
+                <tr><td>2</td><td>Turing (sm_75)</td><td>2018</td><td>T4, RTX 20-series</td><td>+ m8n8k16 (FP16); INT8/INT4 modes</td><td>First mass-market TCs. Quantized inference.</td></tr>
+                <tr><td>3</td><td>Ampere (sm_80, sm_86)</td><td>2020</td><td>A100, RTX 30-series</td><td>m16n8k16 / m16n8k8 (FP16, BF16, TF32)</td><td>2:4 structured sparsity; BF16; TF32; <code>cp.async</code>; doubled FP16 throughput per TC vs Turing.</td></tr>
+                <tr><td>4</td><td>Hopper (sm_90)</td><td>2022</td><td>H100</td><td>m64n8&hellip;256k16 via <code>wgmma</code></td><td>FP8 (E4M3/E5M2); asynchronous <code>wgmma</code> at warp-group level; TMA bulk async loads.</td></tr>
+                <tr><td>5</td><td>Blackwell (sm_100)</td><td>2024+</td><td>B100/B200</td><td>extended shapes; further FP8/FP6/FP4</td><td>Public details from NVIDIA whitepapers and CUDA toolkit headers.</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p>Each generation roughly doubles per-SM Tensor-Core throughput at the previous generation's precision and adds a new lower-precision mode. The key consequence for you: the throughput ceiling you measure against is set by the Tensor-Core peak of your specific architecture, not the CUDA-core peak.</p>
+
+        <h3>Throughput on the RTX 3090 (Ampere, sm_86)</h3>
+        <p>Reproducible from NVIDIA's published numbers and microbenchmark studies:<sup>[1][2]</sup></p>
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Mode</th><th>Peak (dense)</th><th>Peak (2:4 sparse)</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td>FP32 CUDA cores</td><td class="num">35.6 TFLOPS</td><td class="num">—</td><td>Scalar FMA</td></tr>
+                <tr><td>FP16 CUDA cores</td><td class="num">~71 TFLOPS</td><td class="num">—</td><td>Packed <code>half2</code></td></tr>
+                <tr><td>FP16 Tensor Core (FP32 acc)</td><td class="num">142 TFLOPS</td><td class="num">284 TFLOPS</td><td>The headline number</td></tr>
+                <tr><td>BF16 Tensor Core</td><td class="num">142 TFLOPS</td><td class="num">284 TFLOPS</td><td>Same as FP16-TC throughput</td></tr>
+                <tr><td>TF32 Tensor Core</td><td class="num">~71 TFLOPS</td><td class="num">142 TFLOPS</td><td>Truncated-mantissa FP32</td></tr>
+                <tr><td>INT8 Tensor Core</td><td class="num">284 TOPS</td><td class="num">568 TOPS</td><td>Inference-oriented</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <p>The ratio FP16-TC / FP32-CUDA is approximately 4×. That is the entire reason a tensor-core GEMM lives at 142 TFLOPS while a hand-rolled FP32 CUDA-core GEMM tops out near 35 TFLOPS. <strong>You do not get there by writing more clever scalar code. You get there by using Tensor Cores.</strong></p>
+
+        <div class="figure" id="tc-fig">
+            <div class="figure-label">Figure 3.1 — Chart</div>
+            <div class="figure-title">RTX 3090 throughput by precision and execution unit</div>
+            <div class="chart-container" style="height: 320px"><canvas id="tc-canvas"></canvas></div>
+            <div class="figure-caption">Peak throughput is a hard ceiling; real kernels achieve a fraction of it. The Tensor Core peaks are what define your "% of cuBLAS" denominator when chasing the leaderboard.</div>
+        </div>
+    </section>
+
+    <!-- 3.2 -->
+    <section class="section" id="sec-3-2">
+        

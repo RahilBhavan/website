@@ -1,0 +1,191 @@
+<h3>What each piece does — in one sentence</h3>
+        <ul>
+            <li><strong>CUDA core (FP32 lane).</strong> One floating-point multiply-add per clock. Your scalar workhorse.</li>
+            <li><strong>Tensor Core.</strong> A whole small matrix multiply-accumulate per clock. Where the real teraflops live.</li>
+            <li><strong>Register file.</strong> The fastest memory on the chip. Each thread owns a slice.</li>
+            <li><strong>Shared memory.</strong> Software-managed scratchpad. Programmer-controlled cache.</li>
+            <li><strong>Warp scheduler.</strong> Picks one eligible warp per cycle and issues an instruction.</li>
+            <li><strong>Dispatch unit.</strong> Sends the instruction to the right execution pipe.</li>
+            <li><strong>Load/Store unit.</strong> Issues memory transactions to L1/L2/DRAM.</li>
+            <li><strong>SFU.</strong> Computes <code>sin</code>, <code>cos</code>, <code>rcp</code>, <code>rsqrt</code> on its own pipe so they don't block the FP32 cores.</li>
+        </ul>
+
+        <div class="figure">
+            <div class="figure-label">Figure 1.2 — Diagram</div>
+            <div class="figure-title">Anatomy of one Ampere SM (sm_86)</div>
+            <svg viewBox="0 0 760 460" role="img" aria-label="Anatomy of an Ampere SM">
+                <!-- Outer SM box -->
+                <rect x="10" y="10" width="740" height="440" fill="#f5f5ef" stroke="#111214" stroke-width="1.5" rx="6"/>
+                <text x="380" y="32" font-family="JetBrains Mono" font-size="13" font-weight="700" fill="#111214" text-anchor="middle">Streaming Multiprocessor (Ampere)</text>
+
+                <!-- L1 / SMEM (top bar) -->
+                <g data-tip="**L1 + Shared Memory (128 KB)** — software-managed and hardware-cached unified. Configurable split via `cudaFuncSetAttribute`; max 99 KB SMEM per block on sm_86. ~19 TB/s aggregate per SM.">
+                <rect x="20" y="46" width="720" height="42" fill="#111214" stroke="#111214" stroke-opacity="0.5"/>
+                <text x="380" y="62" font-family="JetBrains Mono" font-size="11" fill="#52545a" text-anchor="middle" font-weight="600">L1 Cache + Shared Memory · 128 KB combined · ~19 TB/s aggregate</text>
+                <text x="380" y="78" font-family="JetBrains Mono" font-size="9" fill="#52545a" text-anchor="middle">configurable split — e.g. 32 KB L1 + 96 KB SMEM (per-block max 99 KB on sm_86)</text>
+                </g>
+
+                <!-- 4 sub-partitions -->
+                <g font-family="JetBrains Mono">
+                  <g transform="translate(20,98)" data-tip="**Sub-partition 0** — one of 4 per SM. Holds its own warp scheduler, 16K-register file, 16 FP32/INT32 cores, 1 Tensor Core, 4 SFUs, 8 LD/ST units. The scheduler issues at most one instruction per clock.">
+                    <rect width="175" height="320" fill="#f5f5ef" stroke="#52545a" rx="4"/>
+                    <text x="87" y="18" font-size="10" fill="#111214" text-anchor="middle" font-weight="700">SUB-PARTITION 0</text>
+
+                    <!-- Warp scheduler -->
+                    <g data-tip="**Warp Scheduler** — selects one *eligible* warp each cycle and issues an instruction. Stalls show up in Nsight Compute as `warp_state` reasons (long_scoreboard, short_scoreboard, barrier).">
+                    <rect x="10" y="28" width="155" height="34" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="42" font-size="9" fill="#111214" text-anchor="middle" font-weight="600">Warp Scheduler</text>
+                    <text x="87" y="54" font-size="8" fill="#52545a" text-anchor="middle">issue 1 instr/clk</text>
+                    </g>
+
+                    <!-- Dispatch -->
+                    <g data-tip="**Dispatch Unit** — sends the issued instruction to the appropriate functional pipe (FP32, Tensor, SFU, LD/ST).">
+                    <rect x="10" y="66" width="155" height="22" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="80" font-size="9" fill="#52545a" text-anchor="middle">Dispatch Unit</text>
+                    </g>
+
+                    <!-- Register file -->
+                    <g data-tip="**Register File** — 16,384 × 32-bit registers per sub-partition (65,536 per SM). Per-thread budget = 65,536 / threads_per_SM. Spills land in 'local memory' (DRAM-backed) and tank performance.">
+                    <rect x="10" y="92" width="155" height="32" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="105" font-size="9" fill="#111214" text-anchor="middle" font-weight="600">Register File</text>
+                    <text x="87" y="118" font-size="8" fill="#111214" opacity="0.7" text-anchor="middle">16,384 × 32-bit</text>
+                    </g>
+
+                    <!-- 16 FP32 cores (4x4 grid) -->
+                    <text x="87" y="138" font-size="8" fill="#52545a" text-anchor="middle">16 FP32 / 16 INT32 cores</text>
+                    <g transform="translate(28,144)">
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5">
+                        <rect x="0"  y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/>
+                        <rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/>
+                        <rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/>
+                        <rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5" transform="translate(0,16)">
+                        <rect x="0"  y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/>
+                        <rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/>
+                        <rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/>
+                        <rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                    </g>
+
+                    <!-- Tensor core (1 per sub) -->
+                    <g data-tip="**Tensor Core (3rd gen)** — issues a warp-level `mma.sync` performing a fixed-shape FMA (e.g. m16n8k16 FP16→FP32). One Tensor Core per sub-partition × 4 = 4 per SM.">
+                    <rect x="10"  y="200" width="74" height="28" fill="#111214" stroke="#f5f5ef"/>
+                    <text x="47" y="216" font-size="9" fill="#f5f5ef" text-anchor="middle" font-weight="700">Tensor</text>
+                    <text x="47" y="225" font-size="7" fill="#f5f5ef" text-anchor="middle">Core (3rd gen)</text>
+                    </g>
+
+                    <!-- SFU + LD/ST -->
+                    <g data-tip="**SFU — Special Function Unit** — computes `sin`, `cos`, `rcp`, `rsqrt`, `exp2`, `log2` on its own pipe so they do not block the FP32 cores.">
+                    <rect x="92"  y="200" width="34" height="28" fill="#111214"/>
+                    <text x="109" y="216" font-size="8" fill="#52545a" text-anchor="middle">SFU</text>
+                    <text x="109" y="225" font-size="7" fill="#52545a" text-anchor="middle">×4</text>
+                    </g>
+
+                    <g data-tip="**LD/ST — Load/Store Unit** — issues memory transactions to L1/L2/DRAM. 8 per sub-partition; coalescing decisions are resolved here per warp.">
+                    <rect x="130" y="200" width="35" height="28" fill="#111214"/>
+                    <text x="148" y="215" font-size="8" fill="#52545a" text-anchor="middle">LD/ST</text>
+                    <text x="148" y="225" font-size="7" fill="#52545a" text-anchor="middle">×8</text>
+                    </g>
+
+                    <!-- L0 instruction cache -->
+                    <g data-tip="**L0 Instruction Cache + Constant Cache** — private to the sub-partition; serves the warp scheduler with already-fetched instructions and `__constant__` reads.">
+                    <rect x="10"  y="240" width="155" height="20" fill="#f5f5ef"/>
+                    <text x="87" y="254" font-size="8" fill="#52545a" text-anchor="middle">L0 Instr. Cache · Constant Cache</text>
+                    </g>
+                  </g>
+
+                  <!-- duplicate for the other 3 sub-partitions, abbreviated -->
+                  <g transform="translate(205,98)" data-tip="**Sub-partition 1** — same shape as Sub-partition 0. The 4 sub-partitions share L1+SMEM but each have an independent warp scheduler, so they can issue 4 instructions per cycle in total per SM.">
+                    <rect width="175" height="320" fill="#f5f5ef" stroke="#52545a" rx="4"/>
+                    <text x="87" y="18" font-size="10" fill="#111214" text-anchor="middle" font-weight="700">SUB-PARTITION 1</text>
+                    <rect x="10" y="28" width="155" height="34" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="48" font-size="9" fill="#111214" text-anchor="middle">Warp Scheduler</text>
+                    <rect x="10" y="66" width="155" height="22" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="80" font-size="9" fill="#52545a" text-anchor="middle">Dispatch</text>
+                    <rect x="10" y="92" width="155" height="32" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="112" font-size="9" fill="#111214" text-anchor="middle">Register File</text>
+                    <g transform="translate(28,144)">
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5" transform="translate(0,16)">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                    </g>
+                    <rect x="10" y="200" width="74" height="28" fill="#111214"/>
+                    <text x="47" y="220" font-size="9" fill="#f5f5ef" text-anchor="middle" font-weight="700">Tensor</text>
+                    <rect x="92" y="200" width="34" height="28" fill="#111214"/>
+                    <text x="109" y="218" font-size="8" fill="#52545a" text-anchor="middle">SFU</text>
+                    <rect x="130" y="200" width="35" height="28" fill="#111214"/>
+                    <text x="148" y="218" font-size="8" fill="#52545a" text-anchor="middle">LD/ST</text>
+                  </g>
+
+                  <g transform="translate(390,98)" data-tip="**Sub-partition 2** — same as the others. Block schedules sit at the SM level, but warps within a block are distributed across the 4 sub-partitions in round-robin order by warp index.">
+                    <rect width="175" height="320" fill="#f5f5ef" stroke="#52545a" rx="4"/>
+                    <text x="87" y="18" font-size="10" fill="#111214" text-anchor="middle" font-weight="700">SUB-PARTITION 2</text>
+                    <rect x="10" y="28" width="155" height="34" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="48" font-size="9" fill="#111214" text-anchor="middle">Warp Scheduler</text>
+                    <rect x="10" y="66" width="155" height="22" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="80" font-size="9" fill="#52545a" text-anchor="middle">Dispatch</text>
+                    <rect x="10" y="92" width="155" height="32" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="112" font-size="9" fill="#111214" text-anchor="middle">Register File</text>
+                    <g transform="translate(28,144)">
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5" transform="translate(0,16)">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                    </g>
+                    <rect x="10" y="200" width="74" height="28" fill="#111214"/>
+                    <text x="47" y="220" font-size="9" fill="#f5f5ef" text-anchor="middle" font-weight="700">Tensor</text>
+                    <rect x="92" y="200" width="34" height="28" fill="#111214"/>
+                    <text x="109" y="218" font-size="8" fill="#52545a" text-anchor="middle">SFU</text>
+                    <rect x="130" y="200" width="35" height="28" fill="#111214"/>
+                    <text x="148" y="218" font-size="8" fill="#52545a" text-anchor="middle">LD/ST</text>
+                  </g>
+
+                  <g transform="translate(575,98)">
+                    <rect width="175" height="320" fill="#f5f5ef" stroke="#52545a" rx="4"/>
+                    <text x="87" y="18" font-size="10" fill="#111214" text-anchor="middle" font-weight="700">SUB-PARTITION 3</text>
+                    <rect x="10" y="28" width="155" height="34" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="48" font-size="9" fill="#111214" text-anchor="middle">Warp Scheduler</text>
+                    <rect x="10" y="66" width="155" height="22" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="80" font-size="9" fill="#52545a" text-anchor="middle">Dispatch</text>
+                    <rect x="10" y="92" width="155" height="32" fill="#f5f5ef" stroke="#111214"/>
+                    <text x="87" y="112" font-size="9" fill="#111214" text-anchor="middle">Register File</text>
+                    <g transform="translate(28,144)">
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                      <g fill="#111214" stroke="#f5f5ef" stroke-width="0.5" transform="translate(0,16)">
+                        <rect x="0" y="0" width="14" height="14"/><rect x="16" y="0" width="14" height="14"/><rect x="32" y="0" width="14" height="14"/><rect x="48" y="0" width="14" height="14"/><rect x="64" y="0" width="14" height="14"/><rect x="80" y="0" width="14" height="14"/><rect x="96" y="0" width="14" height="14"/><rect x="112" y="0" width="14" height="14"/>
+                      </g>
+                    </g>
+                    <rect x="10" y="200" width="74" height="28" fill="#111214"/>
+                    <text x="47" y="220" font-size="9" fill="#f5f5ef" text-anchor="middle" font-weight="700">Tensor</text>
+                    <rect x="92" y="200" width="34" height="28" fill="#111214"/>
+                    <text x="109" y="218" font-size="8" fill="#52545a" text-anchor="middle">SFU</text>
+                    <rect x="130" y="200" width="35" height="28" fill="#111214"/>
+                    <text x="148" y="218" font-size="8" fill="#52545a" text-anchor="middle">LD/ST</text>
+                  </g>
+                </g>
+
+                <!-- Footer summary -->
+                <rect x="20" y="426" width="720" height="18" fill="#f5f5ef"/>
+                <text x="380" y="439" font-family="JetBrains Mono" font-size="9" fill="#52545a" text-anchor="middle">Per-SM totals: 128 FP32 cores · 64 INT32 · 4 Tensor Cores · 16 SFU · 32 LD/ST · 65,536 registers · 128 KB L1+SMEM</text>
+            </svg>
+            <div class="figure-caption">Per-SM resource counts above are for GA10x-class Ampere parts (RTX 3090, RTX 30-series). The A100 (GA100, sm_80) has the same sub-partition shape but counts cores differently (64 dedicated FP32 + 32 FP64 — the 1:2 FP64:FP32 ratio that distinguishes data-center Ampere from consumer Ampere) and ships up to 192 KB of unified L1/SMEM per SM. Source: NVIDIA Ampere whitepapers.<sup>[3][4]</sup></div>
+        </div>
+
+        <div class="callout">
+            <div class="callout-label">Why this matters for your kernel</div>
+            Every choice you make later — block size, shared-memory layout, tile shape, register pressure — is really a choice about how to fill <strong>one of those sub-partitions</strong> with eligible warps and useful work. When Nsight Compute later tells you "Warp State: long_scoreboard 60%," what it is really saying is "the warp scheduler for some sub-partition keeps looking for a ready warp and finding none, because every warp is waiting on global memory."
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 1.3 — THREADS, WARPS, BLOCKS, GRIDS
+         ============================================================ -->
+    

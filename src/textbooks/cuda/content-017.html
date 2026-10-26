@@ -1,0 +1,150 @@
+<h2 class="section-title"><span class="sec-num">3.2</span>The WMMA API: An Entry Point</h2>
+        <div class="section-subtitle">High-level Tensor-Core access, since CUDA 9</div>
+
+        <p>The WMMA (Warp Matrix Multiply-Accumulate) API is in <code>&lt;mma.h&gt;</code>, namespace <code>nvcuda::wmma</code>. It works at the warp level — every Tensor-Core operation in WMMA is collective across all 32 threads in a warp.</p>
+
+        <p>The model is: declare opaque <code>fragment</code> types for the <code>A</code>, <code>B</code>, and accumulator/result matrices; load global or shared memory into a fragment; call <code>mma_sync</code>; store the result fragment back. The fragment's storage is distributed across the warp's registers, but you do not see how — the library hides the layout.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 3.2-A: Minimal WMMA-based GEMM tile (16×16×16, FP16→FP32)">#include &lt;cuda_runtime.h&gt;
+#include &lt;mma.h&gt;
+using namespace nvcuda;
+
+// Computes a single 16x16 output tile of D = A * B + C, where:
+//   A is 16 x 16 (FP16), row-major
+//   B is 16 x 16 (FP16), col-major
+//   C, D are 16 x 16 (FP32), row-major
+// One WARP executes this — 32 threads cooperating.
+__global__ void wmmaTileKernel(const half* A, const half* B, float* D,
+                               int M, int N, int K)
+{
+    // Each block is a single warp (32 threads).
+    // Compute origin of this warp's tile in the output.
+    int tileM = blockIdx.y * 16;
+    int tileN = blockIdx.x * 16;
+
+    // Fragments live in registers (distributed across the warp).
+    wmma::fragment&lt;wmma::matrix_a, 16, 16, 16, half, wmma::row_major&gt; aFrag;
+    wmma::fragment&lt;wmma::matrix_b, 16, 16, 16, half, wmma::col_major&gt; bFrag;
+    wmma::fragment&lt;wmma::accumulator, 16, 16, 16, float&gt;             cFrag;
+
+    wmma::fill_fragment(cFrag, 0.0f);
+
+    // K-loop: accumulate over slabs of 16.
+    for (int k = 0; k &lt; K; k += 16) {
+        const half* aPtr = A + tileM * K + k;            // row-major
+        const half* bPtr = B + k * N + tileN;            // col-major-equiv
+
+        wmma::load_matrix_sync(aFrag, aPtr, K);          // leading dim = K
+        wmma::load_matrix_sync(bFrag, bPtr, N);          // leading dim = N
+        wmma::mma_sync(cFrag, aFrag, bFrag, cFrag);      // D = A*B + C, in place
+    }
+
+    // Store result tile.
+    float* dPtr = D + tileM * N + tileN;
+    wmma::store_matrix_sync(dPtr, cFrag, N, wmma::mem_row_major);
+}
+
+// Launch: one warp (32 threads) per 16x16 output tile.
+dim3 block(32);
+dim3 grid(N / 16, M / 16);
+wmmaTileKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_A, d_B, d_D, M, N, K);
+</pre>
+
+        <h3>What WMMA buys you, and where it hurts</h3>
+        <ul>
+            <li><strong>Portable across Volta → Hopper.</strong> The same source compiles to <code>wmma.mma</code> on Volta and to <code>mma.sync</code> on Ampere/Hopper.</li>
+            <li><strong>Zero PTX in your source.</strong> Easier to read, easier to onboard.</li>
+            <li><strong>BUT</strong> the register layout of fragments is hidden. You cannot pipeline loads optimally because you cannot see which thread holds which element. You cannot fuse other warp-level operations with the fragment efficiently. You cannot use the most efficient <code>ldmatrix.sync</code> load pattern without dropping to PTX anyway.</li>
+        </ul>
+        <p>WMMA typically gets you to ~70&ndash;80% of cuBLAS for a well-tuned shape. To close the last 15&ndash;25%, you drop one level deeper.</p>
+    </section>
+
+    <!-- 3.3 -->
+    <section class="section" id="sec-3-3">
+        <h2 class="section-title"><span class="sec-num">3.3</span>PTX and Inline Assembly</h2>
+        <div class="section-subtitle">The intermediate representation NVIDIA exposes to you</div>
+
+        <p>PTX (Parallel Thread Execution) is NVIDIA's virtual instruction set. <code>nvcc</code> compiles your CUDA C++ to PTX, and the driver's JIT compiler (or <code>ptxas</code> ahead-of-time) lowers PTX to SASS, the actual machine code for a specific compute capability. PTX is to CUDA what LLVM IR is to C++: a portable, stable, readable intermediate that the next stage of the compiler turns into hardware-specific code.</p>
+
+        <p>You can ask <code>nvcc</code> for the PTX of a kernel with <code>-ptx</code> or for the final SASS with <code>cuobjdump --dump-sass</code>. The PTX ISA reference, maintained by NVIDIA, is the authoritative document for every instruction.<sup>[3]</sup></p>
+
+        <h3>Inline PTX syntax</h3>
+        <p>CUDA C++ supports inline PTX via the <code>asm</code> keyword, identical in spirit to GCC inline asm:</p>
+        <pre class="cb" data-lang="cpp" data-title="Listing 3.3-A: Inline PTX syntax">// Pattern: asm( "ptx-template" : outputs : inputs : clobbers );
+
+// Trivial example: 32-bit integer add.
+int a = 5, b = 3, c;
+asm volatile("add.s32 %0, %1, %2;"
+             : "=r"(c)              // output 0: 32-bit reg
+             : "r"(a), "r"(b));     // input 0,1: 32-bit regs
+// c == 8
+
+// Constraints (most common):
+//   "r"  -&gt; .u32/.s32  (32-bit int register)
+//   "l"  -&gt; .u64/.s64  (64-bit int register)
+//   "f"  -&gt; .f32       (32-bit float register)
+//   "d"  -&gt; .f64       (64-bit float register)
+//   "h"  -&gt; .b16       (16-bit, e.g. half storage)
+//   prefix "=" means write-only output; "+" means read+write.
+
+// volatile: prevents the compiler from reordering or eliding the asm.
+</pre>
+
+        <p>The PTX template uses <code>%0</code>, <code>%1</code>, ... as placeholders for the operands in declaration order (outputs first, then inputs). Everything else is verbatim PTX. The compiler validates the operand types against the constraints — a type mismatch is caught at compile time, not at run time. <em>This is one of the reasons inline PTX in CUDA is safer than inline ASM in GCC.</em></p>
+    </section>
+
+    <!-- 3.4 -->
+    <section class="section" id="sec-3-4">
+        <h2 class="section-title"><span class="sec-num">3.4</span>The <code>mma.sync</code> PTX Instruction</h2>
+        <div class="section-subtitle">Where the tensor cores actually live</div>
+
+        <p>On Ampere, the PTX instruction for an FP16-input / FP32-accumulator Tensor-Core MMA looks like:</p>
+        <div class="formula">mma.sync.aligned.<span class="var">m16n8k16</span>.row.col.<span class="var">f32.f16.f16.f32</span>
+    <span class="op">{</span>%0,%1,%2,%3<span class="op">}</span>,            <span class="op">// D — accumulator out, 4 × f32 per thread</span>
+    <span class="op">{</span>%4,%5,%6,%7<span class="op">}</span>,            <span class="op">// A — 4 × b32 per thread (8 fp16 packed)</span>
+    <span class="op">{</span>%8,%9<span class="op">}</span>,                  <span class="op">// B — 2 × b32 per thread (4 fp16 packed)</span>
+    <span class="op">{</span>%10,%11,%12,%13<span class="op">}</span><span class="op">;</span>     <span class="op">// C — accumulator in, 4 × f32 per thread</span></div>
+
+        <p>Every token in the mnemonic carries meaning:</p>
+        <ul>
+            <li><code>mma</code> — matrix multiply-accumulate.</li>
+            <li><code>sync</code> — synchronizes the warp; all 32 threads must execute together.</li>
+            <li><code>aligned</code> — operand addresses are assumed properly aligned.</li>
+            <li><code>m16n8k16</code> — the operation tile shape: <code>A</code> is 16 (M) × 16 (K), <code>B</code> is 16 (K) × 8 (N), <code>C</code> and <code>D</code> are 16 (M) × 8 (N).</li>
+            <li><code>row.col</code> — <code>A</code> is row-major, <code>B</code> is column-major (the "TN" form, the most natural for the hardware).</li>
+            <li><code>f32.f16.f16.f32</code> — the precisions of <code>D</code>, <code>A</code>, <code>B</code>, <code>C</code> respectively. So FP16 inputs, FP32 accumulators.</li>
+        </ul>
+
+        <h3>The register-layout requirement</h3>
+        <p>The catch — and the reason this PTX is not for the faint of heart — is that <strong>each operand fragment is distributed across the 32 threads of the warp in a hardware-mandated pattern</strong>. For <code>m16n8k16</code> FP16:</p>
+        <ul>
+            <li><strong><code>A</code></strong> (16×16, FP16): each thread owns 8 FP16 elements = 4 × 32-bit registers, in a specific (lane → element) mapping defined in the PTX ISA.</li>
+            <li><strong><code>B</code></strong> (16×8, FP16): each thread owns 4 FP16 elements = 2 × 32-bit registers.</li>
+            <li><strong><code>C</code></strong>, <strong><code>D</code></strong> (16×8, FP32): each thread owns 4 FP32 elements = 4 × 32-bit registers.</li>
+        </ul>
+        <p>If you load the wrong element into the wrong lane, the multiply produces garbage. There is no run-time error and no way to discover this except by checking the output.</p>
+
+        <h3><code>ldmatrix.sync</code> — the partner instruction</h3>
+        <p>Manually shuffling 32 lanes into the right layout is error-prone and slow. NVIDIA provides <code>ldmatrix.sync</code>, a PTX instruction that loads up to four 8×8 FP16 matrices from <em>shared memory</em> directly into the register pattern expected by <code>mma.sync</code>. It is the canonical loader.</p>
+
+        <pre class="cb" data-lang="ptx" data-title="Listing 3.4-A: ldmatrix.sync — load shared memory into the mma.sync register layout">// Load four 8x8 fp16 matrices from shared memory.
+// %0..%3 are output: 4 × .b32 registers per thread (each register holds 2 fp16).
+// %4 is input: shared-memory address (each lane provides its own address;
+// the hardware reads the addresses from 8 of the 32 lanes per matrix).
+//
+// .x4   = four 8x8 matrices loaded in one call
+// .trans = optional, transposes each 8x8 (so A can be loaded as row-major from
+//          col-major shared memory, or vice versa).
+//
+// Usage from CUDA C++:
+
+uint32_t r0, r1, r2, r3;
+uint32_t smem_addr = __cvta_generic_to_shared(&amp;smem_ptr[some_index]);
+asm volatile(
+    "ldmatrix.sync.aligned.m8n8.x4.shared.b16 "
+    "{%0, %1, %2, %3}, [%4];\n"
+    : "=r"(r0), "=r"(r1), "=r"(r2), "=r"(r3)
+    : "r"(smem_addr));
+</pre>
+
+        

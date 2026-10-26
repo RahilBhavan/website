@@ -1,0 +1,62 @@
+[
+  {
+    "slug": "strategy",
+    "checked_leaf_text_roles": 1511,
+    "failures": 0
+  },
+  {
+    "slug": "tokenization",
+    "checked_leaf_text_roles": 905,
+    "failures": 0
+  },
+  {
+    "slug": "ctrm",
+    "checked_leaf_text_roles": 568,
+    "failures": 0
+  },
+  {
+    "slug": "riscv",
+    "checked_leaf_text_roles": 561,
+    "failures": 0
+  },
+  {
+    "slug": "cortex-m",
+    "checked_leaf_text_roles": 147,
+    "failures": 0
+  },
+  {
+    "slug": "ssrd",
+    "checked_leaf_text_roles": 570,
+    "failures": 0
+  },
+  {
+    "slug": "stablecoins",
+    "checked_leaf_text_roles": 536,
+    "failures": 0
+  },
+  {
+    "slug": "mev",
+    "checked_leaf_text_roles": 276,
+    "failures": 0
+  },
+  {
+    "slug": "rwa-regression",
+    "checked_leaf_text_roles": 754,
+    "failures": 0
+  },
+  {
+    "slug": "ib27",
+    "checked_leaf_text_roles": 1380,
+    "failures": 0
+  },
+  {
+    "slug": "cuda",
+    "checked_leaf_text_roles": 4732,
+    "failures": 0
+  },
+  {
+    "slug": "strategy-bitcoin",
+    "checked_leaf_text_roles": 344,
+    "failures": 0
+  }
+]

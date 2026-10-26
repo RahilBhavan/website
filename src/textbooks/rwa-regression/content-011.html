@@ -1,0 +1,352 @@
+<h1 class="chapter-title">Glossary</h1>
+    <p class="chapter-subtitle">
+      Every econometric, blockchain, and DeFi term used in this textbook, with the
+      chapter where it first appears.
+    </p>
+
+    <input type="search" id="searchBox" placeholder="Filter terms — e.g., 'parallel trends', 'IHS', 'forbidden comparison'" />
+
+    <div class="gloss-section">Econometric methodology</div>
+    <dl class="gloss">
+
+      <dt>ATT <span class="alt">Average Treatment effect on the Treated</span></dt>
+      <dd>
+        The average causal effect of treatment, restricted to units that were actually
+        treated. Equals $\mathbb{E}[Y(1) - Y(0) \mid D = 1]$. This project's estimand.
+        <span class="seealso">First appears: Ch 07.</span>
+      </dd>
+
+      <dt>ATT(g, t)</dt>
+      <dd>
+        The Callaway-Sant'Anna building block: average treatment effect for units
+        first treated at period $g$, evaluated at calendar period $t \geq g$.
+        <span class="seealso">First appears: Ch 09.</span>
+      </dd>
+
+      <dt>Bacon decomposition</dt>
+      <dd>
+        Goodman-Bacon (2021) result that decomposes the TWFE coefficient under
+        staggered treatment into a weighted average of all possible 2×2 DiD
+        comparisons, exposing the "forbidden comparisons" where already-treated
+        units serve as controls.
+        <span class="seealso">First appears: Ch 08. R package: <code>bacondecomp</code>.</span>
+      </dd>
+
+      <dt>Cluster-robust standard errors (CR-SE)</dt>
+      <dd>
+        Standard errors that allow arbitrary correlation among observations within
+        a cluster (here: a token). Required for panel data; conventional CR-SEs are
+        unreliable when the number of clusters is small (&lt; 30).
+        <span class="seealso">First appears: Ch 11. Reference: Cameron-Miller (2015).</span>
+      </dd>
+
+      <dt>Cohort (g)</dt>
+      <dd>
+        The first period in which a unit was treated, used as a grouping variable
+        in CS and SA. In our project, $g \in \{44, 68, 92, 0\}$ where $g = 0$
+        denotes never-treated.
+        <span class="seealso">First appears: Ch 09.</span>
+      </dd>
+
+      <dt>Counterfactual</dt>
+      <dd>
+        The outcome a unit would have experienced under the unobserved treatment
+        status. Fundamentally unobservable; causal estimators are strategies for
+        imputing it plausibly.
+        <span class="seealso">First appears: Ch 07.</span>
+      </dd>
+
+      <dt>DiD <span class="alt">Difference-in-differences</span></dt>
+      <dd>
+        Identification strategy that compares the change in a treated unit's
+        outcome around treatment to the change in a control unit's outcome over
+        the same period. Identifies the ATT under parallel trends.
+        <span class="seealso">First appears: Ch 07.</span>
+      </dd>
+
+      <dt>Event study</dt>
+      <dd>
+        A plot of treatment-effect estimates against event time (time relative to
+        treatment). Produced by CS's <code>aggte(type = "dynamic")</code>. The
+        single most useful visualization in any DiD paper.
+        <span class="seealso">First appears: Ch 09.</span>
+      </dd>
+
+      <dt>Forbidden comparison</dt>
+      <dd>
+        In the Bacon decomposition: a 2×2 DiD that uses already-treated units as
+        controls for later-treated units. Source of the TWFE bias under staggered
+        treatment with dynamic effects.
+        <span class="seealso">First appears: Ch 08.</span>
+      </dd>
+
+      <dt>HonestDiD bounds <span class="alt">Rambachan-Roth (2023)</span></dt>
+      <dd>
+        Robust confidence intervals that remain valid uniformly over a pre-specified
+        set of plausible parallel-trends violations. Implemented as the
+        <code>HonestDiD</code> R package.
+        <span class="seealso">First appears: Ch 12.</span>
+      </dd>
+
+      <dt>IHS <span class="alt">Inverse Hyperbolic Sine</span></dt>
+      <dd>
+        Transform $\text{IHS}(V) = \log(V + \sqrt{V^2 + 1})$. Behaves like log for
+        large $V$, like $V$ for small $V$, and is defined at zero. Used as the
+        outcome variable to handle zero-inflated velocity.
+        <span class="seealso">First appears: Ch 05.</span>
+      </dd>
+
+      <dt>Parallel trends assumption</dt>
+      <dd>
+        The identifying assumption of DiD: the treated unit's counterfactual
+        change would have equaled the control unit's actual change. Not directly
+        testable; partially probed by pre-trend tests.
+        <span class="seealso">First appears: Ch 07. Critique: Ch 12.</span>
+      </dd>
+
+      <dt>Placebo test</dt>
+      <dd>
+        Repeated estimation of the treatment effect under random reassignment of
+        treatment dates. The distribution of placebo estimates approximates the
+        sampling distribution under no true effect; the actual estimate's location
+        in this distribution gives a model-free p-value.
+        <span class="seealso">First appears: Ch 14.</span>
+      </dd>
+
+      <dt>Potential outcomes</dt>
+      <dd>
+        The Rubin framework: each unit has two potential outcomes $Y(1)$ and
+        $Y(0)$, but only one is observed. The fundamental problem of causal
+        inference is that the unobserved counterfactual is missing.
+        <span class="seealso">First appears: Ch 07. Reference: Holland (1986).</span>
+      </dd>
+
+      <dt>Power (statistical)</dt>
+      <dd>
+        The probability that a study will detect a true effect of a given size as
+        statistically significant. With our N=7 sample, power for a 30% ATT is
+        roughly 45%.
+        <span class="seealso">First appears: Ch 13. Interactive: Fig 15.1.</span>
+      </dd>
+
+      <dt>Pre-trend test</dt>
+      <dd>
+        Joint test of the null hypothesis that all pre-treatment event-study
+        coefficients equal zero. Implemented as a Wald test. Roth (2022) shows
+        that passing this test does not validate parallel trends in small samples.
+        <span class="seealso">First appears: Ch 12.</span>
+      </dd>
+
+      <dt>Rademacher weights</dt>
+      <dd>
+        Random ±1 weights used in the wild cluster bootstrap. Each cluster gets
+        a single sign-flip per bootstrap iteration. Webb weights are a 6-point
+        generalization with better small-sample properties.
+        <span class="seealso">First appears: Ch 11.</span>
+      </dd>
+
+      <dt>Sun-Abraham (SA) estimator</dt>
+      <dd>
+        Interaction-weighted staggered-DiD estimator that lives inside the TWFE framework:
+        replace the single treatment dummy with a saturated set of cohort × event-time
+        interactions. Implemented as <code>fixest::sunab()</code>.
+        <span class="seealso">First appears: Ch 10. Reference: Sun &amp; Abraham (2021).</span>
+      </dd>
+
+      <dt>Borusyak-Jaravel-Spiess (BJS) imputation estimator</dt>
+      <dd>
+        Fit a token+time FE model on untreated observations only, predict counterfactual
+        $\hat Y(0)$ for treated observations, take observed minus predicted as the
+        treatment effect. R package: <code>didimputation</code>.
+        <span class="seealso">First appears: Ch 10. Reference: Borusyak, Jaravel &amp; Spiess (2024).</span>
+      </dd>
+
+      <dt>de Chaisemartin-D'Haultfœuille (dCDH) estimator</dt>
+      <dd>
+        Cohort-specific DiD with explicit handling of treatment-effect heterogeneity;
+        supports continuous-dose treatments natively. Implemented as the
+        <code>did_multiplegt</code> Stata/R package.
+        <span class="seealso">First appears: Ch 10. Reference: de Chaisemartin &amp; D'Haultfœuille (2020, 2022).</span>
+      </dd>
+
+      <dt>Two-part hurdle model</dt>
+      <dd>
+        Decomposes a zero-inflated outcome into (1) a binary Probit/logit for whether the
+        outcome is positive and (2) an OLS (or PPML) for the magnitude conditional on
+        positivity. Reports extensive- and intensive-margin effects separately.
+        <span class="seealso">First appears: Ch 05. Used as robustness in Ch 14.</span>
+      </dd>
+
+      <dt>PPML <span class="alt">Poisson Pseudo-Maximum Likelihood</span></dt>
+      <dd>
+        Quasi-MLE estimator for non-negative outcomes; consistent under conditional-mean
+        correctness without requiring the conditional variance to be Poisson. Standard
+        choice for log-link models with zeros.
+        <span class="seealso">First appears: Ch 05.</span>
+      </dd>
+
+      <dt>Webb weights</dt>
+      <dd>
+        Six-point distribution $\{\pm\sqrt{1.5}, \pm 1, \pm\sqrt{0.5}\}$ used in place of
+        Rademacher (±1) draws inside the wild cluster bootstrap. Reduces small-N
+        discreteness artifacts in the bootstrap distribution.
+        <span class="seealso">First appears: Ch 11. Reference: Webb (2014); Roodman et al. (2019).</span>
+      </dd>
+
+      <dt>CR1 small-sample correction</dt>
+      <dd>
+        Multiplicative scaling factor $\frac{G}{G-1} \cdot \frac{N-1}{N-K}$ applied to
+        the cluster-robust variance estimator to reduce its downward bias in small-cluster
+        samples. Default in <code>fixest</code>.
+        <span class="seealso">First appears: Ch 11.</span>
+      </dd>
+
+      <dt>Staggered treatment</dt>
+      <dd>
+        Treatment that arrives in different periods for different units. The
+        setting that breaks conventional TWFE. Our project has three staggered
+        cohorts (OUSG → USDY → STBT).
+        <span class="seealso">First appears: Ch 08.</span>
+      </dd>
+
+      <dt>TWFE <span class="alt">Two-way fixed effects</span></dt>
+      <dd>
+        Panel regression with unit fixed effects and time fixed effects. The
+        canonical generalization of DiD; biased under staggered treatment with
+        dynamic effects.
+        <span class="seealso">First appears: Ch 07.</span>
+      </dd>
+
+      <dt>Wild cluster bootstrap</dt>
+      <dd>
+        Inference procedure for panel data with few clusters. Repeatedly multiplies
+        residuals by random cluster-level signs and re-fits the regression. Used
+        with Webb weights, gives near-nominal coverage at N as small as 5.
+        <span class="seealso">First appears: Ch 11. Reference: Roodman et al. (2019).</span>
+      </dd>
+
+      <dt>Winsorization</dt>
+      <dd>
+        Replacing values above the $p$-th percentile with the $p$-th percentile
+        value itself (and similarly at the bottom). Used here at the 99th
+        percentile to dampen velocity outliers.
+        <span class="seealso">First appears: Ch 05.</span>
+      </dd>
+    </dl>
+
+    <div class="gloss-section">Blockchain &amp; DeFi</div>
+    <dl class="gloss">
+
+      <dt>AMM <span class="alt">Automated Market Maker</span></dt>
+      <dd>
+        On-chain exchange that uses a mathematical pricing function over two token
+        reserves instead of an order book. Uniswap v2/v3 and Curve are the main
+        examples relevant to this project.
+        <span class="seealso">First appears: Ch 03.</span>
+      </dd>
+
+      <dt>Alchemy</dt>
+      <dd>
+        RPC provider used in our pipeline. <code>alchemy_getAssetTransfers</code>
+        is the high-level endpoint that returns decoded ERC-20 transfers in
+        paginated JSON.
+        <span class="seealso">First appears: Ch 04.</span>
+      </dd>
+
+      <dt>BUIDL / OUSG / USDY / BENJI / USTB / USYC / STBT</dt>
+      <dd>
+        The seven tokens in our sample. See Ch 02 for per-token descriptions.
+      </dd>
+
+      <dt>Constant product (x·y = k)</dt>
+      <dd>
+        The Uniswap v1/v2 pricing invariant. Liquidity is spread uniformly across
+        all price points from 0 to ∞ — inefficient for assets that trade in a
+        narrow band like $1.
+        <span class="seealso">First appears: Ch 03.</span>
+      </dd>
+
+      <dt>Concentrated liquidity (Uniswap v3)</dt>
+      <dd>
+        LP positions are restricted to user-specified price ranges. Capital
+        efficiency at the current price can be 100× higher than constant product
+        for the same nominal TVL, if the range is tight.
+        <span class="seealso">First appears: Ch 03.</span>
+      </dd>
+
+      <dt>ERC-20</dt>
+      <dd>
+        Ethereum's token standard. Defines <code>transfer()</code> and emits a
+        <code>Transfer(from, to, value)</code> event for every movement.
+        <span class="seealso">First appears: Ch 04.</span>
+      </dd>
+
+      <dt>FFR <span class="alt">Federal Funds Rate</span></dt>
+      <dd>
+        The U.S. policy rate. Pulled from the FRED <code>DFF</code> series. Used
+        as a time-varying macro control because tokenized Treasury demand is
+        rate-sensitive.
+        <span class="seealso">First appears: Ch 05.</span>
+      </dd>
+
+      <dt>Issuer wallet exclusion list</dt>
+      <dd>
+        A hand-curated list of contract and EOA addresses operated by the token
+        issuer or its transfer agent. Transfers involving these addresses are
+        excluded from the "secondary" count.
+        <span class="seealso">First appears: Ch 04.</span>
+      </dd>
+
+      <dt>NAV <span class="alt">Net Asset Value</span></dt>
+      <dd>
+        The per-token value of the fund's underlying assets. For BUIDL, USTB,
+        STBT, USYC the NAV is held at $1.00. For OUSG and USDY it accrues
+        upward with yield.
+        <span class="seealso">First appears: Ch 02.</span>
+      </dd>
+
+      <dt>Secondary transfer</dt>
+      <dd>
+        An on-chain transfer that represents genuine trading activity, as opposed
+        to mints, burns, or issuer-internal operations. Determined by our
+        4-rule filter (Ch 04).
+        <span class="seealso">First appears: Ch 04.</span>
+      </dd>
+
+      <dt>Stableswap (Curve)</dt>
+      <dd>
+        Curve's pricing invariant, hybrid between constant-sum and constant-product.
+        The amplification parameter $A$ controls how flat the curve is near
+        balance. Designed for assets that trade near par.
+        <span class="seealso">First appears: Ch 03.</span>
+      </dd>
+
+      <dt>Transfer agent (Securitize)</dt>
+      <dd>
+        The compliance party that maintains the on-chain allowlist of approved
+        wallets for KYC-restricted tokens. Securitize is BUIDL's transfer agent;
+        Ondo serves the same role for its own tokens.
+        <span class="seealso">First appears: Ch 02.</span>
+      </dd>
+
+      <dt>TVL <span class="alt">Total Value Locked</span></dt>
+      <dd>
+        The dollar value of all assets held in an AMM pool. For Curve pools,
+        DefiLlama reports both-sides TVL; we use only the RWA side for
+        comparability with Uniswap v3.
+        <span class="seealso">First appears: Ch 03.</span>
+      </dd>
+
+      <dt>Velocity</dt>
+      <dd>
+        The dependent variable: annualized secondary-transfer volume divided by
+        average market cap. See Ch 05 for the full construction.
+      </dd>
+
+    </dl>
+
+    <div class="chapter-nav"></div>
+  </div>
+  </div>
+</div>
+

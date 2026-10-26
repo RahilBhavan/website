@@ -1,0 +1,233 @@
+<h2 class="section-title"><span class="sec-num">2.4</span>Kernel 3 — Shared-Memory Tiling</h2>
+        <div class="section-subtitle">The single most important optimization in GPU computing</div>
+
+        <p>The naive kernel re-reads each element of <code>A</code> from DRAM <code>N</code> times and each element of <code>B</code> from DRAM <code>M</code> times. If we could read each element from DRAM <em>once</em> and then keep it on-chip, we would multiply our arithmetic intensity by roughly the tile dimension, and we would shift the kernel decisively from memory-bound to compute-bound. That is exactly what shared-memory tiling does.</p>
+
+        <h3>The algorithm</h3>
+        <ol>
+            <li>Each thread block computes one <code>TILE × TILE</code> output tile of <code>C</code>.</li>
+            <li>The block loops over "phases" of <code>K</code>. In each phase it loads a <code>TILE × TILE</code> tile from <code>A</code> and a <code>TILE × TILE</code> tile from <code>B</code> into shared memory, cooperatively.</li>
+            <li>Threads synchronize on <code>__syncthreads()</code>. Now the entire tile of <code>A</code> and <code>B</code> is visible to all threads in the block.</li>
+            <li>Each thread computes a partial sum, reading <code>TILE</code> values out of shared memory.</li>
+            <li>Threads synchronize again, so no thread overwrites the SMEM tile in the next phase before its peers have finished reading.</li>
+            <li>After <code>K / TILE</code> phases, each thread writes its accumulator to <code>C</code>.</li>
+        </ol>
+
+        <h3>Why exactly <em>two</em> <code>__syncthreads()</code></h3>
+        <p>The barriers are not aesthetic. Each one prevents a specific data race:</p>
+        <ul>
+            <li><strong>Barrier 1 (after loading).</strong> If thread A starts computing using <code>As</code> before thread B has finished writing its piece of <code>As</code>, A reads stale data. Without this barrier you get silent wrong answers, usually with one or two wrong elements per tile.</li>
+            <li><strong>Barrier 2 (after computing).</strong> If thread A starts loading the next phase's tile into <code>As</code> before thread B has finished reading the current phase, B reads garbage. The visible failure mode is occasional wrong answers that change depending on warp scheduling.</li>
+        </ul>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.4-A: Tiled GEMM, TILE = 32">#define TILE 32
+
+__global__ void gemmTiled(const float* __restrict__ A,
+                          const float* __restrict__ B,
+                                float* __restrict__ C,
+                          int M, int N, int K)
+{
+    // Shared-memory tiles: one for a row-block of A, one for a col-block of B.
+    __shared__ float As[TILE][TILE];
+    __shared__ float Bs[TILE][TILE];
+
+    // Coordinates of THIS thread's output element in C.
+    int row = blockIdx.y * TILE + threadIdx.y;
+    int col = blockIdx.x * TILE + threadIdx.x;
+
+    // Accumulator lives in a register — fastest memory on the chip.
+    float acc = 0.f;
+
+    // Number of phases along the K dimension.
+    const int nPhases = (K + TILE - 1) / TILE;
+
+    for (int p = 0; p &lt; nPhases; ++p) {
+        // ============== STAGE: COOPERATIVE LOAD ===============
+        // Each thread in the block loads ONE element of A and ONE of B
+        // into shared memory. Together the block fills both TILE x TILE tiles.
+
+        int aCol = p * TILE + threadIdx.x;
+        int bRow = p * TILE + threadIdx.y;
+
+        // Bounds-check the global edges (last phase may be partial).
+        As[threadIdx.y][threadIdx.x] =
+            (row &lt; M &amp;&amp; aCol &lt; K) ? A[row * K + aCol] : 0.f;
+        Bs[threadIdx.y][threadIdx.x] =
+            (bRow &lt; K &amp;&amp; col &lt; N) ? B[bRow * N + col] : 0.f;
+
+        __syncthreads();   // (1) tiles are now fully loaded for everyone
+
+        // ============== STAGE: COMPUTE ===============
+        // Each thread does a TILE-element dot product against the tiles.
+        // All loads here are from SMEM -&gt; ~20 cycles instead of ~500.
+        #pragma unroll
+        for (int k = 0; k &lt; TILE; ++k) {
+            acc += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+        }
+
+        __syncthreads();   // (2) safe to overwrite As/Bs in next phase
+    }
+
+    if (row &lt; M &amp;&amp; col &lt; N) {
+        C[row * N + col] = acc;
+    }
+}
+
+// Launch: one block per output tile.
+dim3 block(TILE, TILE);
+dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
+gemmTiled&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_A, d_B, d_C, M, N, K);
+</pre>
+
+        <h3>Why the index layout is <code>As[threadIdx.y][threadIdx.x]</code> and not the reverse</h3>
+        <p>Shared memory has 32 banks; consecutive 4-byte words go to consecutive banks. When a warp executes <code>As[threadIdx.y][k]</code>, all 32 threads in the warp have the same <code>threadIdx.y</code> (recall: warps span the <code>x</code> dimension first) and the same <code>k</code>. They all hit the same address → broadcast, one transaction, no bank conflict.</p>
+        <p>When the same warp executes <code>Bs[k][threadIdx.x]</code>, all 32 threads have the same <code>k</code> and consecutive <code>threadIdx.x</code> values. They hit 32 consecutive 4-byte words → 32 different banks → no conflict, one transaction.</p>
+        <p>If you index <code>As[threadIdx.x][threadIdx.y]</code>, you swap the fast and slow axes and create a 32-way bank conflict in the load. The kernel is suddenly 32× slower for the same source. <em>Bank-conflict-free shared-memory indexing is the most easily-broken correctness-equivalent optimization in CUDA.</em></p>
+
+        <h3>How much intensity did we just buy?</h3>
+        <p>Per output tile (<code>TILE² = 1024</code> output elements), the block reads <code>K/TILE</code> phases × <code>2·TILE²</code> elements per phase = <code>2·K·TILE</code> elements from DRAM, and performs <code>2·K·TILE²</code> FLOPs.</p>
+        <div class="formula"><span class="var">I</span><sub>tiled</sub> <span class="op">=</span> 2&middot;K&middot;TILE² <span class="op">/</span> (2&middot;K&middot;TILE &middot; sizeof(float)) <span class="op">=</span> <span class="res">TILE / 4</span> FLOP/byte</div>
+        <p>For <code>TILE = 32</code>, that is 8 FLOP/byte — versus <code>~0.25</code> FLOP/byte for the naive kernel (1 FMA per 2 loads × 4 bytes each = 0.25 FLOP/byte). A 32× jump in intensity. That is what moves the kernel decisively to the right on the roofline.</p>
+
+        <p>To get the rest of the way to peak, we need to push intensity further still — by giving each thread <em>multiple</em> output elements (§2.5), by loading larger words at a time (§2.6), and finally by using the Tensor Cores (§3).</p>
+    </section>
+
+    <!-- 2.5 -->
+    <section class="section" id="sec-2-5">
+        <h2 class="section-title"><span class="sec-num">2.5</span>Kernel 4 — 2D Register Tiling (Thread Coarsening)</h2>
+        <div class="section-subtitle">More work per thread, less SMEM pressure per FLOP</div>
+
+        <p>In the tiled kernel, each thread produces one output element. That means the entire SMEM tile of <code>As</code> and <code>Bs</code> is loaded for <code>TILE²</code> threads to produce <code>TILE²</code> outputs — one each. We can buy more arithmetic per SMEM load by giving each thread <em>multiple</em> outputs.</p>
+
+        <p>Concretely, let each thread compute a <code>TM × TN</code> sub-tile of <code>C</code> (often called the <em>register tile</em>, because the accumulators live in registers). The block now needs only <code>(TILE_M/TM) × (TILE_N/TN)</code> threads to cover the same output tile. Each thread has <code>TM × TN</code> accumulator registers, loads a strip of <code>As</code> and a strip of <code>Bs</code> into registers, and FMAs them all together.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.5-A: 2D register tiling, TM = TN = 8">#define BM 128   // output tile rows handled by one block
+#define BN 128   // output tile cols handled by one block
+#define BK 16    // K-strip loaded per phase
+#define TM 8     // each thread handles 8 output rows
+#define TN 8     // each thread handles 8 output cols
+
+// Per block: (BM/TM) x (BN/TN) = 16 x 16 = 256 threads.
+
+__global__ void gemmRegTile(const float* __restrict__ A,
+                            const float* __restrict__ B,
+                                  float* __restrict__ C,
+                            int M, int N, int K)
+{
+    __shared__ float As[BM][BK];
+    __shared__ float Bs[BK][BN];
+
+    // Each thread's top-left output element in this block's tile:
+    int threadRow = threadIdx.y;          // 0..(BM/TM - 1)
+    int threadCol = threadIdx.x;          // 0..(BN/TN - 1)
+    int blockRowOrigin = blockIdx.y * BM;
+    int blockColOrigin = blockIdx.x * BN;
+
+    // Per-thread register file for the output sub-tile.
+    float regC[TM][TN] = {0.f};
+
+    const int nPhases = (K + BK - 1) / BK;
+    for (int p = 0; p &lt; nPhases; ++p) {
+        // ============ COOPERATIVE LOAD ============
+        // 256 threads cooperatively load BM*BK + BK*BN elements.
+        // Each thread loads multiple elements (loop over the slack).
+        const int totalA = BM * BK;
+        const int totalB = BK * BN;
+        const int tid    = threadRow * (BN / TN) + threadCol;
+        const int nTh    = (BM / TM) * (BN / TN);
+
+        #pragma unroll
+        for (int i = tid; i &lt; totalA; i += nTh) {
+            int r = i / BK, c = i % BK;
+            int gR = blockRowOrigin + r;
+            int gC = p * BK + c;
+            As[r][c] = (gR &lt; M &amp;&amp; gC &lt; K) ? A[gR * K + gC] : 0.f;
+        }
+        #pragma unroll
+        for (int i = tid; i &lt; totalB; i += nTh) {
+            int r = i / BN, c = i % BN;
+            int gR = p * BK + r;
+            int gC = blockColOrigin + c;
+            Bs[r][c] = (gR &lt; K &amp;&amp; gC &lt; N) ? B[gR * N + gC] : 0.f;
+        }
+        __syncthreads();
+
+        // ============ COMPUTE: TM x TN register block ============
+        // Outer loop along the K-strip.
+        #pragma unroll
+        for (int kk = 0; kk &lt; BK; ++kk) {
+            // Load a column of As (size TM) and a row of Bs (size TN) into regs.
+            float aReg[TM], bReg[TN];
+            #pragma unroll
+            for (int i = 0; i &lt; TM; ++i)
+                aReg[i] = As[threadRow * TM + i][kk];
+            #pragma unroll
+            for (int j = 0; j &lt; TN; ++j)
+                bReg[j] = Bs[kk][threadCol * TN + j];
+
+            // FMA the outer product into the register accumulator block.
+            #pragma unroll
+            for (int i = 0; i &lt; TM; ++i)
+                #pragma unroll
+                for (int j = 0; j &lt; TN; ++j)
+                    regC[i][j] += aReg[i] * bReg[j];
+        }
+        __syncthreads();
+    }
+
+    // Write the TM x TN block back to C.
+    #pragma unroll
+    for (int i = 0; i &lt; TM; ++i) {
+        int gR = blockRowOrigin + threadRow * TM + i;
+        #pragma unroll
+        for (int j = 0; j &lt; TN; ++j) {
+            int gC = blockColOrigin + threadCol * TN + j;
+            if (gR &lt; M &amp;&amp; gC &lt; N) C[gR * N + gC] = regC[i][j];
+        }
+    }
+}
+</pre>
+
+        <h3>What changed and why it pays</h3>
+        <p>Each thread now does <code>TM × TN = 64</code> FMAs per inner-loop iteration, but reads only <code>TM + TN = 16</code> values from shared memory (the rest are already in registers). The compute-to-SMEM-load ratio jumps from 1× to 4× — and SMEM throughput stops being the bottleneck. The cost is register pressure: each thread now holds <code>TM·TN = 64</code> accumulator registers plus the temporaries. At 64 registers per thread you can still hit ~50% occupancy on Ampere, which is plenty.</p>
+
+        <p>Boehm's well-known SGEMM walkthrough shows the same kernel family climbing from a few TFLOPS to roughly 70&ndash;90% of cuBLAS SGEMM on Ampere consumer parts, with 2D register tiling being the single largest jump in the FP32 path before warp-tiling and double-buffering.<sup>[1]</sup></p>
+    </section>
+
+    <!-- 2.6 -->
+    <section class="section" id="sec-2-6">
+        <h2 class="section-title"><span class="sec-num">2.6</span>Kernel 5 — Vectorized Memory Access</h2>
+        <div class="section-subtitle">Four loads in one instruction</div>
+
+        <p>The hardware supports loads in widths of 32, 64, and 128 bits. CUDA exposes the wide loads through the built-in vector types <code>float2</code>, <code>float4</code>, <code>int4</code>, etc. A <code>float4</code> load is a single 128-bit transaction — one instruction, one memory request, one register-file write of four floats.</p>
+
+        <p>For coalesced patterns, a 128-bit-wide load by every thread in a warp results in <strong>four</strong> 128-byte transactions to global memory and fills <code>4 × 32 = 128</code> floats with one instruction. The same data using 4 separate <code>float</code> loads would also take four transactions — but you would have spent <em>four times the instruction issue slots</em>. On a kernel that is instruction-throughput-limited, vectorization removes the instruction tax.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 2.6-A: Vectorized loads via float4">// Requires: A is aligned to 16 bytes (cudaMalloc guarantees this).
+// Requires: index is a multiple of 4.
+
+// Scalar version — 4 separate 32-bit loads.
+float a = A[idx + 0];
+float b = A[idx + 1];
+float c = A[idx + 2];
+float d = A[idx + 3];
+
+// Vector version — one 128-bit load.
+float4 v = *reinterpret_cast&lt;const float4*&gt;(&amp;A[idx]);
+// v.x v.y v.z v.w are now in registers.
+
+// In the tiled kernel, store with the same pattern:
+*reinterpret_cast&lt;float4*&gt;(&amp;C[gIdx]) = make_float4(r0, r1, r2, r3);
+</pre>
+
+        <p>The same idea applies to shared memory: a <code>float4</code> SMEM load is one instruction and accesses 4 banks per thread. As long as the per-thread base is on a 16-byte boundary, you get conflict-free 4-bank-wide access. Vectorized SMEM loads are a standard trick in mature GEMM kernels and are essential when feeding Tensor Cores (chapter 3).</p>
+
+        <div class="callout">
+            <div class="callout-label">Diagnostic</div>
+            If you forget to align — e.g. you cast an odd-offset pointer to <code>float4*</code> — the kernel may compile but will hit a misaligned-address fault at run time, reported by <code>cudaGetLastError()</code> as <code>cudaErrorMisalignedAddress</code>.
+        </div>
+    </section>
+
+    <!-- 2.7 -->
+    <section class="section" id="sec-2-7">
+        

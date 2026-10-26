@@ -1,0 +1,374 @@
+<h2>Estimation methods: regression vs. inverse-probability weighting</h2>
+
+    <p>
+      The CS framework allows two estimation methods for each ATT(g, t), controlled by
+      the <code>est_method</code> argument in <code>att_gt()</code>:
+    </p>
+
+    <ul>
+      <li>
+        <strong><code>"reg"</code> (regression adjustment)</strong> — fits a linear
+        regression of $Y_t - Y_{g-1}$ on the controls in the control group, then uses
+        that fitted model to impute the counterfactual change for the treated cohort.
+        Sensitive to model misspecification but works well in small samples.
+      </li>
+      <li>
+        <strong><code>"ipw"</code> (inverse probability weighting)</strong> — fits a
+        propensity-score model for being in cohort $g$, then weights the control group
+        by inverse propensity scores. More robust to outcome model misspecification but
+        requires the propensity-score model to be correctly specified.
+      </li>
+      <li>
+        <strong><code>"dr"</code> (doubly robust)</strong> — combines both, providing
+        consistent estimates if <em>either</em> the outcome model or the propensity-score
+        model is correctly specified.
+      </li>
+    </ul>
+
+    <p>
+      Our main spec uses <code>"reg"</code> for simplicity and small-sample stability.
+      The doubly robust estimator is reported as a robustness check, but with only 7
+      units the propensity-score component is too underpowered to add much. Chapter 14
+      reports the comparison.
+    </p>
+
+    <h2>The full call, in actual R</h2>
+
+    <pre class="code-r"><code>library(did)
+library(tidyverse)
+
+panel <- read_csv("data/panel_weekly.csv")
+panel$token_id      <- as.integer(panel$token_id)
+panel$week_num      <- as.integer(panel$week_num)
+panel$first_amm_week <- as.integer(panel$first_amm_week)  # 0 if never treated
+
+cs_main <- att_gt(
+  yname        = "ihs_velocity_w",
+  gname        = "first_amm_week",
+  idname       = "token_id",
+  tname        = "week_num",
+  xformla      = ~ log_mcap + log_holders + token_age_weeks + ffr + log_defi_tvl,
+  data         = panel,
+  control_group = "nevertreated",
+  est_method   = "reg",
+  allow_unbalanced_panel = TRUE,
+  panel        = TRUE
+)
+
+# Aggregations
+agg_simple   <- aggte(cs_main, type = "simple")
+agg_dynamic  <- aggte(cs_main, type = "dynamic", min_e = -8, max_e = 12)
+agg_group    <- aggte(cs_main, type = "group")
+agg_calendar <- aggte(cs_main, type = "calendar")
+
+summary(agg_simple)   # headline ATT
+summary(agg_dynamic)  # event-study coefficients
+ggdid(agg_dynamic)    # the event-study plot</code></pre>
+
+    <h2>Three things that can go wrong</h2>
+
+    <ol>
+      <li>
+        <strong>Insufficient never-treated controls.</strong> If for some period $t$ the
+        never-treated group is empty (e.g., all controls had left the sample),
+        $\widehat{\text{ATT}}(g, t)$ cannot be computed for that $t$. With 4 never-treated
+        controls in our sample, this is not a concern, but it would be in a panel where
+        all units eventually get treated.
+      </li>
+      <li>
+        <strong>Empty cohort cells.</strong> If a cohort $g$ has only one unit (as is the
+        case for each of our cohorts — OUSG alone is cohort 44), the within-cohort variance
+        cannot be estimated and CS will return point estimates with very wide confidence
+        intervals. Wild cluster bootstrap (Chapter 11) is the right inference procedure
+        in this case.
+      </li>
+      <li>
+        <strong>Covariate model misspecification.</strong> The <code>xformla</code>
+        argument controls which covariates enter the conditional parallel-trends
+        regression. If we omit a relevant covariate that varies across cohorts in a way
+        that correlates with treatment timing, the resulting ATT(g, t) estimates are
+        biased. Our spec includes the obvious time-varying controls but does not include
+        token-specific interactions; reviewer-anticipated robustness check.
+      </li>
+    </ol>
+
+    <p>
+      With Callaway-Sant'Anna established as our preferred estimator, Chapter 10 surveys
+      the other modern estimators in the same family — Sun-Abraham, Borusyak-Jaravel-
+      Spiess, de Chaisemartin-D'Haultfœuille — and explains why we report CS as primary
+      but run Sun-Abraham as a robustness check.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="10-sun-abraham" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 10 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">Sun-Abraham and friends</h1>
+    <p class="chapter-subtitle">
+      The other modern staggered-DiD estimators, what each does differently, and why
+      we use Sun-Abraham specifically as a robustness check.
+    </p>
+
+    <h2>The family of modern estimators</h2>
+
+    <p>
+      Goodman-Bacon's 2021 paper made the TWFE problem visible. Within roughly two years,
+      four research teams independently proposed estimators that solved it. Their
+      frameworks differ in details, but each one shares the same core insight:
+      never use already-treated units as controls. The four are:
+    </p>
+
+    <ul>
+      <li>
+        <strong>Callaway &amp; Sant'Anna (2021)</strong> — ATT(g,t) building blocks,
+        aggregated. Our main estimator.
+      </li>
+      <li>
+        <strong>Sun &amp; Abraham (2021)</strong> — Interaction-weighted estimator,
+        implemented as a TWFE regression with cohort-by-relative-time interactions.
+      </li>
+      <li>
+        <strong>Borusyak, Jaravel &amp; Spiess (2024)</strong> — "Imputation estimator":
+        fit untreated units only, predict counterfactual for treated, take the difference.
+      </li>
+      <li>
+        <strong>de Chaisemartin &amp; D'Haultfœuille (2020, 2022)</strong> — Cohort-specific
+        DiD with explicit handling of treatment effect heterogeneity; implemented in
+        the R/Stata package <code>did_multiplegt</code>.
+      </li>
+    </ul>
+
+    <h2>How they relate</h2>
+
+    <p>
+      Under "standard" conditions (no anticipation, parallel trends, no controls), the
+      four estimators are approximately equivalent — they target the same population
+      estimand and differ only in their efficiency and small-sample behavior. They can
+      diverge under one of three conditions:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Different conditioning sets.</strong> CS conditions on covariates via
+        either regression adjustment or IPW; SA conditions parametrically via the TWFE
+        regression specification. If the chosen covariate model differs, the estimators
+        differ.
+      </li>
+      <li>
+        <strong>Different control groups.</strong> CS lets you pick never-treated or
+        not-yet-treated explicitly. SA's <code>fixest::sunab()</code> implementation
+        uses the never-treated cohort as the omitted reference when one exists, and
+        otherwise the last-treated cohort. Borusyak-Jaravel-Spiess use all not-yet-treated
+        observations.
+      </li>
+      <li>
+        <strong>Different aggregation weights.</strong> SA's interaction-weighted
+        aggregation puts more weight on cohorts with more pre/post observations. CS's
+        <code>type = "simple"</code> aggregation uses uniform weighting. The two can
+        differ by 5–15% in samples like ours.
+      </li>
+    </ol>
+
+    <h2>Sun-Abraham, specifically</h2>
+
+    <p>
+      Sun-Abraham (SA) is the most pedagogically useful alternative because it lives
+      <em>inside</em> the TWFE framework. You write down a TWFE regression but replace
+      the single treatment dummy with a saturated set of cohort-by-event-time interactions:
+    </p>
+
+    <p>
+      $$Y_{i,t} = \alpha_i + \delta_t + \sum_{g} \sum_{e \neq -1} \beta_{g,e} \cdot \mathbb{1}[G_i = g] \cdot \mathbb{1}[t - g = e] + \varepsilon_{i,t}$$
+    </p>
+
+    <p>
+      The coefficients $\beta_{g, e}$ are direct estimates of the cohort-specific
+      event-time effects. To produce an overall event-time path, SA averages $\beta_{g, e}$
+      across cohorts at each event time $e$, weighted by cohort size. Because the
+      "treatment" indicator is now cohort-specific, the forbidden-comparison problem
+      vanishes — there is no longer a single $\beta$ that pools across cohorts.
+    </p>
+
+    <p>
+      In <code>fixest</code> (R) the SA estimator is one line:
+    </p>
+
+    <pre class="code-r"><code>library(fixest)
+sa_main <- feols(
+  ihs_velocity_w ~ sunab(first_amm_week, week_num) +
+                   log_mcap + log_holders + token_age_weeks + ffr + log_defi_tvl |
+                   token_id + week_num,
+  data    = panel,
+  cluster = ~token_id
+)
+iplot(sa_main,
+      main = "Sun-Abraham event study",
+      xlab = "Weeks relative to first AMM listing",
+      ylab = "ATT on IHS(velocity)")</code></pre>
+
+    <p>
+      The <code>sunab(first_amm_week, week_num)</code> macro inside the formula expands
+      to the full set of cohort-by-event-time interactions automatically.
+    </p>
+
+    <h2>Why we report both</h2>
+
+    <p>
+      CS and SA, fit to the same panel with the same covariates and the same control
+      group, should produce numerically similar point estimates. If they do, that is
+      strong evidence that the result is not driven by a peculiarity of one estimator's
+      implementation. If they disagree substantially, that's a flag — usually pointing
+      to an issue with the not-yet-treated vs. never-treated distinction or to a sample
+      where the propensity-score model is unstable.
+    </p>
+
+    <p>
+      Our project's Table 4 reports CS as the headline, with SA in column 2 for direct
+      comparison. The expectation is point estimates within ±10% of each other and
+      overlapping confidence intervals. If they don't agree, that becomes a finding worth
+      discussing in the text rather than burying.
+    </p>
+
+    <h2>Brief look at the other two estimators</h2>
+
+    <h3>Borusyak-Jaravel-Spiess "imputation estimator"</h3>
+
+    <p>
+      The cleanest conceptual estimator. Fit a model of $Y_{i,t}$ on token FEs, time FEs,
+      and covariates, using <em>only the untreated observations</em>. Use the fitted
+      model to predict the counterfactual outcome $\hat Y_{i,t}(0)$ for treated
+      observations. The estimated treatment effect for unit $i$ at time $t$ is then
+      $Y_{i,t}^{\text{obs}} - \hat Y_{i,t}(0)$.
+    </p>
+
+    <p>
+      Implemented as the <code>did_imputation</code> R package or as
+      <code>didimputation</code> in Stata. Conceptually attractive but in our sample
+      tends to produce wider confidence intervals than CS because of how it propagates
+      uncertainty from the imputation step. We do not report it in the main paper, but
+      it is in <code>analysis/05_robustness.R</code> for completeness.
+    </p>
+
+    <h3>de Chaisemartin-D'Haultfœuille</h3>
+
+    <p>
+      Focuses on cohort-specific DiD with explicit allowance for treatment-effect
+      heterogeneity in arbitrary directions. Implemented as <code>did_multiplegt</code>.
+      Most useful when treatment is <em>continuous</em> (a dose, an intensity), which
+      is the case for our $\log(\text{AMM TVL})$ specification but not the binary
+      $\text{amm\_listed}$ spec. We report it as a sensitivity check specifically for
+      the continuous-treatment regression in Chapter 13.
+    </p>
+
+    <h2>Summary comparison table</h2>
+
+    <table class="data">
+      <thead>
+        <tr><th>Estimator</th><th>Building block</th><th>R package</th><th>Use in our paper</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Callaway-Sant'Anna</td><td>ATT(g, t) + aggregation</td><td><code>did</code></td><td>Main specification</td></tr>
+        <tr><td>Sun-Abraham</td><td>Cohort × event-time interactions</td><td><code>fixest::sunab()</code></td><td>Robustness comparison</td></tr>
+        <tr><td>Borusyak-Jaravel-Spiess</td><td>Counterfactual imputation</td><td><code>didimputation</code></td><td>Secondary robustness</td></tr>
+        <tr><td>de Chaisemartin-D'Haultfœuille</td><td>Cohort DiD, continuous treatment</td><td><code>did_multiplegt</code></td><td>Continuous-treatment robustness</td></tr>
+        <tr><td>TWFE (Goodman-Bacon decomposed)</td><td>Pooled regression</td><td><code>fixest::feols()</code></td><td>Comparison baseline + Bacon decomp</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      Of the five, three appear in the paper's tables. The others are run as sanity
+      checks and reported only if they diverge from the headline.
+    </p>
+
+    <h2>Reviewer-anticipation: which alternative will they ask for?</h2>
+
+    <p>
+      In a journal review, the most likely methodological pushback will be: "Why CS and
+      not Sun-Abraham?" The defensible answer is the one above — they should agree, and
+      reporting both is sufficient. A more aggressive reviewer might ask about
+      Borusyak-Jaravel-Spiess specifically, because it has the cleanest theoretical
+      foundation; the answer there is that we ran it, the point estimate is similar but
+      with a wider confidence interval, and we discuss the cost-benefit in an appendix.
+    </p>
+
+    <p>
+      With the menu of estimators established and CS chosen, the next chapter turns to
+      the inference problem that lurks under all of them: with only 7 clusters, the
+      conventional cluster-robust standard errors are unreliable. The fix is the
+      wild cluster bootstrap.
+    </p>
+
+    <div class="chapter-nav"></div>
+  </div>
+<div id="11-inference" class="chapter-block">
+
+    <div class="chapter-meta">Chapter 11 · Part III — Causal Inference</div>
+    <h1 class="chapter-title">Inference with seven clusters</h1>
+    <p class="chapter-subtitle">
+      Why conventional cluster-robust standard errors lie when N is small, and how
+      the wild cluster bootstrap (with Webb weights) tells the truth.
+    </p>
+
+    <h2>Why we cluster at the token level in the first place</h2>
+
+    <p>
+      Two velocity observations from OUSG — say, week 50 and week 51 — are not
+      independent. They share the same issuer, the same investor base, the same KYC
+      regime, the same recent news. The residuals from any regression we fit are
+      therefore <em>correlated within token</em>. Failing to account for this correlation
+      leads to standard errors that are <em>too small</em> — the regression "thinks"
+      each token-week is an independent draw, when really there are far fewer
+      "independent observations" than the raw count suggests.
+    </p>
+
+    <p>
+      The standard correction is <strong>cluster-robust standard errors</strong>
+      (CR-SEs), introduced by Liang and Zeger (1986) and routinely used in panel data
+      since Bertrand, Duflo and Mullainathan (2004). They reweight the variance
+      computation to allow arbitrary correlation within each cluster. In our
+      regression, the clusters are tokens — so we report standard errors clustered
+      at the token level. That's the meaning of <code>cluster = ~token_id</code> in
+      the <code>fixest</code> call and of <code>vcov = "cluster"</code> in the
+      <code>did</code> call.
+    </p>
+
+    <p>
+      All good — except CR-SEs have a known asymptotic property: they require the
+      number of clusters to be "large", in some informal sense. The standard rule of
+      thumb is N ≥ 30 clusters. Our N is 7.
+    </p>
+
+    <h2>What goes wrong at N=7</h2>
+
+    <p>
+      Cameron and Miller (2015) is the canonical practitioner's guide to this problem.
+      They identify three things that go wrong with conventional CR-SEs when N is small:
+    </p>
+
+    <ol>
+      <li>
+        <strong>Downward bias.</strong> The estimator $\hat V_{\text{CR}}$ tends to
+        underestimate the true variance, by a factor that depends on N and on the
+        balance of the panel. With N=7 the bias can easily be 20–40%.
+      </li>
+      <li>
+        <strong>Wrong-shape sampling distribution.</strong> The standard t-test assumes
+        the test statistic follows a $t$ distribution with N-1 degrees of freedom.
+        With N=7, this is $t_6$ — a distribution with very fat tails. p-values computed
+        from a standard normal (or even from $t_6$) reject the null too often.
+      </li>
+      <li>
+        <strong>Sensitivity to outlier clusters.</strong> If one of the 7 clusters has
+        an unusually large or small residual, the CR-SE jumps. With more clusters,
+        outlier effects average out. With 7, they don't.
+      </li>
+    </ol>
+
+    <p>
+      The practical consequence: a study with N=7 that reports a 95% confidence interval
+      using conventional CR-SEs is probably reporting something more like an 80% interval
+      in reality. Type I error rates can be 15–25% rather than the nominal 5%.
+    </p>
+
+    

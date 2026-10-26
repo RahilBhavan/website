@@ -22,6 +22,7 @@ const socialImageURL = new URL(ogImage ?? '/og/home.png', baseURL);
 const nav = [
   { href: '/projects', label: 'Projects' },
   { href: '/writing', label: 'Writing' },
+  { href: '/textbooks', label: 'Textbooks' },
   { href: '/about', label: 'About' },
 ];
 const path = Astro.url.pathname;
@@ -376,7 +377,8 @@ const path = Astro.url.pathname;
 
   .site-nav {
     display: flex;
-    gap: 1.5rem;
+    gap: .5rem 1.25rem;
+    flex-wrap: wrap;
   }
 
   .site-nav a {

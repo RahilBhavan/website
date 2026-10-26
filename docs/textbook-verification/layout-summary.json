@@ -1,0 +1,290 @@
+[
+  {
+    "slug": "strategy",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "tokenization",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ctrm",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "riscv",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cortex-m",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ssrd",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "stablecoins",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "mev",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "rwa-regression",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ib27",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cuda",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "strategy-bitcoin",
+    "width": 1280,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "strategy",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "tokenization",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ctrm",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "riscv",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cortex-m",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ssrd",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "stablecoins",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "mev",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "rwa-regression",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ib27",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cuda",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "strategy-bitcoin",
+    "width": 390,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "strategy",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "tokenization",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ctrm",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "riscv",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cortex-m",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ssrd",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "stablecoins",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "mev",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "rwa-regression",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "ib27",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "cuda",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  },
+  {
+    "slug": "strategy-bitcoin",
+    "width": 320,
+    "overflow": 0,
+    "bodyFont": "\"IBM Plex Sans\", sans-serif",
+    "headingFont": "Anton, sans-serif",
+    "errors": []
+  }
+]

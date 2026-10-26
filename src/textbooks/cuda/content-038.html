@@ -1,0 +1,268 @@
+<h3 class="atomic-title">Atomic Doesn't Mean Ordered</h3>
+                <span class="atomic-tag">atomics · ordering</span>
+            </div>
+            <div class="atomic-body">
+                <p><code>atomicAdd</code> on a global address is atomic w.r.t. other atomics on the same address, but offers no ordering relative to other reads/writes. To enforce a "I wrote X, now signal flag" pattern across blocks, you need <code>__threadfence_system()</code> (or PTX <code>fence.sc.gpu</code>) between the write and the flag set. Forgetting this produces a race only visible under high load when the scheduler interleaves blocks aggressively.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Builds on</span><a class="rel-chip rel-builds" href="#sec-2-9">§2.9 Sync</a></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-17-4">
+        <h2 class="section-title"><span class="sec-num">17.4</span>Numerical Validation</h2>
+        <p class="section-subtitle">The harness you keep next to every kernel</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 17.4-A: Tolerance-based validation">// Compute relative and absolute error vs a reference (CPU or higher precision).
+double validate(const float* test, const float* ref, int N,
+                double rtol = 1e-3, double atol = 1e-5) {
+    double max_rel = 0, max_abs = 0;
+    int    n_fail  = 0;
+    for (int i = 0; i &lt; N; ++i) {
+        double a = std::abs((double)test[i] - (double)ref[i]);
+        double r = a / (std::abs((double)ref[i]) + 1e-30);
+        max_abs = std::max(max_abs, a);
+        max_rel = std::max(max_rel, r);
+        if (a &gt; atol &amp;&amp; r &gt; rtol) ++n_fail;
+    }
+    printf("max_abs=%e  max_rel=%e  fails=%d/%d\n", max_abs, max_rel, n_fail, N);
+    return max_rel;
+}
+</pre>
+
+        <div class="callout warn">
+            <div class="callout-label">Set tolerances honestly</div>
+            <p>For an FP16 Tensor-Core GEMM with FP32 accumulator, expect <code>rtol ≈ 1e-3</code>. For FP32 throughout, <code>rtol ≈ 1e-5</code>. For BF16, <code>rtol ≈ 1e-2</code>. If your test passes only at <code>rtol = 1e-1</code>, you have a bug, not a precision limit.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-17-5">
+        <h2 class="section-title"><span class="sec-num">17.5</span>Printf, Asserts, &amp; Trap</h2>
+        <p class="section-subtitle">The lo-fi diagnostics that still work</p>
+
+        <div class="atomic" id="A17.5.1-printf">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.5.1]</span>
+                <h3 class="atomic-title">Device-Side printf</h3>
+                <span class="atomic-tag">printf</span>
+            </div>
+            <div class="atomic-body">
+                <p>Device <code>printf</code> writes into a per-context circular buffer and flushes at kernel exit or on <code>cudaDeviceSynchronize</code>. Each call from each thread serializes onto a hardware FIFO — printing from all 32 lanes of a warp will reorder and may drop messages if the buffer overflows. Use the gating pattern:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:8px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+if (blockIdx.x == 0 &amp;&amp; threadIdx.x == 0) {
+    printf("acc[0,0] = %f\n", acc);
+}
+                </pre>
+                <p>Grow the buffer with <code>cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 16 &lt;&lt; 20)</code> if you're losing output.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A17.5.2-assert">
+            <div class="atomic-head">
+                <span class="atomic-id">[A17.5.2]</span>
+                <h3 class="atomic-title"><code>assert()</code> in Device Code</h3>
+                <span class="atomic-tag">assert</span>
+            </div>
+            <div class="atomic-body">
+                <p>Standard C <code>assert()</code> works on the device. On failure it prints the failed expression with the block/thread index and traps the launch — the next <code>cudaDeviceSynchronize</code> returns <code>cudaErrorAssert</code>. Cheap insurance for invariants like "K is a multiple of 16" deep inside a kernel.</p>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 17</div>
+            <div class="checkpoint-sub">Correctness habits</div>
+            <ul>
+                <li>Name and describe each <code>compute-sanitizer</code> tool.</li>
+                <li>Sketch the cuda-gdb commands to focus on a specific (block, thread) pair.</li>
+                <li>Explain why atomic ≠ ordered.</li>
+                <li>Pick realistic <code>rtol</code>/<code>atol</code> for FP16/BF16/FP32 kernels.</li>
+                <li>Show the gating pattern for device-side printf.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-16"><span class="label">← Previous</span>Triton &amp; CUTLASS</a>
+            <a href="#chapter-18" class="next"><span class="label">Next →</span>Performance Methodology</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 18 — PERFORMANCE ENGINEERING METHODOLOGY
+     ===================================================================== -->
+<article class="chapter" id="chapter-18">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">18</div>
+        <div class="chapter-eyebrow">Chapter 18</div>
+        <h1 class="chapter-title">Performance Methodology:<br>The Discipline Behind the Win</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Beating cuBLAS is not about knowing one trick; it is about applying a disciplined loop of measurement, hypothesis, intervention, and re-measurement. This chapter codifies that loop so you can apply it to <em>any</em> kernel, not just GEMM. You will learn the SOL (speed-of-light) analysis Nsight Compute exposes, how to bound expected performance from first principles, how to set up an autotuner, and how to recognize and avoid the dead-ends every new kernel engineer falls into.</p>
+    </header>
+
+    <section class="section" id="sec-18-1">
+        <h2 class="section-title"><span class="sec-num">18.1</span>The Optimization Loop</h2>
+        <p class="section-subtitle">Five steps, in this order, always</p>
+
+        <div class="atomic" id="A18.1.1-loop">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.1.1]</span>
+                <h3 class="atomic-title">Measure → Bound → Hypothesize → Change One Thing → Measure Again</h3>
+                <span class="atomic-tag">methodology</span>
+            </div>
+            <div class="atomic-body">
+                <ol>
+                    <li><strong>Measure</strong> — collect Nsight Compute counters with <code>--set full</code>. Read SOL %, achieved occupancy, memory throughput.</li>
+                    <li><strong>Bound</strong> — compute the theoretical best for this shape (roofline) and the realistic best (SOL minus known taxes).</li>
+                    <li><strong>Hypothesize</strong> — name the single bottleneck (memory BW, MMA throughput, occupancy, launch overhead, branch divergence).</li>
+                    <li><strong>Change one thing</strong> — adjust tile size <em>or</em> swizzle <em>or</em> pipeline depth. Never two at once.</li>
+                    <li><strong>Re-measure</strong> — if the bottleneck moved, repeat; if it didn't, your hypothesis was wrong.</li>
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-18-2">
+        <h2 class="section-title"><span class="sec-num">18.2</span>SOL &amp; OAE Analysis</h2>
+        <p class="section-subtitle">Two numbers Nsight Compute computes for you</p>
+
+        <div class="atomic" id="A18.2.1-sol">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.2.1]</span>
+                <h3 class="atomic-title">Speed-of-Light Percentages</h3>
+                <span class="atomic-tag">sol</span>
+            </div>
+            <div class="atomic-body">
+                <p>Nsight Compute reports SOL for compute, memory, and L2 throughput. They are percentages of the architectural peak achieved by your kernel <em>over the time it actually ran</em>. Interpretation:</p>
+                <ul>
+                    <li>SOL Memory &gt; 80% → kernel is memory-bound at near-peak. Move math closer to the data or change algorithm.</li>
+                    <li>SOL Compute &gt; 80% → kernel is compute-bound at near-peak. Pick a better instruction (Tensor Core, FMA, sparse).</li>
+                    <li>Both &lt; 40% → you are stalled on something else (latency, scheduler, occupancy). Look at warp-state statistics.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="atomic" id="A18.2.2-oae">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.2.2]</span>
+                <h3 class="atomic-title">OAE — Occupancy-Adjusted Efficiency</h3>
+                <span class="atomic-tag">oae</span>
+            </div>
+            <div class="atomic-body">
+                <p>A kernel at 25% occupancy can still hit 80% SOL if it issues enough instruction-level parallelism per thread. OAE = SOL / (theoretical occupancy / 100). High OAE despite low occupancy means your kernel is doing ILP well; you don't need more threads. Low OAE despite high occupancy means each thread is stalled and adding more threads is the wrong answer.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-18-3">
+        <h2 class="section-title"><span class="sec-num">18.3</span>Autotuning Frameworks</h2>
+        <p class="section-subtitle">Let the search find the tile size</p>
+
+        <div class="atomic" id="A18.3.1-autotune">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.3.1]</span>
+                <h3 class="atomic-title">Search Spaces You Will Define</h3>
+                <span class="atomic-tag">autotuning</span>
+            </div>
+            <div class="atomic-body">
+                <p>Almost every GPU kernel has 4–10 knobs that interact non-linearly. Hand-picking the right combination is impractical. Express them as a Cartesian product, prune known-bad combos, evaluate the rest:</p>
+                <ul>
+                    <li>Threadblock tile <code>(BM, BN, BK)</code> — typically 8–24 valid combos.</li>
+                    <li>Warp tile <code>(WM, WN)</code> — 2–6 valid sub-divisions.</li>
+                    <li>Pipeline stages — 2, 3, 4.</li>
+                    <li>Vectorization (128-bit vs 64-bit loads).</li>
+                    <li>Split-K factor (1, 2, 4, 8).</li>
+                </ul>
+                <p>Tools: Triton's <code>@triton.autotune</code>, CUTLASS Profiler, NVIDIA Kernel Generator, OpenAI's <code>kbench</code>. All produce a JSON or YAML pick-list keyed by problem size.</p>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 18.3-A: Triton autotune annotation">@triton.autotune(
+    configs=[
+        triton.Config({'BM': 128, 'BN': 128, 'BK': 32}, num_warps=4, num_stages=3),
+        triton.Config({'BM': 128, 'BN': 256, 'BK': 32}, num_warps=8, num_stages=3),
+        triton.Config({'BM':  64, 'BN':  64, 'BK': 32}, num_warps=2, num_stages=4),
+        triton.Config({'BM': 128, 'BN': 128, 'BK': 64}, num_warps=4, num_stages=2),
+        triton.Config({'BM': 256, 'BN': 128, 'BK': 32}, num_warps=8, num_stages=3),
+    ],
+    key=['M', 'N', 'K'],   # Re-tune when these change.
+)
+@triton.jit
+def gemm_kernel(...): ...
+</pre>
+    </section>
+
+    <section class="section" id="sec-18-4">
+        <h2 class="section-title"><span class="sec-num">18.4</span>Sensitivity Analysis</h2>
+        <p class="section-subtitle">Find out which knobs actually matter</p>
+
+        <div class="atomic" id="A18.4.1-sensitivity">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.4.1]</span>
+                <h3 class="atomic-title">Local Perturbations</h3>
+                <span class="atomic-tag">sensitivity</span>
+            </div>
+            <div class="atomic-body">
+                <p>Pick a best-known config. For each knob, perturb by ±1 step and re-measure. The knobs whose perturbations change runtime by &gt; 5% are your <em>load-bearing</em> knobs; the rest are noise. Future tuning effort should concentrate on the load-bearing ones.</p>
+                <p>This protects you from over-tuning a flat region of the search space and helps explain to teammates which choices matter.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-18-5">
+        <h2 class="section-title"><span class="sec-num">18.5</span>Recording &amp; Reproducing Wins</h2>
+        <p class="section-subtitle">Lab notebook discipline</p>
+
+        <div class="atomic" id="A18.5.1-lab-notebook">
+            <div class="atomic-head">
+                <span class="atomic-id">[A18.5.1]</span>
+                <h3 class="atomic-title">The Per-Experiment Card</h3>
+                <span class="atomic-tag">documentation</span>
+            </div>
+            <div class="atomic-body">
+                <p>Every experiment leaves a card with:</p>
+                <ul>
+                    <li>Date, git SHA, driver version, GPU model.</li>
+                    <li>Exact kernel parameters and tile sizes.</li>
+                    <li>Compile flags (<code>nvcc -V</code>, <code>--ptxas-options</code>).</li>
+                    <li>Locked clocks (<code>nvidia-smi -lgc</code>) and locked power.</li>
+                    <li>Median + 95% CI over ≥ 100 launches, with warmup discarded.</li>
+                    <li>Nsight Compute report file (.ncu-rep).</li>
+                </ul>
+                <p>This is how you defend a published "I beat cuBLAS by 12%" claim against the inevitable skeptic.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Used by</span><a class="rel-chip rel-usedby" href="#sec-5-4">§5.4 Benchmark protocol</a></div>
+            </div>
+        </div>
+
+        <div class="checkpoint">
+            <div class="checkpoint-header">Checkpoint 18</div>
+            <div class="checkpoint-sub">The methodology, internalized</div>
+            <ul>
+                <li>State the five steps of the optimization loop.</li>
+                <li>Define SOL and OAE in one sentence each.</li>
+                <li>Sketch a Triton autotune config and a sensitivity-analysis plan.</li>
+                <li>List every field on a "good" experiment card.</li>
+            </ul>
+        </div>
+
+        <nav class="chapter-nav">
+            <a href="#chapter-17"><span class="label">← Previous</span>Debugging &amp; Correctness</a>
+            <a href="#chapter-19" class="next"><span class="label">Next →</span>Hopper &amp; Blackwell</a>
+        </nav>
+    </section>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 19 — HOPPER & BLACKWELL ARCHITECTURES
+     ===================================================================== -->
+<article class="chapter" id="chapter-19">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">19</div>
+        <div class="chapter-eyebrow">Chapter 19</div>
+        <h1 class="chapter-title">Hopper &amp; Blackwell:<br>The Next Two Architectures Demystified</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Ampere is the focus of this book, but every concept you've learned has a Hopper analogue that delivers 2–3× more throughput when wielded correctly. This chapter is the reference layer for H100 and H200 (Hopper) and the early-look layer for B100/B200 (Blackwell): TMA descriptors, wgmma warp-group MMA, thread-block clusters with DSMEM, the Transformer Engine, and the FP4 instructions that change everything for low-precision inference.</p>
+    </header>
+
+    <section class="section" id="sec-19-1">
+        

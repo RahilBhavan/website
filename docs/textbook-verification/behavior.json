@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Library: combined filters, zero results and reset",
+    "passed": true
+  },
+  {
+    "name": "Strategy: sub-1x mNAV disables common issuance and gives 3.1 years",
+    "passed": true
+  },
+  {
+    "name": "Tokenization: dilution is 9.17% at the default inputs; notes persist",
+    "passed": true
+  },
+  {
+    "name": "CTRM: default purchase MTM +220,462.00; invalid quantity rejected",
+    "passed": true
+  },
+  {
+    "name": "RISC-V: load-use cycle 4 holds the front end and inserts a bubble",
+    "passed": true
+  },
+  {
+    "name": "Cortex-M: quiz handles a wrong answer and counts a correct answer once",
+    "passed": true
+  },
+  {
+    "name": "SSRD: common contents switches the visible chapter and MinHash frame loads",
+    "passed": true
+  },
+  {
+    "name": "Stablecoins: contents search, native links and disclosures",
+    "passed": true
+  },
+  {
+    "name": "MEV: mechanism stepper advances with visible text feedback",
+    "passed": true
+  },
+  {
+    "name": "RWA: restored difference-in-differences interaction gives 1.80 then 2.80",
+    "passed": true
+  },
+  {
+    "name": "IB27: complete chapter text, rendered math and no private home path",
+    "passed": true
+  },
+  {
+    "name": "CUDA: unit-labeled tables replace small bar charts; occupancy responds",
+    "passed": true
+  },
+  {
+    "name": "Strategy companion: contents opens a hidden part and toy price proxy reconciles",
+    "passed": true
+  }
+]

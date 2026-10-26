@@ -1,0 +1,230 @@
+<section class="section" id="sec-10-3">
+        <h2 class="section-title"><span class="sec-num">10.3</span>SASS — The Real Machine Code</h2>
+        <p class="section-subtitle">PTX is a virtual ISA. SASS is what the SM actually executes.</p>
+
+        <div class="cluster"><strong>Cluster.</strong> PTX is portable — one binary covers many GPUs, and the driver JIT-compiles to SASS at load time. But the same PTX can yield different SASS on different architectures. When you need to understand "why is my kernel slow on this card and fast on that one," SASS is the answer.</div>
+
+        <div class="atomic" id="A10.3.1-sass-basics">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.3.1]</span>
+                <h3 class="atomic-title">SASS Instruction Anatomy</h3>
+                <span class="atomic-tag">SASS · decoding</span>
+            </div>
+            <div class="atomic-body">
+                <p>A SASS instruction has four parts:</p>
+                <ol>
+                    <li><strong>Predicate guard</strong> (e.g. <code>@P0</code>) — runs only if the predicate register is true. Replaces small if/else with branchless predication.</li>
+                    <li><strong>Mnemonic + modifiers</strong> (e.g. <code>FFMA.FTZ</code>, <code>LDG.E.128</code>) — operation plus encoding hints (flush-to-zero, vector width, cache policy).</li>
+                    <li><strong>Operands</strong> — registers (<code>R12</code>), uniform registers (<code>UR0</code> on Volta+), memory operands (<code>[R0+0x40]</code>), immediates.</li>
+                    <li><strong>Scoreboard / yield bits</strong> (sm_70+) — control how the warp scheduler tracks dependencies; visible only in the raw control-code section.</li>
+                </ol>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="bash" data-title="Listing 10.3-A: cuobjdump and nvdisasm"># Show the cubin sections embedded in your executable
+cuobjdump ./my_program
+
+# Extract SASS for a specific arch (everything readable on stdout)
+cuobjdump --dump-sass ./my_program
+
+# Or compile -&gt; cubin -&gt; disasm in one shot
+nvcc -arch=sm_80 -cubin kernel.cu -o kernel.cubin
+nvdisasm --print-line-info kernel.cubin  # correlates SASS lines with .cu source lines
+
+# Decode SASS control codes (sm_70+) — yield/reuse/stall bits
+nvdisasm --print-instruction-encoding kernel.cubin
+
+# Show PTX, then SASS, then both with source interleaved
+cuobjdump --dump-ptx ./my_program
+cuobjdump --dump-sass --gpu-architecture=sm_80 ./my_program
+</pre>
+
+        <div class="atomic" id="A10.3.2-sass-keys">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.3.2]</span>
+                <h3 class="atomic-title">SASS Instructions You'll See Every Day</h3>
+                <span class="atomic-tag">reference</span>
+            </div>
+            <div class="atomic-body">
+                <div class="table-wrap"><table>
+                    <thead><tr><th>SASS</th><th>Meaning</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>FFMA</code></td><td>Fused multiply-add (FP32)</td><td>Workhorse of every GEMM. 1 cycle issue.</td></tr>
+                        <tr><td><code>HFMA2</code></td><td>Half2 FMA</td><td>FP16x2 SIMD.</td></tr>
+                        <tr><td><code>LDG</code></td><td>Load from global</td><td>Modifiers: <code>.E</code> (extended addr), <code>.128</code> (vector), <code>.SYS</code>/<code>.STRONG</code> (coherence).</td></tr>
+                        <tr><td><code>STG</code></td><td>Store to global</td><td>Same modifier set as LDG.</td></tr>
+                        <tr><td><code>LDS</code> / <code>STS</code></td><td>Load/store shared</td><td>Bank-conflict source.</td></tr>
+                        <tr><td><code>LDSM</code></td><td>Load matrix from shared</td><td>Feeds Tensor Cores. <code>.x1</code>, <code>.x2</code>, <code>.x4</code> width.</td></tr>
+                        <tr><td><code>HMMA</code> / <code>IMMA</code></td><td>Tensor-Core MMA</td><td>FP16/BF16 or INT8. Volta/Turing/Ampere.</td></tr>
+                        <tr><td><code>BMMA</code></td><td>Binary MMA</td><td>1-bit XOR-popcount.</td></tr>
+                        <tr><td><code>QSPC</code> / <code>QMOV</code></td><td>Async-copy support</td><td>Backs <code>cp.async</code>.</td></tr>
+                        <tr><td><code>BAR.SYNC</code></td><td>Block barrier</td><td>From <code>__syncthreads()</code>.</td></tr>
+                        <tr><td><code>BSSY</code> / <code>BRA</code> / <code>BSYNC</code></td><td>Convergence barriers</td><td>SM_70+ divergence model.</td></tr>
+                        <tr><td><code>EXIT</code></td><td>Thread exits</td><td>Last instruction in every kernel.</td></tr>
+                    </tbody>
+                </table></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-10-4">
+        <h2 class="section-title"><span class="sec-num">10.4</span>NVRTC — JIT Compiling at Runtime</h2>
+        <p class="section-subtitle">When the kernel doesn't exist until your data does</p>
+
+        <div class="atomic" id="A10.4.1-nvrtc">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.4.1]</span>
+                <h3 class="atomic-title">Why JIT a CUDA Kernel</h3>
+                <span class="atomic-tag">NVRTC · jit</span>
+            </div>
+            <div class="atomic-body">
+                <p>NVRTC is a libcuda subsystem that compiles a CUDA C++ source string to PTX at runtime, which the driver then loads. Use cases:</p>
+                <ul>
+                    <li><strong>Shape specialization</strong> — bake matrix dimensions into the kernel as compile-time constants for full unrolling. Most Triton-backed engines (vLLM, TensorRT-LLM) do this.</li>
+                    <li><strong>Fusion engines</strong> — assemble an epilogue (bias add + activation) at run-time based on user input.</li>
+                    <li><strong>Plugin systems</strong> — let end users supply custom ops without recompiling the entire library.</li>
+                </ul>
+                <p>The compile cost is usually tens of milliseconds, so cache the produced PTX/cubin keyed by the source hash and arch.</p>
+            </div>
+            <div class="atomic-rel">
+                <div class="rel-row"><span class="rel-label">Related</span><a class="rel-chip rel-related" href="#chapter-16">Ch 16 Triton/CUTLASS</a></div>
+            </div>
+        </div>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 10.4-A: Minimum-viable NVRTC compile + launch">#include &lt;nvrtc.h&gt;
+#include &lt;cuda.h&gt;
+#include &lt;iostream&gt;
+
+const char* src = R"(
+extern "C" __global__ void axpy(float a, float* x, float* y, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n) y[i] = a * x[i] + y[i];
+})";
+
+int main() {
+    nvrtcProgram prog;
+    nvrtcCreateProgram(&amp;prog, src, "axpy.cu", 0, nullptr, nullptr);
+    const char* opts[] = { "--gpu-architecture=compute_80", "--use_fast_math" };
+    nvrtcCompileProgram(prog, 2, opts);
+
+    size_t ptxSize; nvrtcGetPTXSize(prog, &amp;ptxSize);
+    std::string ptx(ptxSize, '\0'); nvrtcGetPTX(prog, ptx.data());
+    nvrtcDestroyProgram(&amp;prog);
+
+    CUmodule mod; cuModuleLoadData(&amp;mod, ptx.data());
+    CUfunction fn; cuModuleGetFunction(&amp;fn, mod, "axpy");
+    // launch as usual with cuLaunchKernel...
+}
+</pre>
+
+        <div class="callout warn">
+            <div class="callout-label">Caveat</div>
+            <p>NVRTC has <em>no access to your host headers</em>. You must include any CUDA headers the kernel references as additional strings, or rely on what NVRTC bundles. Common gotcha: <code>&lt;cuda_fp16.h&gt;</code> works; <code>&lt;cooperative_groups.h&gt;</code> needs extra plumbing.</p>
+        </div>
+    </section>
+
+    <section class="section" id="sec-10-5">
+        <h2 class="section-title"><span class="sec-num">10.5</span>The CUDA ABI &amp; Separate Compilation</h2>
+        <p class="section-subtitle">How <code>__device__</code> functions cross translation-unit boundaries</p>
+
+        <div class="atomic" id="A10.5.1-rdc">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.5.1]</span>
+                <h3 class="atomic-title">Relocatable Device Code (<code>-rdc=true</code>)</h3>
+                <span class="atomic-tag">linking</span>
+            </div>
+            <div class="atomic-body">
+                <p>By default <code>nvcc</code> compiles each <code>.cu</code> in <em>whole-program</em> mode: every device function must be visible (and inlinable) at the same translation unit as the kernel that calls it. With <code>-rdc=true</code> the device code is emitted as a relocatable cubin and a separate <code>nvlink</code> stage resolves cross-TU symbols, exactly like the host linker. Required for:</p>
+                <ul>
+                    <li>Calling a <code>__device__</code> function defined in a different <code>.cu</code>.</li>
+                    <li>Using <strong>dynamic parallelism</strong> (a kernel that launches another kernel) — that needs <code>-rdc=true -lcudadevrt</code>.</li>
+                    <li>Linking against CUTLASS templates split across multiple files.</li>
+                </ul>
+                <p>Costs: ~20% larger binaries, missed inlining (~5–10% perf on hot inner loops), and slower link times. Profile before assuming you need it.</p>
+            </div>
+        </div>
+
+        <div class="atomic" id="A10.5.2-symbols">
+            <div class="atomic-head">
+                <span class="atomic-id">[A10.5.2]</span>
+                <h3 class="atomic-title">Name Mangling and <code>cu++filt</code></h3>
+                <span class="atomic-tag">debugging</span>
+            </div>
+            <div class="atomic-body">
+                <p>CUDA mangles device symbols using the Itanium C++ ABI plus a <code>_Z…</code>-style scheme for templates. Read them with <code>cu++filt</code>:</p>
+                <pre style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); background:var(--bg-code); padding:10px; border-radius:4px; border:1px solid var(--border-subtle); overflow-x:auto;">
+$ cuobjdump --dump-elf-symbols ./prog | grep gemm
+_Z11gemm_kernelILi128ELi128ELi32EEvPKfS1_Pfiii
+
+$ cu++filt _Z11gemm_kernelILi128ELi128ELi32EEvPKfS1_Pfiii
+void gemm_kernel&lt;128, 128, 32&gt;(float const*, float const*, float*, int, int, int)
+                </pre>
+                <p>Use this whenever Nsight Compute shows mangled names. Profile reports become readable.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="sec-10-6">
+        <h2 class="section-title"><span class="sec-num">10.6</span>Compile-Time Tooling Cheat Sheet</h2>
+        <p class="section-subtitle">Every flag you should know, in one screen</p>
+
+        <div class="table-wrap"><table>
+            <thead><tr><th>Flag</th><th>What it does</th><th>When to reach for it</th></tr></thead>
+            <tbody>
+                <tr><td><code>-arch=sm_80</code></td><td>Target compute capability</td><td>Always. Pin to your hardware to avoid JIT cost.</td></tr>
+                <tr><td><code>-gencode arch=compute_80,code=sm_80</code></td><td>Fat binary entry</td><td>Multi-GPU deploys. Add one per arch.</td></tr>
+                <tr><td><code>-Xptxas -v</code></td><td>Verbose ptxas (regs, smem, spills)</td><td>Every optimization step.</td></tr>
+                <tr><td><code>-Xptxas -O3</code></td><td>Aggressive ptxas opt</td><td>Default. Lower to debug compiler bugs.</td></tr>
+                <tr><td><code>-Xcompiler "-fopenmp"</code></td><td>Pass flag to host compiler</td><td>When host code needs OpenMP, sanitizers, etc.</td></tr>
+                <tr><td><code>-G</code></td><td>Generate device debug info (NO opt)</td><td>cuda-gdb only. Will tank perf.</td></tr>
+                <tr><td><code>-lineinfo</code></td><td>Source line correlation, full opt</td><td>Profiling. Always use for Nsight Compute.</td></tr>
+                <tr><td><code>-use_fast_math</code></td><td>Approx math, FTZ, fast div</td><td>When you accept the numerical hit.</td></tr>
+                <tr><td><code>-prec-div=false -prec-sqrt=false</code></td><td>Fine-grained fast math</td><td>Per-knob control vs blanket fast-math.</td></tr>
+                <tr><td><code>-maxrregcount=N</code></td><td>Hard register cap</td><td>Force occupancy. Better: use launch_bounds.</td></tr>
+                <tr><td><code>--ptxas-options=--warn-on-spills</code></td><td>Surface spills as warnings</td><td>CI gates.</td></tr>
+                <tr><td><code>-rdc=true</code></td><td>Relocatable device code</td><td>Cross-TU device calls or dynamic parallelism.</td></tr>
+                <tr><td><code>--expt-relaxed-constexpr</code></td><td>Allow host constexpr in device code</td><td>Header-only libraries (CUTLASS, Thrust).</td></tr>
+                <tr><td><code>--extended-lambda</code></td><td>Device-side lambdas with capture</td><td>Thrust / Cub algorithms.</td></tr>
+                <tr><td><code>-Werror cross-execution-space-call</code></td><td>Catch host-from-device misuse</td><td>Production builds.</td></tr>
+            </tbody>
+        </table></div>
+    </section>
+
+    <div class="checkpoint">
+        <div class="checkpoint-header">Checkpoint 10</div>
+        <div class="checkpoint-sub">Can you do each of these from memory?</div>
+        <ul>
+            <li>Name every binary on the <code>nvcc</code> pipeline and what it consumes/emits.</li>
+            <li>Read a <code>-Xptxas -v</code> line and compute the resulting theoretical occupancy.</li>
+            <li>Disassemble a cubin to SASS and identify the inner loop's FFMA/LDG/STG sequence.</li>
+            <li>Explain when you'd use NVRTC instead of static compilation.</li>
+            <li>Decide whether <code>-rdc=true</code> is required for a given codebase.</li>
+            <li>Demangle a SASS symbol with <code>cu++filt</code>.</li>
+        </ul>
+    </div>
+
+    <nav class="chapter-nav">
+        <a href="#chapter-9"><span class="label">← Previous</span>Knowledge Graph</a>
+        <a href="#chapter-11" class="next"><span class="label">Next →</span>Advanced Memory Systems</a>
+    </nav>
+</article>
+
+<!-- =====================================================================
+     CHAPTER 11 — ADVANCED MEMORY SYSTEMS
+     ===================================================================== -->
+<article class="chapter" id="chapter-11">
+    <header class="chapter-header">
+        <div class="chapter-num-bg">11</div>
+        <div class="chapter-eyebrow">Chapter 11</div>
+        <h1 class="chapter-title">Advanced Memory:<br>Banks, Swizzles, Caches, &amp; the Wires</h1>
+        <p class="chapter-goal"><strong>Learning goal.</strong> Chapter 1 introduced the memory hierarchy as a layered diagram. This chapter walks down every layer with a microscope: how the 32 shared-memory banks <em>actually</em> arbitrate accesses, why XOR swizzles eliminate bank conflicts in Tensor-Core kernels, how to set L2 cache persistence policies for repeated reads, the physical structure of HBM2e/HBM3 versus GDDR6X, when pinned vs unified vs stream-ordered allocators matter, and how Hopper's TMA box-copies an entire tile asynchronously. By the end you will never again be surprised by a memory metric.</p>
+    </header>
+
+    <section class="section" id="sec-11-1">
+        <h2 class="section-title"><span class="sec-num">11.1</span>Shared-Memory Banks — The Real Picture</h2>
+        <p class="section-subtitle">32 banks, 4-byte words, one warp request — what arbitration looks like</p>
+
+        <div class="atomic" id="A11.1.1-banks">
+            <div class="atomic-head">
+                <span class="atomic-id">[A11.1.1]</span>
+                

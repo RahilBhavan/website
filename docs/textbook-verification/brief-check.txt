@@ -1,0 +1,10 @@
+cuda-hardware-modes: PASS
+  WARN*: title shares no number or quantifier with the point; does it state the point or name a topic?  [accepted: The mode table is a lookup of explicitly separated units, not a claim of comparable magnitudes.]
+  WARN*: smallest label renders at 14px; check it opened on a phone  [accepted: This is selectable browser text with 14px cells, horizontal scroll and browser zoom, inspected at 390px; it is not an unopened social raster.]
+  WARN*: the point renders at 16px; it may not read in the feed unopened  [accepted: The container is a live textbook, not an unopened social image. The caption remains selectable and zoomable.]
+  WARN*: five-second test was an agent self-test; a real reader is better  [accepted: The reviewer is explicitly the agent. Human comprehension was not measured.]
+cuda-optimization: PASS
+  WARN*: smallest label renders at 14px; check it opened on a phone  [accepted: This is selectable browser text with 14px cells, horizontal scroll and browser zoom, inspected at 390px; it is not an unopened social raster.]
+  WARN*: the point renders at 16px; it may not read in the feed unopened  [accepted: The container is a live textbook, not an unopened social image. The caption remains selectable and zoomable.]
+  WARN*: five-second test was an agent self-test; a real reader is better  [accepted: The reviewer is explicitly the agent. Human comprehension was not measured.]
+RESULT: PASS

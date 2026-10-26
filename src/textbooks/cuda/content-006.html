@@ -1,0 +1,184 @@
+<h3>Matrix multiply: the canonical parallel workload</h3>
+        <p>Consider the operation at the heart of nearly every modern neural network and scientific computing kernel:</p>
+
+        <div class="formula">C<span class="op">[</span>i<span class="op">,</span>j<span class="op">]</span> <span class="op">=</span> <span class="op">&Sigma;</span><sub>k</sub> A<span class="op">[</span>i<span class="op">,</span>k<span class="op">]</span> <span class="op">&middot;</span> B<span class="op">[</span>k<span class="op">,</span>j<span class="op">]</span>     for all i, j</div>
+
+        <p>Every output element <code>C[i,j]</code> is computed from a row of <code>A</code> and a column of <code>B</code>, completely independently of every other output element. For an <span class="inline-code">M&times;N</span> output matrix, that is <code>M&middot;N</code> independent dot products. There is no data dependency between them. They could all run at once if the hardware existed. <strong>That is the entire reason GPUs exist</strong> — they are the hardware that exists.</p>
+
+        <div class="figure">
+            <div class="figure-label">Figure 1.1 — Interactive</div>
+            <div class="figure-title">CPU vs GPU: How the silicon is spent</div>
+            <svg viewBox="0 0 720 280" id="fig-cpu-gpu" role="img" aria-label="CPU vs GPU die area comparison">
+                <defs>
+                    <pattern id="alu-grid" width="14" height="14" patternUnits="userSpaceOnUse">
+                        <rect width="14" height="14" fill="#111214" opacity="0.85"/>
+                        <rect width="14" height="14" fill="none" stroke="#f5f5ef" stroke-width="1.5"/>
+                    </pattern>
+                    <pattern id="alu-grid-dense" width="6" height="6" patternUnits="userSpaceOnUse">
+                        <rect width="6" height="6" fill="#111214" opacity="0.85"/>
+                        <rect width="6" height="6" fill="none" stroke="#f5f5ef" stroke-width="0.6"/>
+                    </pattern>
+                </defs>
+
+                <!-- CPU panel -->
+                <g transform="translate(20,30)">
+                    <text x="0" y="-8" fill="#111214" font-family="JetBrains Mono" font-size="13" font-weight="700">CPU · Intel Core i9-class</text>
+                    <text x="0" y="6" fill="#52545a" font-family="JetBrains Mono" font-size="10">latency-optimized · ~80% control+cache</text>
+                    <rect x="0" y="18" width="320" height="220" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <!-- L3 cache (huge) -->
+                    <g class="hov-region" data-tip="L3 Cache: ~30MB shared across cores. Largest single block on the die.">
+                        <rect x="10" y="28" width="300" height="60" fill="#111214" stroke="#111214" stroke-opacity="0.5"/>
+                        <text x="160" y="62" fill="#52545a" font-family="JetBrains Mono" font-size="11" text-anchor="middle">L3 Cache (~30 MB)</text>
+                    </g>
+                    <!-- Cores with L1/L2 + small ALU -->
+                    <g transform="translate(10,96)">
+                        <g class="hov-region" data-tip="Each core: L1+L2 caches and complex control logic dwarf the ALU.">
+                            <rect x="0"   y="0" width="72" height="58" fill="#f5f5ef" stroke="#52545a"/>
+                            <rect x="78"  y="0" width="72" height="58" fill="#f5f5ef" stroke="#52545a"/>
+                            <rect x="156" y="0" width="72" height="58" fill="#f5f5ef" stroke="#52545a"/>
+                            <rect x="234" y="0" width="72" height="58" fill="#f5f5ef" stroke="#52545a"/>
+                        </g>
+                        <g font-family="JetBrains Mono" font-size="8" fill="#52545a">
+                            <text x="36"  y="14" text-anchor="middle">Core</text>
+                            <text x="114" y="14" text-anchor="middle">Core</text>
+                            <text x="192" y="14" text-anchor="middle">Core</text>
+                            <text x="270" y="14" text-anchor="middle">Core</text>
+                        </g>
+                        <!-- tiny ALU per core (green) -->
+                        <rect x="6"   y="22" width="20" height="14" fill="#111214"/>
+                        <rect x="84"  y="22" width="20" height="14" fill="#111214"/>
+                        <rect x="162" y="22" width="20" height="14" fill="#111214"/>
+                        <rect x="240" y="22" width="20" height="14" fill="#111214"/>
+                        <text x="16"  y="33" font-family="JetBrains Mono" font-size="7" fill="#f5f5ef" text-anchor="middle">ALU</text>
+                        <text x="94"  y="33" font-family="JetBrains Mono" font-size="7" fill="#f5f5ef" text-anchor="middle">ALU</text>
+                        <text x="172" y="33" font-family="JetBrains Mono" font-size="7" fill="#f5f5ef" text-anchor="middle">ALU</text>
+                        <text x="250" y="33" font-family="JetBrains Mono" font-size="7" fill="#f5f5ef" text-anchor="middle">ALU</text>
+                        <!-- L1/L2 + control bigger -->
+                        <rect x="28"  y="22" width="42" height="30" fill="#111214"/>
+                        <rect x="106" y="22" width="42" height="30" fill="#111214"/>
+                        <rect x="184" y="22" width="42" height="30" fill="#111214"/>
+                        <rect x="262" y="22" width="42" height="30" fill="#111214"/>
+                        <text x="49"  y="40" font-family="JetBrains Mono" font-size="7" fill="#52545a" text-anchor="middle">L1/L2+CTL</text>
+                        <text x="127" y="40" font-family="JetBrains Mono" font-size="7" fill="#52545a" text-anchor="middle">L1/L2+CTL</text>
+                        <text x="205" y="40" font-family="JetBrains Mono" font-size="7" fill="#52545a" text-anchor="middle">L1/L2+CTL</text>
+                        <text x="283" y="40" font-family="JetBrains Mono" font-size="7" fill="#52545a" text-anchor="middle">L1/L2+CTL</text>
+                    </g>
+                    <g transform="translate(10,168)">
+                        <g class="hov-region" data-tip="Memory controllers, PCIe, ring/mesh interconnect, security/ME.">
+                            <rect x="0" y="0" width="300" height="58" fill="#f5f5ef" stroke="#52545a"/>
+                            <text x="150" y="33" font-family="JetBrains Mono" font-size="10" fill="#52545a" text-anchor="middle">Memory Controllers · PCIe · Mesh · Misc Control</text>
+                        </g>
+                    </g>
+                </g>
+
+                <!-- GPU panel -->
+                <g transform="translate(380,30)">
+                    <text x="0" y="-8" fill="#111214" font-family="JetBrains Mono" font-size="13" font-weight="700">GPU · NVIDIA RTX 3090-class</text>
+                    <text x="0" y="6" fill="#52545a" font-family="JetBrains Mono" font-size="10">throughput-optimized · ~80% arithmetic units</text>
+                    <rect x="0" y="18" width="320" height="220" fill="#f5f5ef" stroke="#111214" stroke-width="1" rx="4"/>
+                    <!-- Tiny cache -->
+                    <g class="hov-region" data-tip="L2 cache on RTX 3090 is only ~6 MB — about 5× smaller than a desktop CPU's L3 despite ~10× the silicon area.">
+                        <rect x="10" y="28" width="300" height="20" fill="#111214" stroke="#111214" stroke-opacity="0.5"/>
+                        <text x="160" y="42" fill="#52545a" font-family="JetBrains Mono" font-size="9" text-anchor="middle">L2 Cache (6 MB)</text>
+                    </g>
+                    <!-- Massive ALU tile (SMs) -->
+                    <g class="hov-region" data-tip="82 Streaming Multiprocessors. Each SM holds 128 CUDA cores plus 4 Tensor Cores. The vast majority of the die.">
+                        <rect x="10" y="54" width="300" height="148" fill="url(#alu-grid-dense)" stroke="#111214" stroke-opacity="0.6"/>
+                        <text x="160" y="134" font-family="JetBrains Mono" font-size="12" fill="#f5f5ef" font-weight="700" text-anchor="middle">82 × Streaming Multiprocessor</text>
+                        <text x="160" y="150" font-family="JetBrains Mono" font-size="10" fill="#f5f5ef" text-anchor="middle">10,496 CUDA cores · 328 Tensor Cores</text>
+                    </g>
+                    <g transform="translate(10,210)">
+                        <rect x="0" y="0" width="300" height="20" fill="#f5f5ef" stroke="#52545a"/>
+                        <text x="150" y="13" font-family="JetBrains Mono" font-size="9" fill="#52545a" text-anchor="middle">Memory controllers · NVENC/NVDEC · PCIe</text>
+                    </g>
+                </g>
+
+                <!-- legend -->
+                <g transform="translate(20,260)" font-family="JetBrains Mono" font-size="10">
+                    <rect x="0" y="0" width="14" height="10" fill="#111214"/>
+                    <text x="20" y="9" fill="#52545a">Arithmetic units (ALU / Tensor Core)</text>
+                    <rect x="260" y="0" width="14" height="10" fill="#111214"/>
+                    <text x="280" y="9" fill="#52545a">Cache</text>
+                    <rect x="380" y="0" width="14" height="10" fill="#f5f5ef"/>
+                    <text x="400" y="9" fill="#52545a">Control / interconnect / fixed-function</text>
+                </g>
+            </svg>
+            <div class="figure-caption">Hover over each region to see what it is. The exact areas are stylized — the figure is meant to convey the budget split, not exact floorplans. Real chip plots are published by NVIDIA and Intel in their architecture whitepapers.</div>
+        </div>
+
+        <h3>The mental model</h3>
+        <p>A CPU is a sports car: fast off the line, narrow, optimized for one driver getting from A to B in record time. A GPU is a freight train: enormous payload per trip, terrible if you need to make a sudden turn, unbeatable if your problem looks like <em>move ten thousand identical things from A to B</em>. Matrix multiply, attention, convolution, n-body simulation, ray-triangle intersection, and most of computer graphics look like that. That is why GPUs run them.</p>
+
+        <pre class="cb" data-lang="cpp" data-title="Listing 1.1-A: CPU sequential matmul vs GPU thread assignment (pseudocode)">// ============================================================
+// CPU: one thread, one big triple nested loop.
+// Wall-clock time scales with M * N * K.
+// ============================================================
+for (int i = 0; i &lt; M; i++) {
+    for (int j = 0; j &lt; N; j++) {
+        float acc = 0.f;
+        for (int k = 0; k &lt; K; k++) {
+            acc += A[i * K + k] * B[k * N + j];
+        }
+        C[i * N + j] = acc;
+    }
+}
+
+// ============================================================
+// GPU: launch M*N threads. Each one computes ONE output element.
+// Wall-clock time scales with K (the inner loop), not M*N*K,
+// because the M*N axis runs in parallel across thousands of cores.
+// ============================================================
+__global__ void gemmKernel(const float* A, const float* B, float* C,
+                           int M, int N, int K) {
+    int i = blockIdx.y * blockDim.y + threadIdx.y;  // row
+    int j = blockIdx.x * blockDim.x + threadIdx.x;  // col
+    if (i &gt;= M || j &gt;= N) return;
+    float acc = 0.f;
+    for (int k = 0; k &lt; K; k++) {
+        acc += A[i * K + k] * B[k * N + j];
+    }
+    C[i * N + j] = acc;
+}
+// Launch: one thread per (i, j) — M*N threads total.
+dim3 block(16, 16);
+dim3 grid((N + 15) / 16, (M + 15) / 16);
+gemmKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(A, B, C, M, N, K);
+</pre>
+
+        <div class="callout tip">
+            <div class="callout-label">Mental model worth keeping</div>
+            <strong>If your problem has an outer loop where every iteration is independent, you have GPU work.</strong> The whole game is identifying that loop, mapping iterations to threads, and feeding the resulting army of threads from memory fast enough to keep them busy.
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 1.2 — THE SM
+         ============================================================ -->
+    <section class="section" id="sec-1-2">
+        <h2 class="section-title"><span class="sec-num">1.2</span>The Streaming Multiprocessor (SM)</h2>
+        <div class="section-subtitle">The actual compute unit you need to understand</div>
+
+        <p>A modern NVIDIA GPU is, in the end, a collection of <strong>Streaming Multiprocessors</strong> (SMs) glued together with a memory system. Every CUDA optimization you will ever do is, ultimately, an attempt to keep the arithmetic units inside an SM busy. So you need to know what is inside one.</p>
+
+        <p>The numbers vary by generation. On the RTX 3090 (Ampere, GA102, compute capability <code>sm_86</code>) there are 82 SMs.<sup>[2]</sup> On the A100 (Ampere, GA100, <code>sm_80</code>) there are 108. On the H100 (Hopper, <code>sm_90</code>) there are 132. The internals of an SM, however, follow a recognizable pattern across generations.</p>
+
+        <h3>Inside an Ampere SM</h3>
+        <p>An Ampere SM is divided into four <strong>processing blocks</strong> (sometimes called <strong>SM sub-partitions</strong>, abbreviated SMSP). Each sub-partition is, for our purposes, a self-contained mini-SM:</p>
+
+        <ul>
+            <li>Its own <strong>warp scheduler</strong> and <strong>dispatch unit</strong>.</li>
+            <li>Its own slice of the SM's register file (16,384 32-bit registers per sub-partition &times; 4 = 65,536 per SM).</li>
+            <li>16 <strong>FP32 CUDA cores</strong> (so 64 per SM) and 16 INT32 ALUs that can co-issue with the FP32 units on Ampere &mdash; this is why the GA10x marketing material counts 128 "CUDA cores" per SM (the FP32-capable lanes including the dual-purpose ones).</li>
+            <li>One <strong>third-generation Tensor Core</strong> &mdash; so 4 per SM. Each can do a fairly large matrix multiply-accumulate per clock.</li>
+            <li>4 <strong>Special Function Units</strong> (SFUs) for transcendentals (<code>sin</code>, <code>cos</code>, <code>rcp</code>, <code>rsqrt</code>).</li>
+            <li>8 <strong>load/store units</strong>.</li>
+        </ul>
+
+        <p>Above the four sub-partitions, the entire SM shares:</p>
+        <ul>
+            <li><strong>128 KB of combined L1 cache and shared memory</strong>, split configurably (e.g. 32 KB L1 / 96 KB shared, or other ratios up to a maximum shared-memory allotment per block defined by the architecture).</li>
+            <li>A <strong>texture/L1 unit</strong> (<code>l1tex</code> in Nsight Compute) handling global-memory loads, texture, and shared-memory traffic.</li>
+            <li>A constant cache.</li>
+        </ul>
+
+        

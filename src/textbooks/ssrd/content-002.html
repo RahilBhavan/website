@@ -1,0 +1,119 @@
+<h2 id="ch3-h">Which new names are worth a visit?</h2>
+  <p class="lede">The logs carry over a thousand new registrable names a minute. The fetcher manages about four. The name filter decides which ones get a visit, so it sets both SSRD's workload and the share of scam sites it could ever catch.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>Public suffixes, eTLD+1, punycode, keyword matching and a character n-gram classifier.</dd></div>
+    <div><dt>Why it matters</dt><dd>A site the filter drops is never fetched, so filter recall caps everything after it.</dd></div>
+    <div><dt>In the repo</dt><dd><code>names.py</code> (<code>registrable</code>, <code>keyword_matches</code>, <code>passes</code>) and <code>name_model.py</code>.</dd></div>
+  </dl>
+
+  <h3>3.1 The part of a name an operator chooses</h3>
+  <p>The operator chooses one part of a hostname: the label just left of the public suffix. Everything left of that is subdomains they can make up for free. Everything right is a suffix anyone can register under. The <strong>Public Suffix List</strong> (PSL) says where the suffix ends. It isn't always the last dot: <code>co.uk</code> is a suffix, and so are private suffixes such as <code>vercel.app</code>, where every customer gets their own name.</p>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 3.1</span><p class="fig-title">Keywords are matched only against the registrable label <span class="illus">Illustration</span></p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 220" role="img" aria-label="The hostname app.quantum-invest.co.uk split into subdomain app, registrable label quantum-invest and public suffix co.uk. The registrable domain, eTLD+1, is quantum-invest.co.uk.">
+      <g style="font-size:34px;font-family:ui-monospace,Menlo,monospace">
+        <text x="220" y="58" textLength="92" lengthAdjust="spacingAndGlyphs" class="tm" style="font-size:34px">app.</text>
+        <text x="312" y="58" textLength="322" lengthAdjust="spacingAndGlyphs" class="tb" style="font-size:34px">quantum-invest</text>
+        <text x="634" y="58" textLength="138" lengthAdjust="spacingAndGlyphs" style="font-size:34px">.co.uk</text>
+      </g>
+      <rect class="acc" x="312" y="72" width="322" height="6"/>
+      <path class="lnm" d="M220 90V104H300V90"/><text x="260" y="124" text-anchor="middle" class="tm">subdomain</text><text x="260" y="142" text-anchor="middle" class="ts tm">free to invent, ignored</text>
+      <path class="ln" d="M312 90V104H634V90"/><text x="473" y="124" text-anchor="middle" class="tb">registrable label</text><text x="473" y="142" text-anchor="middle" class="ts">what the filter reads</text>
+      <path class="lnm" d="M646 90V104H772V90"/><text x="709" y="124" text-anchor="middle" class="tm">public suffix</text><text x="709" y="142" text-anchor="middle" class="ts tm">from the PSL</text>
+      <path class="ln" d="M312 176H772M312 170V182M772 170V182"/><text x="542" y="204" text-anchor="middle">registrable domain (eTLD+1): one per operator purchase, the unit SSRD dedupes and visits</text>
+    </svg>
+    </div>
+    <figcaption>A synthetic name. Subdomains on established sites (<code>assets.</code>, <code>learn.</code>) turned out to be mostly noise, so only the registrable label is matched. Private suffixes count as public, so <code>my-site.vercel.app</code> is its own registrable domain.</figcaption>
+  </div>
+
+  <h3>3.2 Punycode: what <code>xn--</code> means</h3>
+  <p>DNS only carries ASCII. Internationalized names are stored in <strong>punycode</strong>, ASCII starting with <code>xn--</code>. <code>xn--e1afmkfd.xn--p1ai</code> is <code>пример.рф</code>, and <code>инвест-капитал</code> becomes <code>xn----8sbafpqeomm1aunf</code>. A keyword such as <code>инвест</code> can only match after decoding, so <code>names.to_unicode</code> decodes each label first. The SPEC also says to judge language from the page, not the domain, because CBR seeds are mostly English-named <code>.com</code> sites. Only 102 of the 2,601 from 2026 are <code>.ru</code>.</p>
+
+  <h3>3.3 The keyword filter, and why it wasn't enough</h3>
+  <p>The first filter was a keyword list in four groups in <code>config/ssrd.toml</code>: investment terms in English, transliterated and Cyrillic Russian, recovery terms, and bait (regulators and brands such as <code>nydfs</code>, <code>musk</code>, <code>gazprom</code>). Terms of four or more letters match anywhere in the label. Shorter ones, and a list of <code>boundary_terms</code>, must stand alone between separators or digits, so <code>fx</code> matches <code>fx-pro</code> but not <code>effect</code>. Infrastructure suffixes such as <code>amazonaws.com</code> are skipped.</p>
+  <p>Then it was measured. Of 5,020 CBR-listed domains from 2026, the keyword list passed <strong>1,650 (33%)</strong>. Most scam names are invented brands that contain no investment word at all. That finding is what led to a model.</p>
+
+  <h3>3.4 A character n-gram classifier</h3>
+  <p>The model doesn't look for words. It looks at how a name is spelled. Wrap the label in start and end markers and cut it into every 2-, 3-, 4- and 5-character piece. For <code>fx-bot</code>, the 2-grams are <code>^f fx x- -b bo ot t$</code> and the 3-grams are <code>^fx fx- x-b -bo bot ot$</code>. Each piece is hashed into one of 2<sup>20</sup> buckets (the "hashing trick", so there's no vocabulary to store), and the counts are scaled to length 1. A logistic regression learns one weight per bucket. The score is <code>1 / (1 + e<sup>−z</sup>)</code>, where <code>z</code> is the bias plus the weighted sum.</p>
+  <p>Positives are CBR-listed labels. Negatives are the CT background sample from chapter 2. Training needs scikit-learn, but scoring is a few lines of pure Python with <code>mmh3</code>, so the ingest container stays small.</p>
+  <div class="callout">
+    <p>The split is by time, not at random</p>
+    <p>The model trains on CBR names listed <strong>before 2026-07-01</strong> and is tested on names listed after. A random split would let near-duplicate names from the same campaign sit on both sides and inflate the score. A temporal split asks the question SSRD actually faces: does what we learned from past scams catch future ones?</p>
+  </div>
+
+  <div class="figure">
+    <div class="fig-head"><span class="fig-no">Fig 3.2</span><p class="fig-title">At ≥ 0.93 the model catches more future scam names than keywords (0.55 vs 0.44) and passes 40% fewer names</p></div>
+    <div class="fig-scroll">
+    <svg class="d" viewBox="0 0 900 330" role="img" aria-label="Recall on future CBR names against pass rate on background names. Keywords: recall 0.44 at 1.19%. Model at 0.90: 0.61 at 1.17%. Model at 0.93: 0.55 at 0.71%, above the fetch capacity of about 0.55%.">
+      <path class="lnf" d="M80 71.4H820M80 134.3H820M80 197.1H820"/>
+      <path class="ln" d="M80 260H820"/><path class="ln" d="M80 60V260"/>
+      <g class="ts tm" text-anchor="middle"><text x="80" y="282">0%</text><text x="344" y="282">0.5%</text><text x="609" y="282">1.0%</text></g>
+      <text x="450" y="312" text-anchor="middle" class="tm">pass rate on CT background names (share of all new names sent to the fetch queue)</text>
+      <g class="ts tm" text-anchor="end"><text x="70" y="264">0</text><text x="70" y="201">0.2</text><text x="70" y="138">0.4</text><text x="70" y="75">0.6</text></g>
+      <text x="80" y="40" class="tm">recall on future CBR names</text>
+      <path class="lnm dash" d="M368.6 60V260"/><text x="363" y="246" text-anchor="end" class="ts tm">≈ fetch capacity (derived)</text>
+      <circle cx="709" cy="121.7" r="7" class="ink"/><text x="724" y="126" class="">keywords · 0.44 at 1.19%</text>
+      <circle cx="698.5" cy="68.3" r="7" class="ink"/><text x="714" y="72">model ≥ 0.90 · 0.61 at 1.17%</text>
+      <circle cx="455.3" cy="87.1" r="9" class="acc"/><text x="472" y="91" class="tb">model ≥ 0.93 · 0.55 at 0.71% (live)</text>
+    </svg>
+    </div>
+    <figcaption>Up and to the left is better. Test set: n = 1,217 CBR names listed on or after 2026-07-01, and 7,423 background names, measured Oct 17. The capacity line is derived from two measurements (README, Oct 17): the live filter sends about 325 candidates an hour, while the fetcher completes about 250 visits an hour. So capacity is about 0.71% × 250 / 325 ≈ 0.55%. Even the live threshold overflows, and the priority queue plus counted expiry absorb the difference. Model ≥ 0.90 would send about twice what the fetcher can visit.</figcaption>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Filter</th><th class="n">Recall (future CBR)</th><th class="n">Pass rate (background)</th><th>Read as</th></tr></thead>
+      <tbody>
+        <tr><td>Keyword list</td><td class="n">0.44</td><td class="n">1.19%</td><td>Misses invented brand names</td></tr>
+        <tr><td>Model ≥ 0.90</td><td class="n">0.61</td><td class="n">1.17%</td><td>Best recall, over capacity</td></tr>
+        <tr class="hl"><td>Model ≥ 0.93 (live)</td><td class="n">0.55</td><td class="n">0.71%</td><td>Live. Still about 30% over fetch capacity</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Two numbers matter here, and precision isn't one of them. <strong>Recall</strong> is coverage: the share of real scam names that get a visit. <strong>Pass rate</strong> is workload: the share of all names sent to the fetcher. The filter doesn't have to be precise, because fingerprinting decides later. It has to keep enough scams in while fitting the fetcher's capacity.</p>
+  <div class="callout warn">
+    <p>One caution about the 0.55</p>
+    <p>The 0.93 threshold was picked by looking at this same test table, so 0.55 is a slightly optimistic estimate of recall on truly new names. It isn't wrong, but it isn't clean either. The clean check is the next monthly retrain: score names CBR lists after Oct 17 with the frozen threshold, and report that number too. Chapter 8.5 has the general rule.</p>
+  </div>
+  <p>A priority score orders the queue when it backs up: points for the model score above 0.9, one per keyword group, two more for bait terms, and one for a TLD common in the seeds (<code>online</code>, <code>live</code>, <code>pro</code>, <code>top</code> and so on).</p>
+
+  <div class="check">
+    <p>Check yourself</p>
+    <details><summary>What is the registrable domain of <code>login.secure.trade-elon.online</code>, and which groups match?</summary><div><code>trade-elon.online</code>. <code>trade</code> matches (investment). <code>elon</code> is a boundary term, and it stands between a hyphen and the end of the label, so bait matches too. That gives a high priority.</div></details>
+    <details><summary>Why is precision the wrong number to optimize for this filter?</summary><div>Its job is to keep scams in while staying under fetch capacity. Fingerprints and the two-family rule decide what is a match. A precise but low-recall filter would cap the whole system's catch rate.</div></details>
+    <details><summary>Why hash n-grams into buckets instead of keeping a vocabulary?</summary><div>No vocabulary to store or keep in sync, a fixed-size model, and pure-Python scoring in the ingest container. The cost is occasional collisions between n-grams, which a linear model tolerates.</div></details>
+    <details><summary>A friend says "just split the CBR names randomly into train and test." What goes wrong?</summary><div>Campaign siblings (<code>brandx-pro</code>, <code>brandx-trade</code>) land on both sides, so the test measures memory, not generalization. The temporal split asks whether the past predicts the future.</div></details>
+  </div>
+  <div class="deeper">Go deeper: <a href="https://publicsuffix.org/learn/">Public Suffix List: learn</a> · <a href="https://www.rfc-editor.org/rfc/rfc3492">RFC 3492, Punycode</a> · <a href="https://scikit-learn.org/stable/modules/feature_extraction.html#feature-hashing">scikit-learn on feature hashing</a> · <a href="https://github.com/x0rz/phishing_catcher">phishing_catcher</a> for the keyword-scoring baseline</div>
+</section>
+
+<section class="chapter" id="ch4" aria-labelledby="ch4-h">
+  <p class="issue-line">Chapter 4 · Sun Oct 18 · 45 minutes · read this first, it's already running</p>
+  <h2 id="ch4-h">How to visit a scam site from your own box</h2>
+  <p class="lede">The fetcher downloads pages that criminals control, from the machine you use every day, on your home network. Each rule in this chapter answers one specific way that could hurt you. If you know which rule answers which threat, you can explain the design to an advisor, and you'll notice if a change would quietly weaken it.</p>
+
+  <dl class="why">
+    <div><dt>What you'll learn</dt><dd>SSRF, DNS rebinding, IP pinning, an egress firewall, container hardening, response limits, pacing and cloaking.</dd></div>
+    <div><dt>Why it matters</dt><dd>Hard rules 1 to 3, 6 and 7 live here. <code>tests/test_safety.py</code> must keep passing.</dd></div>
+    <div><dt>In the repo</dt><dd><code>safety.py</code>, <code>fetch.py</code> (<code>SafeFetcher.get</code>, <code>Visitor</code>), <code>docker/egress.nft</code>, <code>SAFETY.md</code>.</dd></div>
+  </dl>
+
+  <h3>4.1 What could actually go wrong</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Threat</th><th>What it looks like</th><th>Answered by</th></tr></thead>
+      <tbody>
+        <tr><td>SSRF: being steered at your own network</td><td>A scam domain resolves to your router, the Docker host (172.17.0.1), your tailnet (100.64/10) or a metadata address (169.254.169.254).</td><td>Layer 1 IP guard + layer 2 firewall (4.2, 4.3)</td></tr>
+        <tr><td>DNS rebinding</td><td>The name looks public when you check it, then points somewhere private when you connect.</td><td>Resolve once, pin the IP, recheck on every redirect (4.2)</td></tr>
+        <tr><td>Malicious content</td><td>Exploits aimed at browsers, JS engines or image decoders.</td><td>No browser, no JS, images never decoded, raw HTML never opened (4.4)</td></tr>
+        <tr><td>Tarpits and huge bodies</td><td>A server drips one byte a second, or sends 5 GB.</td><td>20 s total cap per body, abort over 2 MB (4.5)</td></tr>
+        <tr><td>Wrong network</td><td>The laptop is on campus, where the UMich network policy applies.</td><td>Egress ASN check refuses to start (4.4)</td></tr>
+        <tr><td>Looking like an attacker</td><td>Bursts, many IPs, evading blocks.</td><td>20 requests/min, one UA, no proxies, blocks recorded and not retried (4.6)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  

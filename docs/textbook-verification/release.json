@@ -19,7 +19,8 @@
       320
     ],
     "no_js_and_print": true,
-    "d3_keyboard_activation": true
+    "d3_keyboard_activation": true,
+    "clean_checkout_generation": true
   },
   "text_contrast_scope": "Solid-color leaf HTML text only; SVG and compositing reviewed separately. No full WCAG conformance claim.",
   "sources_refreshed": false,

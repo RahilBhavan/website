@@ -3,17 +3,15 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
+    "dev": "node scripts/textbooks/build.mjs && astro dev",
+    "start": "node scripts/textbooks/build.mjs && astro dev",
+    "build": "node scripts/textbooks/build.mjs && astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "check": "astro check && astro build && node scripts/check-links.mjs && node scripts/check-crosslinks.mjs && node --test tests/*.test.mjs",
+    "check": "node scripts/textbooks/build.mjs && astro check && astro build && node scripts/check-links.mjs && node scripts/check-crosslinks.mjs && node --test tests/*.test.mjs",
     "og": "node scripts/og/render.mjs",
     "test:e2e": "playwright test",
     "textbooks": "node scripts/textbooks/build.mjs",
-    "prebuild": "npm run textbooks",
-    "predev": "npm run textbooks",
     "check:textbooks": "node scripts/textbooks/verify.cjs"
   },
   "dependencies": {

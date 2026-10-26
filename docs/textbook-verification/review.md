@@ -30,3 +30,5 @@ The normal site build/link/test suite and the browser behavior suite must pass a
 ## Integrated website check
 
 Rebased only this feature onto the current public main branch, preserving the upstream Astro 7 upgrade, portfolio changes and removal of the private Orbit link. The earlier local private-product commits were not included. With the current dependencies installed in an isolated disk directory, the standard check passed 14 tests and all internal-link checks; the existing Firefox E2E suite passed all 22 tests. The 13 textbook behavior checks also passed, plus no-JavaScript reading, print flow and D3 keyboard activation.
+
+Clean-checkout verification: `check`, `build`, `dev` and `start` explicitly generate the reading editions before invoking Astro. Removing `.generated/` and running `bun run check` passed. This avoids relying on npm lifecycle hooks when the check command invokes `astro build` directly.

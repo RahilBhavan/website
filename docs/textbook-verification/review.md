@@ -26,3 +26,7 @@ There is no social post or feed attachment in this change. Post-to-image agreeme
 No Safari, Windows, physical printer, independent human comprehension test or comprehensive factual re-audit was performed. Browser print state and unrestricted print flow were checked; the original PDFs were not relabeled as redesigned exports. Source code and paper links may require the internet even though fonts, D3, Chart.js and KaTeX are hosted locally.
 
 The normal site build/link/test suite and the browser behavior suite must pass again after changes to shared reader code. Output SHA-256 manifests bind the exact book HTML; CSS/JS hashes are recorded separately in the final receipt.
+
+## Integrated website check
+
+Rebased only this feature onto the current public main branch, preserving the upstream Astro 7 upgrade, portfolio changes and removal of the private Orbit link. The earlier local private-product commits were not included. With the current dependencies installed in an isolated disk directory, the standard check passed 14 tests and all internal-link checks; the existing Firefox E2E suite passed all 22 tests. The 13 textbook behavior checks also passed, plus no-JavaScript reading, print flow and D3 keyboard activation.

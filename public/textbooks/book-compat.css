@@ -80,3 +80,4 @@ html[data-library=ssrd] .start-link,html[data-library=ssrd] .start-link *{color:
 
 html[data-library=ssrd] .start-reading,html[data-library=ssrd] .start-reading *{color:#111214!important}
 html[data-library] :is(figure,.figure,.interactive) :is(small,.meta,.src,.source,.tag,.fig-label,td,th){font-size:14px}
+@media print{html[data-library] :is(article[hidden],section[hidden]){display:block!important}html[data-library] .scroll-region.has-overflow:before{display:none}}

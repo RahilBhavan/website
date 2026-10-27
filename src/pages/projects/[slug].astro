@@ -29,7 +29,8 @@ const studyPages = new Set([
 const isStudy = studyPages.has(slug(project.id));
 const sections = headings.filter((heading) => heading.depth === 2);
 const [titleBefore, titleKey, titleAfter] = splitTitle(data.title);
-const hero = isStudy ? evidence.find((entry) => entry.id === slug(project.id))?.rows[0] : undefined;
+// The hero number is the finding's own value, so it shows only when an evidence row is marked `"hero": true`; a first row picked by position can contradict the finding sentence.
+const hero = isStudy ? evidence.find((entry) => entry.id === slug(project.id))?.rows.find((row) => (row as { hero?: boolean }).hero) : undefined;
 
 const writing = groupWriting(
   await getCollection('blog', (post) => !post.data.draft && post.data.project?.id === slug(project.id))

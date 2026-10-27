@@ -1,6 +1,6 @@
 ---
 title: "Strategy Preferred Coverage Model: Dividend Runway"
-tagline: "How long Strategy's cash and common stock sales can fund five preferreds"
+tagline: "Cash on hand is not the same as financing capacity"
 description: "An Excel model, built from public SEC filings, of how long Strategy's USD Reserve and common stock sales can pay dividends on STRF, STRC, STRE, STRK and STRD plus convertible interest, with a 20-quarter financing path."
 problem: "Strategy pays cash dividends on five preferred series and interest on its convertible notes. The cash comes from a USD Reserve and from selling common stock, and bitcoin is not cash until it is sold. A single coverage number can mix money already held with sales that depend on market demand."
 solution: "Built a 14-sheet Excel workbook with 1,551 formula cells and 124 named ranges from public filings and issuer releases. It separates cash, saleable common and bitcoin, bridges to net mNAV, and runs a 20-quarter path with put dates, fees, dilution and ATM use. A project page and a 30-chapter textbook with a snapshot calculator explain it."
@@ -20,7 +20,9 @@ githubUrl: "https://github.com/RahilBhavan/strategy-preferred-coverage-model"
 completedDate: 2026-10-21
 ---
 
-## Overview
+## Cash held. Capital still to raise.
+
+A dividend runway depends on where the next dollar comes from. Cash already in the Reserve can pay an obligation; registered stock-sale capacity still needs a buyer. This model keeps those two sources separate.
 
 **The question:** How long can Strategy's cash and common stock sales fund the dividends on STRF, STRC, STRE, STRK and STRD and the interest on its convertible notes, and how do convertible puts change that answer?
 
@@ -28,7 +30,7 @@ completedDate: 2026-10-21
 
 **Scope:** Independent educational work from public SEC filings and issuer releases. It is not affiliated with Strategy, does not describe Strategy's internal forecast, and is not investment advice.
 
-## How it works
+## Follow the funding path
 
 `model/build.mjs` writes formulas into a 14-sheet workbook. Excel or LibreOffice computes the results, not the script.
 
@@ -40,9 +42,11 @@ completedDate: 2026-10-21
 
 The inputs are balance-sheet observations through October 11, 2026, Q2 2026 10-Q terms and counts, and October 15, 2026 market prices (bitcoin at $82,131). There is no live feed.
 
-## Results
+## Read the snapshot in two layers
 
-All figures are as of the October 15, 2026 snapshot, Base case.
+Start with Reserve coverage, which excludes principal. Then look at conditional ATM capacity and the quarterly path, which includes convertible puts. These answer different questions.
+
+All figures below are as of the October 15, 2026 snapshot, Base case.
 
 | Measure | Value | Condition |
 |---|---|---|
@@ -56,14 +60,14 @@ All figures are as of the October 15, 2026 snapshot, Base case.
 
 The 15.2-year figure is conditional capacity, not a financing forecast. The Base path has no unmet financing need under its assumptions. The Severe case (BTC down 70%, net mNAV 0.8x, STRC at 15%, EUR/USD up 10%) leaves $10,821.3M of unmet funding needs over 20 quarters. That is scenario arithmetic, not a probability.
 
-## How it was checked
+## What was actually checked
 
 - All 16 rows on the workbook's `Checks` sheet read PASS. One row reconciles the charges to management's $1.703B estimate from August 23, 2026.
 - LibreOffice recalculated 10 input-change cases on disposable copies on October 16, 2026 (`docs/formula-verification.json`). That is not a Microsoft Excel check.
 - `node model/check-calculator.mjs` reports 7 calculator behavior checks passed, observed on October 21, 2026.
 - The deployed workbook matched the local file by SHA-256, and on the live calculator, setting net mNAV to 0.8x moved static coverage from 15.2 to 3.1 years (`docs/deployment.md`).
 
-## Limits and next steps
+## Where the model stops
 
 - The model has not been opened in Microsoft Excel, and a recorded native Goal Seek run is pending.
 - The inputs predate the Q3 2026 10-Q. STRC shares and basic common shares are reconstructed from weekly filings, and awards are anchored to Q2.
@@ -71,9 +75,11 @@ The 15.2-year figure is conditional capacity, not a financing forecast. The Base
 - The model assumes no new preferreds and no refinancing, and its FX rate is not the issuer's fixing.
 - The reader test has no responses yet.
 
-## Links
+## Explore the model
 
-1. [Live project page and calculator](https://rahilbhavan.github.io/strategy-preferred-coverage-model/)
+Start with the calculator to change the three visible inputs. Use the workbook to inspect the full financing path; the textbook explains the assumptions behind both.
+
+1. [Open the snapshot calculator](https://rahilbhavan.github.io/strategy-preferred-coverage-model/)
 2. [30-chapter textbook](https://rahilbhavan.github.io/strategy-preferred-coverage-model/textbook.html)
 3. [Repository and workbook](https://github.com/RahilBhavan/strategy-preferred-coverage-model)
 

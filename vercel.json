@@ -48,6 +48,21 @@
       "source": "/agent",
       "destination": "/projects/financial-metrics-analyst",
       "permanent": false
+    },
+    {
+      "source": "/coverage",
+      "destination": "/projects/strategy-preferred-coverage-model-dividend-runway",
+      "permanent": false
+    },
+    {
+      "source": "/dat-accretion",
+      "destination": "/projects/dat-accretion-monitor",
+      "permanent": false
+    },
+    {
+      "source": "/mara",
+      "destination": "/projects/mara-credit-case",
+      "permanent": false
     }
   ]
 }

@@ -1,0 +1,160 @@
+[
+  {
+    "id": "strategy-preferred-coverage-model-dividend-runway",
+    "label": "Dated model output",
+    "title": "Cash held. Capital still to raise.",
+    "basis": "Strategy · October 15, 2026 snapshot",
+    "rows": [
+      {
+        "label": "Reserve coverage",
+        "value": "37.5 months",
+        "note": "Cash reserve only"
+      },
+      {
+        "label": "USD reserve",
+        "value": "$4.88B",
+        "note": "Snapshot input"
+      },
+      {
+        "label": "Annual cash charges",
+        "value": "$1.56B",
+        "note": "Rounded model output"
+      }
+    ],
+    "limit": "Registered equity-sale capacity still needs buyers. The 20-quarter path separately tests financing assumptions and convertible put dates; this is not Strategy’s financing forecast.",
+    "source": "https://github.com/RahilBhavan/strategy-preferred-coverage-model",
+    "action": "Explore the model and sources",
+    "shareTitle": "37.5 months\nof cash",
+    "shareBody": "October 2026 model"
+  },
+  {
+    "id": "dat-accretion-monitor",
+    "label": "Historical filing study",
+    "title": "Same ruler. Different break-evens.",
+    "basis": "Filed weeks through September 20, 2026",
+    "rows": [
+      {
+        "label": "STRC on the adding side",
+        "value": "18 of 18 filed dates",
+        "note": "Relative to the modeled break-even"
+      },
+      {
+        "label": "BMNP on the adding side",
+        "value": "0 of 15 priced weeks",
+        "note": "Relative to the modeled break-even"
+      }
+    ],
+    "limit": "These are historical weekly classifications, not realized investment returns. The October artifact uses later inputs and is a separate snapshot.",
+    "source": "https://github.com/RahilBhavan/dat-accretion",
+    "action": "Read the method and filings",
+    "shareTitle": "Coins\nper share",
+    "shareBody": "Three treasury models"
+  },
+  {
+    "id": "mara-credit-case",
+    "label": "Hypothetical credit decision",
+    "title": "A $5M request. A $3M limit.",
+    "basis": "Fictional facility · public MARA financials",
+    "rows": [
+      {
+        "label": "Requested revolver",
+        "value": "$5.0M",
+        "note": "Hypothetical request"
+      },
+      {
+        "label": "Recommended limit",
+        "value": "$3.0M",
+        "note": "Conditional approval"
+      },
+      {
+        "label": "Stressed collateral proceeds",
+        "value": "$3,870,600",
+        "note": "At a required 1.25x coverage ratio"
+      }
+    ],
+    "limit": "Collateral is the binding cap. Funding remains blocked until the simulated conditions are evidenced; this is not an actual lending commitment.",
+    "source": "https://github.com/RahilBhavan/mara-credit-case",
+    "action": "Read the credit case",
+    "shareTitle": "$5M request.\n$3M limit.",
+    "shareBody": "Hypothetical credit case"
+  },
+  {
+    "id": "spine-coinbase-loan-book-risk-model",
+    "label": "Historical crash replay",
+    "title": "Loss and exposure are different.",
+    "basis": "March 2020-style replay · 86% LLTV",
+    "rows": [
+      {
+        "label": "Modeled realized loss",
+        "value": "$9.2M",
+        "note": "After the replay’s liquidation process"
+      },
+      {
+        "label": "Exposure at the trough",
+        "value": "$158.4M",
+        "note": "10.0% of the modeled book"
+      }
+    ],
+    "limit": "The model was calibrated on the three historical events used for its comparison. In-sample fit is not an independent forecast; trough exposure is not realized loss.",
+    "source": "https://spine.rahilbhavan.com",
+    "action": "Open the dashboard",
+    "shareTitle": "$9.2M\nmodeled loss",
+    "shareBody": "Historical crash replay"
+  },
+  {
+    "id": "presto-royalty-recovery-engine",
+    "label": "Parser validation · pre-launch prototype",
+    "title": "A lead is not money recovered.",
+    "basis": "Official DDEX BWARM sample · 431-test suite",
+    "rows": [
+      {
+        "label": "Parser defects found and fixed",
+        "value": "7",
+        "note": "From testing the official sample"
+      },
+      {
+        "label": "Fully claimed works at risk",
+        "value": "10",
+        "note": "Would have been wrongly flagged before the fix"
+      },
+      {
+        "label": "Recovered royalties",
+        "value": "None yet",
+        "note": "No customer recovery outcome established"
+      }
+    ],
+    "limit": "A human-reviewed reconciliation prototype. The sample does not establish production accuracy, entitlement to royalties, or a customer recovery outcome.",
+    "source": "https://prestorecovery.com",
+    "action": "Explore the prototype",
+    "shareTitle": "7 parser\ndefects fixed",
+    "shareBody": "Pre-launch prototype"
+  },
+  {
+    "id": "mev-sandwich-study-two-phase-clearing-on-uniswap",
+    "label": "Historical orders · counterfactual clearing",
+    "title": "Same orders. Less modeled loss.",
+    "basis": "WETH/USDT 0.01% · October 5–11, 2026",
+    "rows": [
+      {
+        "label": "Historical replay",
+        "value": "$12,387",
+        "note": "Measured loss relative to replay without attacker swaps"
+      },
+      {
+        "label": "Two-phase clearing",
+        "value": "$3,041",
+        "note": "Same orders · simulated mean"
+      },
+      {
+        "label": "Attackers stop",
+        "value": "About $0",
+        "note": "Simulated response"
+      }
+    ],
+    "limit": "Cumulative victim loss in USD. 236 detected sandwiches, 244 victims; the clearing result averages 200 random tie-breaks. Neither alternative is an observed deployment.",
+    "source": "https://github.com/RahilBhavan/mev-sandwich-batch-study/blob/main/docs/methods.md",
+    "action": "Read the method and assumptions",
+    "shareTitle": "$12,387 to\n$3,041",
+    "shareBody": "Same orders · simulated"
+  }
+]

@@ -1,13 +1,13 @@
 ---
 title: "Spine: On-Chain Loan Book Stress Test"
-tagline: "Live risk dashboard and liquidation backtest over Coinbase's $1.6B Morpho loan book"
+tagline: "Would a slow-crash survival record hold in a fast liquidation queue?"
 description: "A live risk dashboard and liquidation-queue backtest over Coinbase's on-chain loan book on Morpho (Base): $1.6B of debt, 67,000+ positions, replayed through seven crash paths to argue what haircut BTC and ETH collateral should take."
-problem: "Coinbase's app routes USDC loans against cbBTC and ETH to Morpho markets on Base at an 86% liquidation LTV, funded by Morpho vault suppliers. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. Nobody had replayed today's book through a March 2020 style cliff with liquidators and borrowers behaving the way the lived events show they behave."
+problem: "Coinbase's app routes USDC loans against cbBTC and ETH to Morpho markets on Base at an 86% liquidation LTV, funded by Morpho vault suppliers. The book has survived three real stress events with zero bad debt, but those events gave borrowers hours of warning. This model replays the book through a March 2020-style cliff with finite liquidator capacity and a borrower-response fit from the observed events."
 solution: "Built a stdlib-only Python pipeline that fetches every position, liquidation, oracle update, and order book snapshot from public sources, calibrates liquidator latency and borrower response on the three lived events, and replays the book through seven historical crash paths under alternative LLTVs and liquidator capacity scenarios. The result is an hourly-refreshed dashboard on GitHub Pages and a written recommendation per asset."
-result: "Replays the cbBTC loans in Coinbase's Morpho book through a March 2020 crash at 86% LLTV: $9.2M realized loss, but $158.4M (10.0%) exposed at the trough."
+result: "Replays the cbBTC loans in Coinbase's Morpho book through a March 2020 crash at 86% LLTV: $9.2M modeled realized loss and $158.4M (10.0%) exposed at the trough."
 status: "shipped"
-verification: "The borrower-response fit reproduces the three lived cbBTC events at 0.85 to 0.99 times the observed volume. The repository has 21 tests, and every writeup number is printed by a script from generated data."
-next: "Liquidator capital in a crash is unobserved, and depth is scaled from today's books rather than bought from historical order books."
+verification: "21 tests and script-generated writeup figures. Borrower response reproduces three cbBTC calibration events at 0.85–0.99x observed volume; this is an in-sample fit, not independent validation."
+next: "Test borrower response on additional held-out events and replace scaled live depth with historical order-book data. Crash-time liquidator capital remains unobserved."
 figure:
   src: "/images/projects/spine/dashboard-now-2026-10-21.webp"
   alt: "Spine dashboard's Now panel: $1.8B borrowed across nine markets, BTC 10% from liquidator capacity, and the worst modeled path's $9.2M loss and $158M exposure."
@@ -18,23 +18,24 @@ kind: "risk model"
 track: "crypto"
 featured: true
 completedDate: 2026-09-19
-ogImage: "https://rahilbhavan.github.io/spine/social-card.png"
 ---
-## Overview
+## A clean record can hide a queue problem
 
-**Try it:** [Drag the number](/drag-the-number/spine) moves liquidator capital and the liquidation LTV over the March 2020 replay, using results the backtest already ran.
+Coinbase-linked Morpho markets had survived slow stress events. What happens if prices fall faster than borrowers can repay and liquidators can sell collateral?
 
-**What it is:** A live risk dashboard and haircut backtest over Coinbase's on-chain loan book, the Morpho Blue markets on Base where Coinbase's app routes USDC loans against cbBTC, WETH, cbETH, and six alt collaterals. The pipeline pulls every position and liquidation from public data, measures how liquidators and borrowers actually behaved in the three stress events the book has lived through, and replays today's book through seven historical crash paths to see what a lender would lose.
+**The finding:** in the March 2020 replay, the cbBTC market at 86% liquidation LTV ends with **$9.2M of modeled loss**, while **$158.4M is exposed at the trough**. Those are different outcomes: the end-of-path loss benefits from the price rebound. Holding the low for a day raises modeled loss to $38.1M.
 
-**Why it matters:** As of September 2026, the book is about $1.6B of debt against $3.5B of collateral across 67,000+ positions in nine markets, 97.5% of it Coinbase Smart Wallets. Bad debt falls on the Morpho vault suppliers who fund these markets, not on Coinbase's balance sheet. The zero-bad-debt record is real, but the lived crashes were slow; the question is what happens on a fast one.
+**The decision this informs:** secure committed backstop liquidation capacity first, then consider lower lending thresholds. In this model, more liquidator capital reduces trough exposure more than lowering the liquidation threshold alone.
 
-**Who it's for:** Risk teams at lenders and protocols, USDC suppliers to these markets, and anyone who wants a reproducible answer to "what haircut should this collateral take" rather than a rule of thumb.
+**My contribution:** the public-data pipeline, wallet tagging, historical-book reconstruction, finite-capacity liquidation simulator, generated analysis, and public dashboard. The September 2026 study covered about $1.6B of debt and 67,000+ positions across nine markets. The October 21 dashboard screenshot is a separate, later snapshot.
 
-**Impact:** A public dashboard that refreshes hourly, a written recommendation per asset (cbBTC 86% to 80% LLTV with a committed backstop liquidator first, WETH 77%, alt book caps tied to Coinbase's own depth), and a changelog showing how the answer moved as bugs were fixed. Every number in the writeup is printed by a script from generated data.
+**Read the result as a scenario, not a forecast.** A 2026 book is replayed against historical price paths. Borrower behavior is fitted on three cbBTC events; crash-time capital is unobserved and depth is scaled from live snapshots. Suppliers to the Morpho markets bear modeled bad debt—not Coinbase's balance sheet.
 
-**Scope:** Independent analysis from public on-chain data. Not affiliated with or endorsed by Coinbase or Morpho.
+[Explore the dashboard](https://rahilbhavan.github.io/spine) · [Move the model assumptions](/drag-the-number/spine) · [Read the research note](/writing/what-haircut-should-coinbase-take-on-btc-and-eth-collateral/) · [Inspect the code](https://github.com/RahilBhavan/spine)
 
-## The Problem
+Independent research from public data; not affiliated with or endorsed by Coinbase or Morpho.
+
+## Why static stress tables are not enough
 
 ### The Challenge
 
@@ -57,7 +58,7 @@ That record is not the test. The lived events gave borrowers hours to days of wa
 
 Morpho's own Dune dashboard shows the static liquidatable-debt curve and puts $1.1B of collateral at risk at -50%. RiskDAO's SmartLTV formula gives a closed-form LTV from volatility and liquidity, but for cbBTC it returns 0.9% at its mildest calibration and negative at the others: with $44M of measured bids inside the 4.38% bonus against a $1.42B book, it is saying the book is thirty times too large for the liquidity at the bonus, not that the LLTV is wrong.
 
-**Gap identified:** No public model replayed this book through a queue with finite liquidator capacity, a lagged oracle, and calibrated borrower response.
+**The modeling question:** What changes when a static debt-at-risk curve becomes a queue with finite liquidator capacity, a lagged oracle, and fitted borrower response?
 
 ### Constraints & Requirements
 
@@ -131,23 +132,11 @@ The repository is two lanes that meet through files, not function calls. Lane A 
 
 ## Technical Highlights
 
-### The backtest defaults
+### Make the uncertain input visible
 
-Every run is keyed on its parameters, so results append to `data/backtest.json` and runs already there are skipped. The Tier B capital cap defaults to the most collateral the book has ever seen seized in a UTC day, read from the calibration file.
+Liquidator capital is measured by collateral seized, not debt repaid. The default rolling 24-hour capital cap comes from the largest observed seizure day in the calibration windows, rounded to $0.1M. That observation is a floor on available capacity, not a measurement of how much capital would enter a future crash.
 
-```python
-def cex_cap_default():
-    """Max single-UTC-day collateral seized on cbBTC across the calibration windows (Feb 5 2026): the observed ceiling on Tier B
-    inventory. Seized (market value of collateral), not repaid, because that is what the ring charges against the cap.
-    Rounded to $0.1M so the value is stable across calibration reruns: it is part of every run key."""
-    days = [d['seized_usd'] for w in (load('calibration') or {'windows': {}})['windows'].values() for d in w.get('cbBTC', {}).get('daily', {}).values()]
-    return round(max(days), -5) if days else 101.1e6
-
-
-DEFAULTS = dict(lltv=0.86, cap=0.75, scenario='AB', k_dex=0.5, k_cex=0.3, r=0.2, lag_bars=1, reshape=True,
-                warn_gap=0.06, resp_share=0.0, react_min=60, cure=0.0, margin=0.01, cex_cap_usd=cex_cap_default(),
-                close_target=1.0, full_below_usd=0.0, beta=0.0, seed=0, hold_bars=0, book_multiple=1.0)
-```
+Each run is keyed by its parameters in `data/backtest.json`, so assumptions stay attached to outputs and completed runs can be reused. Capital sweeps, held-at-the-low paths, and borrower-response sensitivities show how much the answer depends on those inputs.
 
 ### What `simulate()` does at each five-minute step
 
@@ -194,7 +183,7 @@ Positions are sorted by initial liquidation price so a calm bar costs one `searc
 
 **The Problem:** Replaying the exact cbBTC book from Feb 3 2026 ($1,075M debt) at the Feb 6 trough puts $515M of debt over 86%. Only $151M was actually liquidated. Without borrower response the model overstates the three events by 2.0x, 2.9x and 1.7x.
 
-**The Solution:** A responsive share of borrowers who repay to 74% LTV once they have spent a reaction time inside the 80-86% warning zone. Fitting on the three cbBTC events gives 70% responsive with a two-hour reaction, reproducing all three at 0.85 to 0.99 times observed volume (Feb 0.99x, Jun 0.85x, Oct 0.95x). Held-out WETH comes in at 1.58x and 0.85x.
+**The Solution:** A responsive share of borrowers who repay to 74% LTV once they have spent a reaction time inside the 80-86% warning zone. Fitting on the three cbBTC events gives 70% responsive with a two-hour reaction, reproducing those same calibration events at 0.85 to 0.99 times observed volume (Feb 0.99x, Jun 0.85x, Oct 0.95x). This is an in-sample fit. Held-out WETH comes in at 1.58x and 0.85x, showing that the fit does not transfer uniformly across assets.
 
 **What I learned:** The fit is a plateau (60-70% responsive, one to two hours all fit about equally), and two parameters on three events deserve modest confidence. The ranking of effects holds even where the point estimates do not.
 
@@ -214,7 +203,7 @@ Positions are sorted by initial liquidation price so a calm bar costs one `searc
 
 **What I learned:** The recommendation had to lead with a backstop liquidator and put the LLTV second, because that is the ordering the sensitivities show.
 
-## Results & Metrics
+## Dated results and model recommendations
 
 ### The book
 
@@ -231,7 +220,9 @@ Positions are sorted by initial liquidation price so a calm bar costs one `searc
 | Jun 1-7 2026 | 3,308 | $72.1M | 0s / 6s | 97% | 110 |
 | Jun 23-27 2026 | 394 | $15.4M | 0s / 6s | 98% | 43 |
 
-### Backtest headline (cbBTC at 86% / 75%, scenario AB, fitted behaviour)
+### Seven historical paths, one September 2026 book
+
+cbBTC at 86% liquidation LTV / 75% maximum draw, scenario AB, fitted borrower behavior. These are modeled replays, not observed losses.
 
 | Path | Worst 4h / 24h | Liquidated | Loss by end of path | Exposure at trough |
 |---|---|---|---|---|
@@ -305,4 +296,4 @@ The first drafts overstated realized loss because they seized in full at a const
 
 ---
 
-**Completed:** September 19, 2026
+**Study completed:** September 19, 2026 · **Engineering count:** October 24, 2026 · Dashboard snapshots carry their own dates.

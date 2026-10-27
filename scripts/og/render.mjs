@@ -1,26 +1,29 @@
 // Renders 1280x640 social cards into public/og/ for the home page, the crypto finance hub,
 // every project without its own ogImage, and every published post. Run: node scripts/og/render.mjs
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { firefox } from 'playwright';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 
-const chromium = process.env.CHROMIUM ?? 'chromium';
 const fonts = resolve('public/fonts');
 const outDir = resolve('public/og');
+const fontData = (name) => readFileSync(join(fonts, name)).toString('base64');
+const anton = fontData('Anton-Regular.woff2');
+const plex = fontData('IBMPlexSans-Regular.woff2');
+const plexSemiBold = fontData('IBMPlexSans-SemiBold.woff2');
 const statusLabel = { proposal: 'Proposal', prototype: 'Prototype', shipped: 'Shipped' };
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const card = ({ kicker, title, body, footer }) => `<!doctype html>
+const card = ({ kicker, title, body, footer, compact = false }) => `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
-  @font-face { font-family: Anton; src: url('file://${fonts}/Anton-Regular.woff2'); }
-  @font-face { font-family: Plex; src: url('file://${fonts}/IBMPlexSans-Regular.woff2'); font-weight: 400; }
-  @font-face { font-family: Plex; src: url('file://${fonts}/IBMPlexSans-SemiBold.woff2'); font-weight: 600; }
+  @font-face { font-family: Anton; src: url('data:font/woff2;base64,${anton}'); }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('data:font/woff2;base64,${plex}'); font-weight: 400; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('data:font/woff2;base64,${plexSemiBold}'); font-weight: 600; }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1280px; height: 640px; overflow: hidden; }
-  body { padding: 64px 72px; background: #111214; color: #f5f5ef; font-family: Plex, sans-serif;
+  body { padding: 64px 72px; background: #111214; color: #f5f5ef; font-family: 'IBM Plex Sans', sans-serif;
          display: flex; flex-direction: column; gap: 28px; }
   .kicker { font-size: 26px; font-weight: 600; color: #b7b8b1; }
   .kicker b { color: #ffe500; font-weight: 600; }
@@ -29,9 +32,16 @@ const card = ({ kicker, title, body, footer }) => `<!doctype html>
   p { font-size: 30px; line-height: 1.4; max-width: 58ch; }
   footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 24px; color: #b7b8b1; }
   footer span:first-child { border-left: 4px solid #ffe500; padding-left: 14px; }
+${compact ? `
+  body { padding: 32px; gap: 16px; }
+  .kicker, footer span:first-child { display: none; }
+  h1 { font-size: 160px; line-height: 1.06; max-width: none; }
+  p { font-size: 72px; line-height: 1.2; max-width: none; }
+  footer { font-size: 72px; line-height: 1.2; }
+` : ''}
 </style></head><body>
   <div class="kicker">${kicker}</div>
-  <h1>${escape(title)}</h1>
+  <h1>${escape(title).replace(/\n/g, '<br />')}</h1>
   ${body ? `<p>${escape(body)}</p>` : ''}
   <footer><span>${escape(footer)}</span><span>rahilbhavan.com</span></footer>
 </body></html>`;
@@ -81,19 +91,37 @@ const cards = [
   })),
 ];
 
+const projectEvidence = JSON.parse(readFileSync('src/data/project-evidence.json', 'utf8'));
+for (const entry of cards) {
+  const summary = projectEvidence.find((item) => `${item.id}.png` === entry.file);
+  if (summary) Object.assign(entry, { title: summary.shareTitle, body: summary.shareBody, compact: true });
+}
+
+const requestedCards = new Set(process.argv.slice(2).map((slug) => `${slug}.png`));
+const selectedCards = requestedCards.size ? cards.filter((entry) => requestedCards.has(entry.file)) : cards;
 mkdirSync(join(outDir, 'writing'), { recursive: true });
 const work = mkdtempSync(join(process.env.XDG_CACHE_HOME ?? join(process.env.HOME ?? tmpdir(), '.cache'), 'og-'));
+const browser = await firefox.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
 try {
-  for (const c of cards) {
+  for (const c of selectedCards) {
     const html = join(work, c.file.replace(/\//g, '-').replace(/\.png$/, '.html'));
     writeFileSync(html, card(c));
-    execFileSync(chromium, [
-      '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
-      '--window-size=1280,640', '--allow-file-access-from-files', '--virtual-time-budget=2000',
-      `--screenshot=${join(outDir, c.file)}`, `file://${html}`,
-    ], { stdio: 'pipe' });
+    mkdirSync('.generated/og-review', { recursive: true });
+    writeFileSync(join('.generated/og-review', c.file.replaceAll('/', '-').replace(/\.png$/, '.html')), card(c));
+    await page.goto(`file://${html}`);
+    await page.evaluate(() => document.fonts.ready);
+    const fits = await page.evaluate(() => {
+      const body = document.querySelector('p');
+      const footer = document.querySelector('footer');
+      return (!body || body.getBoundingClientRect().bottom + 20 <= footer.getBoundingClientRect().top)
+        && footer.getBoundingClientRect().bottom <= 640;
+    });
+    if (!fits) throw new Error(`Social card content overflows: ${c.file}`);
+    await page.screenshot({ path: join(outDir, c.file) });
     console.log(`public/og/${c.file}`);
   }
 } finally {
+  await browser.close();
   rmSync(work, { recursive: true, force: true });
 }

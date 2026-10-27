@@ -28,12 +28,12 @@ Imported sources live in `src/textbooks/`, grouped by book. Numbered fragments j
 
 ## Selected project case studies
 
-The six resume-linked case studies share a large display title, labeled finding,
+The seven resume-linked case studies share a large display title, labeled finding,
 artifact/code actions, and an early write-up shortcut. The full write-up uses a
 sticky section index on desktop and an in-flow index on narrow screens.
 
 `ProjectEvidence.astro` renders native evidence panels from
-`src/data/project-evidence.json`. All six panels use the figure token roles,
+`src/data/project-evidence.json`. All seven panels use the figure token roles,
 40px Anton headings, 18px Plex labels, dated scope, and explicit limits. On mobile
 they precede the long summary. Original screenshots remain accessible through
 clearly labeled source links; they are not altered to resemble redesigned apps.
@@ -42,14 +42,20 @@ Case-study typography uses the canonical display clamp (56–96px), 1.06 line
 height, zero tracking and 18px body. Controls and figure panels use 8px and 12px
 radii. All content is present with reduced motion and JavaScript disabled.
 
-The same evidence file supplies concise link-preview headlines. The six 1280×640
+The same evidence file supplies concise link-preview headlines. The seven 1280×640
 cards use embedded local fonts, 160px headlines and 72px supporting text. At a
 326px display width these remain above the 40px/18px public-media floors.
 They retain model/prototype qualifiers; the full page carries methods and dates.
 
-`/coverage`, `/dat-accretion` and `/mara` are same-domain case-study aliases.
+`/coverage`, `/dat-accretion`, `/mara` and `/toolkit` are same-domain case-study
+aliases.
 The historical `/strategy` alias continues to point to DAT for compatibility.
 These deployment redirects are configured in `vercel.json`, not exercised by the
 static local server.
+
+The Strategy Capital Markets Toolkit page joined the set on October 26, 2026.
+Its panel covers five repositories, so each row label links to its own repo and
+the single source action is omitted. `ProjectEvidence.astro` accepts an optional
+row `href` and an optional `source` for this case.
 
 Checks and review limits: `docs/project-design-review-20261026.md`.

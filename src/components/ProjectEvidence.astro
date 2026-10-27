@@ -1,5 +1,8 @@
 ---
-import evidence from '../data/project-evidence.json';
+import evidenceData from '../data/project-evidence.json';
+type Row = { label: string; value: string; note: string; href?: string };
+type Evidence = { id: string; label: string; title: string; basis: string; rows: Row[]; limit: string; source?: string; action?: string };
+const evidence: Evidence[] = evidenceData;
 const { projectId, artifact } = Astro.props;
 const summary = evidence.find((entry) => entry.id === projectId);
 ---
@@ -10,12 +13,12 @@ const summary = evidence.find((entry) => entry.id === projectId);
   <p class="basis">{summary.basis}</p>
   <dl>
     {summary.rows.map((row) => <div>
-      <dt>{row.label}<span>{row.note}</span></dt>
+      <dt>{row.href ? <a href={row.href} rel="noopener">{row.label} ↗</a> : row.label}<span>{row.note}</span></dt>
       <dd>{row.value}</dd>
     </div>)}
   </dl>
   <p class="limit">{summary.limit}</p>
-  <a href={summary.source}>{summary.action} ↗</a>
+  {summary.source && <a href={summary.source}>{summary.action} ↗</a>}
   {artifact && <div class="source-artifact">
     <a href={artifact.src}>View the original project screenshot ↗</a>
     <p>{artifact.caption}</p>
@@ -33,6 +36,7 @@ const summary = evidence.find((entry) => entry.id === projectId);
   dl > div { border-top: 1px solid var(--figure-border); padding: 1rem 0; }
   dd { margin: .5rem 0 0; font-weight: 600; }
   dt span { display: block; }
+  dt a { font-weight: 600; }
   a { color: var(--figure-ink); display: inline-flex; align-items: center; min-height: 44px; }
   a:hover { color: var(--figure-secondary); }
   :focus-visible { outline-color: var(--figure-ink); }

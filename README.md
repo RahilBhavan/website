@@ -6,7 +6,7 @@
 
 ![Home page at 1440 px wide: name in large condensed type, the line "A student trynna learn", a short introduction and the latest project card.](docs/home-1440.png)
 
-This is the source of rahilbhavan.com, a static-first Astro site. It holds 25 project case pages and 28 written posts. Each case page states its result, its status (proposal, prototype or shipped), how it was checked and what comes next.
+This is the source of rahilbhavan.com, a static-first Astro site. It holds 26 project case pages and 28 written posts. Each case page states its result, its status (proposal, prototype or shipped), how it was checked and what comes next.
 
 ## What it does
 
@@ -30,7 +30,7 @@ bun run check      # type-check, build, link and anchor check, cross-link check,
 bunx playwright install firefox && bun run test:e2e   # smoke test of the built site (run `bun run build` first)
 ```
 
-`bun run check` ran clean on 2026-10-24: 0 type errors, 66 pages with no broken internal links, 28 post-to-project pairs linked back, 9 unit tests passing. The unit tests cover the datacenter calculator arithmetic in `tests/datacenter-math.test.mjs`. The pages themselves are checked by the two link scripts. `tests/e2e/smoke.spec.mjs` loads 11 key pages in Firefox at 1440 px and 390 px and fails on a non-200 response, a console error, a failed request or horizontal overflow (22 tests, passing on 2026-10-24). CI runs both on every push to `main` and every pull request. Building needs no keys or network.
+`bun run check` ran clean on 2026-10-26: 0 type errors, 82 pages with no broken internal links, 28 post-to-project pairs linked back, 14 unit tests passing. The unit tests cover the datacenter calculator arithmetic and the Spine March 2020 data (`tests/*.test.mjs`). The pages themselves are checked by the two link scripts. `tests/e2e/smoke.spec.mjs` loads 12 key pages in Firefox at 1440 px and 390 px and fails on a non-200 response, a console error, a failed request or horizontal overflow (24 tests, passing on 2026-10-26). CI runs both on every push to `main` and every pull request. Building needs no keys or network.
 
 `bun run preview` does not work with the Vercel adapter. To look at the build, serve `dist/client` with any static file server.
 

@@ -7,6 +7,7 @@ const pages = [
   ['/about', 'About'],
   ['/crypto-finance', 'Crypto finance'],
   ['/projects/spine-coinbase-loan-book-risk-model', 'Spine'],
+  ['/projects/strategy-capital-markets-toolkit', 'Strategy Capital Markets Toolkit'],
   ['/drag-the-number/spine', 'Drag the number'],
   ['/projects/filing-research-assistant', 'Filing Research Assistant'],
   ['/writing/can-a-filing-answer-be-forced-to-quote-or-abstain', 'quote or abstain'],

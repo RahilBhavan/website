@@ -156,5 +156,46 @@
     "action": "Read the method and assumptions",
     "shareTitle": "$12,387 to\n$3,041",
     "shareBody": "Same orders · simulated"
+  },
+  {
+    "id": "strategy-capital-markets-toolkit",
+    "label": "Public filings and closes · frozen data",
+    "title": "Five questions. One filing cutoff.",
+    "basis": "Data cutoff October 21, 2026 · 263 tests pass",
+    "rows": [
+      {
+        "label": "8-K ledger",
+        "href": "https://github.com/RahilBhavan/strategy-8k-ledger",
+        "value": "848,517 BTC",
+        "note": "Held after the Oct 12–18 week, from the Oct 19 8-K"
+      },
+      {
+        "label": "Issuance router",
+        "href": "https://github.com/RahilBhavan/strategy-issuance-router",
+        "value": "$0.84 vs $0.89–$1.21",
+        "note": "Value handed to new holders per $1 raised, MSTR vs preferreds · synthetic market inputs"
+      },
+      {
+        "label": "Fair-value earnings",
+        "href": "https://github.com/RahilBhavan/strategy-fair-value-earnings",
+        "value": "$86,459",
+        "note": "Dec 31, 2026 BTC close above which the modeled S&P profit test passes · average model miss about $540"
+      },
+      {
+        "label": "Credit curve",
+        "href": "https://github.com/RahilBhavan/strategy-credit-curve",
+        "value": "10.03% to 14.96%",
+        "note": "Preferred yields at Oct 21, 2026 Nasdaq closes · STRE excluded"
+      },
+      {
+        "label": "Accrual ledger",
+        "href": "https://github.com/RahilBhavan/preferred-accrual-ledger",
+        "value": "11 of 16",
+        "note": "Aggregate dividend checks within filing rounding · 5 gaps stay open"
+      }
+    ],
+    "limit": "Prototypes on frozen public data, not live tools. Router market inputs are synthetic, Q3 2026 earnings are a preliminary estimate, and note values are models on assumed volatility. Not affiliated with Strategy; not investment advice.",
+    "shareTitle": "Five tools.\nOne issuer.",
+    "shareBody": "Strategy filings · prototypes"
   }
 ]

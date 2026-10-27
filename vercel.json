@@ -63,6 +63,11 @@
       "source": "/mara",
       "destination": "/projects/mara-credit-case",
       "permanent": false
+    },
+    {
+      "source": "/toolkit",
+      "destination": "/projects/strategy-capital-markets-toolkit",
+      "permanent": false
     }
   ]
 }

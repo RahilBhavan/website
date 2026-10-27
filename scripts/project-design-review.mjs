@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 const out=process.env.PROJECT_REVIEW_DIR ?? '.generated/project-design-review';
 await mkdir(out,{recursive:true});
 const browser=await firefox.launch({headless:true});
-const slugs=['strategy-preferred-coverage-model-dividend-runway','dat-accretion-monitor','mara-credit-case','spine-coinbase-loan-book-risk-model','presto-royalty-recovery-engine','mev-sandwich-study-two-phase-clearing-on-uniswap'];
+const slugs=['strategy-preferred-coverage-model-dividend-runway','dat-accretion-monitor','mara-credit-case','spine-coinbase-loan-book-risk-model','presto-royalty-recovery-engine','mev-sandwich-study-two-phase-clearing-on-uniswap','strategy-capital-markets-toolkit'];
 const results=[];
 for (const width of [1280,390,320]) {
  const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce'});

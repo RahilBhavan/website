@@ -54,7 +54,7 @@
     "id": "mara-credit-case",
     "label": "Hypothetical credit decision",
     "title": "A $5M request. A $3M limit.",
-    "basis": "Fictional facility · public MARA financials",
+    "basis": "Case: September 23, 2026 · issuer financials: June 30, 2026",
     "rows": [
       {
         "label": "Requested revolver",
@@ -82,7 +82,7 @@
     "id": "spine-coinbase-loan-book-risk-model",
     "label": "Historical crash replay",
     "title": "Loss and exposure are different.",
-    "basis": "March 2020-style replay · 86% LLTV",
+    "basis": "September 2026 modeled book · March 2020 crash path · 86% LLTV",
     "rows": [
       {
         "label": "Modeled realized loss",
@@ -105,7 +105,7 @@
     "id": "presto-royalty-recovery-engine",
     "label": "Parser validation · pre-launch prototype",
     "title": "A lead is not money recovered.",
-    "basis": "Official DDEX BWARM sample · 431-test suite",
+    "basis": "DDEX fixes reported August 1, 2026 · 431-test suite verified October 21, 2026",
     "rows": [
       {
         "label": "Parser defects found and fixed",

@@ -44,6 +44,8 @@ of project slugs, so unrelated cards need not be regenerated.
 - `git diff --check` passed.
 
 QA script: `scripts/project-design-review.mjs`; serve the built site on port 4337.
+Output defaults to the ignored `.generated/project-design-review` directory;
+`PROJECT_REVIEW_DIR` overrides it.
 Review output, source/artifact hashes, briefs and pending media receipts:
 `/home/rahil/.t3/projects/main/exports/project-design-20261026/`.
 
@@ -55,3 +57,16 @@ Original screenshot contents are preserved historical source artifacts, not
 certified current app designs. Agent visual checks do not substitute for Rahil’s
 approval: final media review records remain pending. No publication or deployment was performed. Commit and push are authorized separately by Rahil;
 the Git history records the delivery state.
+
+## Merge review
+
+Pinned initial review: base `3baf9e4`, head `7303854`. Standards approved, with
+one optional portability note (STD-1); QA output now defaults inside the checkout.
+Spec review found missing date context (SPEC-02); the MARA panel now identifies
+June 30 issuer financials and the September 23 case, Spine identifies the September
+2026 book separately from the March 2020 path, and Presto dates the reported
+August 1 parser fixes separately from the October 21 suite verification.
+Evidence: existing project articles and the October 21 resume evidence pack,
+including the recorded Presto commit `24086e8`. One scoped repair pass used.
+SPEC-01, exact-artifact human media approval, remains open. Initial full-site
+Firefox e2e suite: 22 passed. Changed-code review and CI must cover the repair.

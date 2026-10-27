@@ -1,0 +1,41 @@
+---
+import evidence from '../data/project-evidence.json';
+const { projectId, artifact } = Astro.props;
+const summary = evidence.find((entry) => entry.id === projectId);
+---
+
+{summary && <aside class="project-evidence" aria-labelledby="evidence-title">
+  <p class="eyebrow">{summary.label}</p>
+  <h2 id="evidence-title">{summary.title}</h2>
+  <p class="basis">{summary.basis}</p>
+  <dl>
+    {summary.rows.map((row) => <div>
+      <dt>{row.label}<span>{row.note}</span></dt>
+      <dd>{row.value}</dd>
+    </div>)}
+  </dl>
+  <p class="limit">{summary.limit}</p>
+  <a href={summary.source}>{summary.action} ↗</a>
+  {artifact && <div class="source-artifact">
+    <a href={artifact.src}>View the original project screenshot ↗</a>
+    <p>{artifact.caption}</p>
+  </div>}
+</aside>}
+
+<style>
+  .project-evidence { background: var(--figure-surface); color: var(--figure-ink); padding: 1.5rem; border-radius: var(--radius-panel); min-width: 0; }
+  .eyebrow, .limit, dt span, .source-artifact p { color: var(--figure-secondary); }
+  .project-evidence p, .project-evidence a, dt, dd { font-size: 18px; line-height: 1.6; }
+  .eyebrow { margin: 0; font-weight: 600; }
+  h2 { font-size: 40px; line-height: 1.06; margin: 1rem 0; }
+  .basis { margin: 0; }
+  dl { margin: 1.5rem 0; }
+  dl > div { border-top: 1px solid var(--figure-border); padding: 1rem 0; }
+  dd { margin: .5rem 0 0; font-weight: 600; }
+  dt span { display: block; }
+  a { color: var(--figure-ink); display: inline-flex; align-items: center; min-height: 44px; }
+  a:hover { color: var(--figure-secondary); }
+  :focus-visible { outline-color: var(--figure-ink); }
+  .source-artifact { border-top: 1px solid var(--figure-border); margin-top: 1.5rem; padding-top: 1rem; }
+  .source-artifact p { margin: .5rem 0 0; }
+</style>

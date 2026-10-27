@@ -1,13 +1,13 @@
 ---
 title: "MARA Credit Case: Sizing a Secured Revolver"
-tagline: "Credit committee case that cuts a $5.0M revolver request to a conditional $3.0M limit"
+tagline: "A $5M request. A $3M conditional limit. Collateral sets the ceiling."
 description: "A credit committee package that sizes a hypothetical $5.0M, 12-month secured revolver to MARA Holdings from public filings: a tested decision engine, a two-page memo, and a conditional $3.0M limit set by stressed collateral proceeds."
 problem: "A lender is asked for a $5.0M, 12-month secured revolver by a bitcoin miner with $421.3M of cash, 35,577 bitcoin, and about $2.4B of debt. How much should it lend, against what, and on which conditions? The borrower's size says little about the answer, because the facility is only as good as the collateral behind it and the route from that collateral to repayment cash."
 solution: "Built a standard-library Python decision engine with Decimal arithmetic that runs a collateral waterfall and four caps (obligor, collateral, single-name, concentration) across eleven scenarios, from issuer facts pulled out of MARA's filing XBRL and a fictional collateral schedule. The engine feeds a two-page credit memo, an opposing memo, a committee packet, a 16-sheet formula workbook, and a live decision view, all checked by 65 unit tests and a 49-check validator."
-result: "Cuts a $5.0M secured revolver request to a conditional $3.0M limit, set by $3,870,600 of stressed collateral proceeds at 1.25x coverage."
+result: "Sizes a hypothetical $5.0M secured revolver request to a conditional $3.0M limit, set by $3,870,600 of stressed collateral proceeds at 1.25x coverage."
 status: "prototype"
 verification: "65 unit tests and a 49-check validator that reconciles the engine, workbook, memos and hashes, plus a 16-sheet workbook audited cell by cell against the engine."
-next: "The caps and costs are illustrative, and no independent reviewer has reproduced the numbers yet."
+next: "Have an independent reviewer reproduce the recommendation and challenge the illustrative collateral costs and policy caps."
 figure:
   src: "/images/projects/mara-credit-case/decision-view.webp"
   alt: "MARA decision view: a $3,000,000 conditional approval, $3,870,600 of available proceeds, and four-cap bars with collateral binding at $3,046,480."
@@ -18,21 +18,20 @@ kind: "credit case"
 track: "crypto"
 featured: true
 completedDate: 2026-09-23
-ogImage: "https://mara.rahilbhavan.com/social-card.png"
 ---
-![MARA credit case decision view](https://raw.githubusercontent.com/RahilBhavan/mara-credit-case/main/docs/screenshot.png)
+## A large balance sheet is not a lending limit
 
-## Overview
+A hypothetical lender is asked for a **$5M, 12-month secured revolver**. The borrower is MARA Holdings. The question is how much the lender can recover from the collateral it controls—not how much bitcoin appears on MARA's balance sheet.
 
-**The question:** A hypothetical lender receives a request for a $5.0M, 12-month secured revolver from MARA Holdings. What limit should the credit committee approve, and what has to be true before any money moves?
+**The recommendation: a conditional $3M limit.** Stressed collateral proceeds of $3,870,600 make collateral the binding constraint. Funding remains blocked until nine pre-funding conditions clear; an unknown ownership, lien, or control condition means decline.
 
-**The answer:** Approve a conditional **$3.0M** limit against the $5.0M request. Funding stays blocked until nine pre-funding conditions clear, among them verified ownership, a first-priority lien, enforceable control of the collateral, and a tested route from the collateral to repayment cash. If any of those stays unknown, the answer is decline.
+**My contribution:** the Python decision engine, collateral waterfall, four-cap limit calculation, formula workbook, and committee package. An opposing memo challenges the recommendation alongside the credit memo.
 
-**Scope:** MARA is a public-information case only. The facility, collateral, Base route, covenants, policy limits, rating, and portfolio are fictional. This is an independent project, not affiliated with or endorsed by Coinbase or MARA, and it does not claim MARA is a Coinbase customer.
+**This is a simulated credit decision.** MARA's issuer facts come from public filings. The facility, collateral schedule, Base route, covenants, policy limits, rating, and portfolio are fictional. MARA's reported bitcoin is not pledged to this hypothetical facility.
 
-## The Problem
+[Open the decision view](https://mara.rahilbhavan.com/) · [Read the two-page credit memo](https://mara.rahilbhavan.com/credit-memo.pdf) · [Inspect the engine and checks](https://github.com/RahilBhavan/mara-credit-case)
 
-### The borrower
+## Start with the borrower
 
 From MARA's June 30, 2026 filing:
 
@@ -47,7 +46,7 @@ These facts frame the borrower. The case does not treat MARA's reported bitcoin 
 
 A large balance sheet does not make a small secured loan safe. The lender recovers from the collateral it controls, after stress, after costs, and only if it can turn that collateral into cash. The package has to show which constraint binds, why, and what the committee would need to see before it funds.
 
-## The Answer
+## Why the limit is $3M
 
 The limit is the lowest of four caps, rounded down to the nearest $100,000:
 
@@ -60,7 +59,7 @@ The limit is the lowest of four caps, rounded down to the nearest $100,000:
 
 At the $3.0M limit, pro forma exposure is $3.05M and coverage is 1.27x. A fully drawn $5.0M request would leave a $1,179,400 recovery shortfall. The illustrative obligor rating is `3 / Watchful`, an ordinal judgment, not a probability of default.
 
-## How It Was Built
+## One decision record, checked across every output
 
 ### Approach
 
@@ -82,7 +81,7 @@ At the $3.0M limit, pro forma exposure is $3.05M and coverage is 1.27x. A fully 
 - Decision view: eleven scenarios, a collateral what-if lab, the decision surface, and the condition register
 - Review package with every output, a start-here guide, and a SHA-256 manifest
 
-## What to Open First
+## Review the recommendation
 
 1. **Decision view**: [mara.rahilbhavan.com](https://mara.rahilbhavan.com/). Start with the decision summary, then move collateral in the what-if lab.
 2. **Credit memo (PDF)**: [the two-page recommendation](https://mara.rahilbhavan.com/credit-memo.pdf).
@@ -97,4 +96,4 @@ At the $3.0M limit, pro forma exposure is $3.05M and coverage is 1.27x. A fully 
 
 ---
 
-**Completed:** September 23, 2026
+**Case completed:** September 23, 2026 · **Status:** independent prototype; no lending decision or funding occurred.

@@ -1,6 +1,6 @@
 # Design
 
-This site applies the public `rahil-design` system, version 3.3.1: charcoal, white and yellow, with Anton display type and IBM Plex Sans body text. The voice is "A student trynna learn". The system's tokens and rules are the authority. This file records only how the site applies them.
+This site applies the public `rahil-design` system, version 3.11.0: charcoal, white and yellow, with Anton display type and IBM Plex Sans body text. The voice is "A student trynna learn". The system's tokens and rules are the authority. This file records only how the site applies them.
 
 ## Tokens
 
@@ -25,3 +25,31 @@ Run `bun run check`. Read changed pages at 1280px, 390px and 320px. There should
 `/textbooks` uses an open numbered index with search and subject filters. The shared reader lives in `public/textbooks/reader.css` and `reader.js`. It owns navigation, font roles, light figure surfaces, focus, narrow-screen scrolling and print flow. Topic-specific diagrams and learning controls retain their own models.
 
 Imported sources live in `src/textbooks/`, grouped by book. Numbered fragments join in order; they preserve the original markup and physical SVG parts without giant font/base64 blobs. `scripts/textbooks/build.mjs` makes the local reading editions and records hashes. Figures retain their source dates, illustration labels and qualifications. The source-edition hash is provenance, not a factual refresh or a learning-outcome claim.
+
+## Selected project case studies
+
+The six resume-linked case studies share a large display title, labeled finding,
+artifact/code actions, and an early write-up shortcut. The full write-up uses a
+sticky section index on desktop and an in-flow index on narrow screens.
+
+`ProjectEvidence.astro` renders native evidence panels from
+`src/data/project-evidence.json`. All six panels use the figure token roles,
+40px Anton headings, 18px Plex labels, dated scope, and explicit limits. On mobile
+they precede the long summary. Original screenshots remain accessible through
+clearly labeled source links; they are not altered to resemble redesigned apps.
+
+Case-study typography uses the canonical display clamp (56–96px), 1.06 line
+height, zero tracking and 18px body. Controls and figure panels use 8px and 12px
+radii. All content is present with reduced motion and JavaScript disabled.
+
+The same evidence file supplies concise link-preview headlines. The six 1280×640
+cards use embedded local fonts, 160px headlines and 72px supporting text. At a
+326px display width these remain above the 40px/18px public-media floors.
+They retain model/prototype qualifiers; the full page carries methods and dates.
+
+`/coverage`, `/dat-accretion` and `/mara` are same-domain case-study aliases.
+The historical `/strategy` alias continues to point to DAT for compatibility.
+These deployment redirects are configured in `vercel.json`, not exercised by the
+static local server.
+
+Checks and review limits: `docs/project-design-review-20261026.md`.

@@ -67,3 +67,17 @@ export function groupWriting(posts: Post[], trackOf: (post: Post) => Track | und
 
   return entries.sort((a, b) => b.date.valueOf() - a.date.valueOf() || a.href.localeCompare(b.href));
 }
+
+/** Split a title into [before, highlighted, after]. The highlighter goes on the first figure-like token
+ * ($5.0M, 27%, 10-K, 2x) with its unit; otherwise on the last two words. The text itself is unchanged. */
+export function splitTitle(title: string): [string, string, string] {
+  const figure = title.match(/[$€]?\d[\d,.]*\s?(?:%|[a-zA-Z]{1,2}\b)?(?:\s(?:months?|years?|days?|minutes?|blocks?|tests?|ms|MWh))?/);
+  if (figure && figure.index !== undefined) {
+    const end = figure.index + figure[0].length;
+    return [title.slice(0, figure.index), figure[0], title.slice(end)];
+  }
+  const words = title.split(' ');
+  if (words.length < 4) return ['', title, ''];
+  const cut = words.length - 2;
+  return [words.slice(0, cut).join(' ') + ' ', words.slice(cut).join(' '), ''];
+}

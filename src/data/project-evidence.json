@@ -159,9 +159,9 @@
   },
   {
     "id": "strategy-capital-markets-toolkit",
-    "label": "Historical filings · frozen data",
+    "label": "Public filings and closes · frozen data",
     "title": "Five questions. One filing cutoff.",
-    "basis": "Strategy filings through October 21, 2026 · 263 tests pass",
+    "basis": "Data cutoff October 21, 2026 · 263 tests pass",
     "rows": [
       {
         "label": "8-K ledger",
@@ -179,7 +179,7 @@
         "label": "Fair-value earnings",
         "href": "https://github.com/RahilBhavan/strategy-fair-value-earnings",
         "value": "$86,459",
-        "note": "Dec 31, 2026 BTC close that passes the S&P profit test · about ±$540 model error"
+        "note": "Dec 31, 2026 BTC close above which the modeled S&P profit test passes · average model miss about $540"
       },
       {
         "label": "Credit curve",
@@ -191,7 +191,7 @@
         "label": "Accrual ledger",
         "href": "https://github.com/RahilBhavan/preferred-accrual-ledger",
         "value": "11 of 16",
-        "note": "Dividend checks match filed totals · 5 gaps stay open"
+        "note": "Aggregate dividend checks within filing rounding · 5 gaps stay open"
       }
     ],
     "limit": "Prototypes on frozen public data, not live tools. Router market inputs are synthetic, Q3 2026 earnings are a preliminary estimate, and note values are models on assumed volatility. Not affiliated with Strategy; not investment advice.",

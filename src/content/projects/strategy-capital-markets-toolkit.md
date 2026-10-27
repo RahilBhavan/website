@@ -2,9 +2,9 @@
 title: "Strategy Capital Markets Toolkit"
 tagline: "Five small tools, one financing question each"
 description: "Five open-source Python tools built from Strategy's public filings: a source-linked 8-K ledger, an issuance cost router, a fair-value earnings model for the S&P profit test, a preferred yield and convertible note curve, and a preferred dividend accrual ledger."
-problem: "Strategy funds its bitcoin purchases by selling common stock (MSTR) and five preferred stocks, then pays dividends and interest on those claims. The facts a treasury reader needs are spread across weekly 8-Ks, 10-Qs and market prices. One headline number can mix filed values, market data and assumptions."
+problem: "Strategy funds its bitcoin purchases by selling common stock (MSTR) and five preferred stocks. It pays dividends on the preferreds and owes six convertible notes, four of which pay interest. The facts a treasury reader needs are spread across weekly 8-Ks, 10-Qs and market prices. One headline number can mix filed values, market data and assumptions."
 solution: "Built five offline Python tools, one per question: what was filed each week, which instrument is cheapest to issue, what bitcoin price passes the S&P earnings screen, what the preferreds yield at market, and what dividends are owed. Each runs from frozen, hashed public data, keeps its source links and states its own limits."
-result: "Using filings through Oct 21, 2026: Strategy's preferreds yielded 10.03% to 14.96% at that day's closes, and a Dec 31 bitcoin close above $86,459 passes the modeled S&P profit test, give or take about $540."
+result: "At Oct 21, 2026 closes, Strategy's four traded preferreds yielded 10.03% to 14.96%. A Dec 31 bitcoin close above $86,459 passes the modeled S&P profit test; the model's average miss is about $540 of bitcoin price."
 status: "prototype"
 verification: "263 unit tests pass across the five repos, rerun from fresh clones on Oct 26, 2026. Each repo's latest GitHub Actions run passed on its Oct 25 commit. Page numbers come from repo outputs and were not rechecked against the filings."
 next: "Every tool reads a frozen October 21, 2026 snapshot, so the numbers age with each filing. The October 28 vote on daily STRC dividends was pending at that cutoff and no tool assumes it passes. The router still needs real point-in-time mNAV and yields, and five dividend checks remain open."
@@ -55,7 +55,7 @@ The model rebuilds Strategy's earnings under fair-value accounting for bitcoin. 
 
 **Result:** The quarter to June 30, 2026 lost $8.22B, and the four quarters to that date lost $30.41B (June 2026 10-Q). A Coinbase BTC-USD daily close above $86,459 on December 31, 2026 passes the test on net income. After preferred dividends, the bar is $88,826.
 
-**Limit:** The model missed reported net income by $326.77M on average over six quarters. That is about $540 of bitcoin price, so a close within that band of the threshold is undecided. Q3 2026 uses Strategy's preliminary 8-K estimates plus modeled other income; it is not reported GAAP earnings. S&P's method does not say which earnings line counts, so the model uses net (loss) income and shows the after-preferred line as a sensitivity. Only the earnings rule is modeled, not market cap, liquidity, float or Index Committee discretion.
+**Limit:** The model missed reported net income by $326.77M on average over six quarters. That is about $540 of bitcoin price (the largest miss, $824.74M, is about $1,364), so a close within that band of the threshold is undecided. Q3 2026 uses Strategy's preliminary 8-K estimates plus modeled other income; it is not reported GAAP earnings. S&P's method does not say which earnings line counts, so the model uses net (loss) income and shows the after-preferred line as a sensitivity. Only the earnings rule is modeled, not market cap, liquidity, float or Index Committee discretion.
 
 [Code and results: strategy-fair-value-earnings](https://github.com/RahilBhavan/strategy-fair-value-earnings)
 
@@ -63,7 +63,7 @@ The model rebuilds Strategy's earnings under fair-value accounting for bitcoin. 
 
 **Question:** What do Strategy's preferreds yield at their actual market prices, and what are its convertible notes worth under stated assumptions?
 
-The curve takes each preferred's October 21, 2026 Nasdaq close and computes its effective annual yield and its spread over a 30-year Treasury par rate of 5.49%. It values six convertible notes with a Tsiveriotis-Fernandes tree at the $153.48 MSTR close, across a grid of volatility and credit-spread assumptions.
+The curve takes each preferred's October 21, 2026 Nasdaq close and computes its effective annual yield and its spread over the 30-year Treasury par yield (5.42%, or 5.49% as an effective annual rate). It values six convertible notes with a Tsiveriotis-Fernandes tree at the $153.48 MSTR close, across a grid of volatility and credit-spread assumptions.
 
 **Result, at the October 21, 2026 closes:**
 

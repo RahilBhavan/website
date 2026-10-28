@@ -24,7 +24,7 @@ const { data } = post;
 const wordCount = post.body ? post.body.split(/\s+/g).length : 0;
 const readingTime = `${Math.max(1, Math.round(wordCount / 200))} min read`;
 const project = data.project ? await getEntry(data.project) : undefined;
-const [tb, tk, ta] = splitTitle(data.title);
+const [tb, tk, ta] = splitTitle(data.title, data.highlight);
 const kicker = data.series ? data.series.name : project ? project.data.title : 'Writing';
 const date = data.publishDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 ---
@@ -33,7 +33,7 @@ const date = data.publishDate.toLocaleDateString('en-US', { month: 'long', day: 
   <main id="main" class="wrap page">
     <a href="/writing" class="back">← All writing</a>
     <p class="kicker">{kicker}{data.series && <> · Part {data.series.part}</>}</p>
-    <h1>{tb}<span class="hl">{tk}</span>{ta}</h1>
+    <h1>{tb}{tk && <span class="hl">{tk}</span>}{ta}</h1>
     <p class="meta">
       <span class="byline">Rahil Bhavan</span>
       <time datetime={data.publishDate.toISOString()}>{date}</time>

@@ -103,7 +103,7 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
 <style>
   .home {
-    counter-reset: exhibit;
+    counter-reset: section;
     padding-bottom: 5rem;
   }
 
@@ -175,7 +175,7 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .latest-title a:hover {
     text-decoration: underline;
-    text-decoration-color: var(--ink);
+    text-decoration-color: var(--link);
   }
 
   .latest-result {
@@ -196,15 +196,15 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .block {
     margin-top: 5rem;
-    counter-increment: exhibit;
+    counter-increment: section;
   }
 
   .block-head h2::before {
-    content: 'Exhibit ' counter(exhibit, decimal-leading-zero);
+    content: counter(section, decimal-leading-zero);
     display: block;
     margin-bottom: 0.5rem;
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 400;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -262,7 +262,7 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .writing-title:hover {
     text-decoration: underline;
-    text-decoration-color: var(--ink);
+    text-decoration-color: var(--link);
   }
 
   .writing-meta {

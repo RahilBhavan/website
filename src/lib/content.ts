@@ -67,3 +67,12 @@ export function groupWriting(posts: Post[], trackOf: (post: Post) => Track | und
 
   return entries.sort((a, b) => b.date.valueOf() - a.date.valueOf() || a.href.localeCompare(b.href));
 }
+
+/** Split a title into [before, highlighted, after] around its `highlight` frontmatter phrase. The highlighter names the
+ * finding, so it is chosen by hand, never guessed; a title without one carries no highlight. */
+export function splitTitle(title: string, highlight?: string): [string, string, string] {
+  if (!highlight) return [title, '', ''];
+  const at = title.indexOf(highlight);
+  if (at < 0) throw new Error(`highlight "${highlight}" is not in the title "${title}"`);
+  return [title.slice(0, at), highlight, title.slice(at + highlight.length)];
+}

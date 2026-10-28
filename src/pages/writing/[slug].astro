@@ -4,7 +4,7 @@ import { getCollection, getEntry, render } from 'astro:content';
 import SeriesLinks from '../../components/SeriesLinks.astro';
 import ProjectEntry from '../../components/ProjectEntry.astro';
 import Toc from '../../components/Toc.astro';
-import { slug } from '../../lib/content';
+import { slug, splitTitle } from '../../lib/content';
 
 export const prerender = true;
 
@@ -24,20 +24,29 @@ const { data } = post;
 const wordCount = post.body ? post.body.split(/\s+/g).length : 0;
 const readingTime = `${Math.max(1, Math.round(wordCount / 200))} min read`;
 const project = data.project ? await getEntry(data.project) : undefined;
+const [tb, tk, ta] = splitTitle(data.title, data.highlight);
+const kicker = data.series ? data.series.name : project ? project.data.title : 'Writing';
 const date = data.publishDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 ---
 
 <BaseLayout title={data.title} description={data.description} ogImage={`/og/writing/${slug(post.id)}.png`} ogType="article">
   <main id="main" class="wrap page">
     <a href="/writing" class="back">← All writing</a>
-    <h1>{data.title}</h1>
+    <p class="kicker">{kicker}{data.series && <> · Part {data.series.part}</>}</p>
+    <h1>{tb}{tk && <span class="hl">{tk}</span>}{ta}</h1>
     <p class="meta">
+      <span class="byline">Rahil Bhavan</span>
       <time datetime={data.publishDate.toISOString()}>{date}</time>
       <span>{readingTime}</span>
       {project && (
         <span>Project: <a href={`/projects/${slug(project.id)}`}>{project.data.title}</a></span>
       )}
     </p>
+
+    <aside class="key-points" aria-labelledby="key-points-title">
+      <p id="key-points-title" class="kicker">Key points</p>
+      <ul><li>{data.description}</li></ul>
+    </aside>
 
     {data.series && <SeriesLinks seriesName={data.series.name} currentPart={data.series.part} />}
 
@@ -56,15 +65,42 @@ const date = data.publishDate.toLocaleDateString('en-US', { month: 'long', day: 
 
 <style>
   h1 {
-    font-size: clamp(2.25rem, 5.5vw, 3.75rem);
+    font-size: clamp(2.25rem, 5.5vw, 3.5rem);
     margin-bottom: 1rem;
+  }
+
+  .byline {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .key-points {
+    margin: 0 0 2.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface);
+    border-left: 4px solid var(--ink);
+  }
+
+  .key-points .kicker {
+    margin-bottom: 0.5rem;
+  }
+
+  .key-points ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .key-points li {
+    margin: 0.25rem 0;
   }
 
   .meta {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1.25rem;
-    margin: 0 0 2.5rem;
+    margin: 0 0 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
     color: var(--secondary);
   }

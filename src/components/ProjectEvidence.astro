@@ -17,8 +17,10 @@ const summary = evidence.find((entry) => entry.id === projectId);
       <dd>{row.value}</dd>
     </div>)}
   </dl>
-  <p class="limit">{summary.limit}</p>
-  {summary.source && <a href={summary.source}>{summary.action} ↗</a>}
+  <div class="foot">
+    <p class="limit"><b>Note:</b> {summary.limit}</p>
+    {summary.source && <p class="source"><b>Source:</b> <a href={summary.source}>{summary.action} ↗</a></p>}
+  </div>
   {artifact && <div class="source-artifact">
     <a href={artifact.src}>View the original project screenshot ↗</a>
     <p>{artifact.caption}</p>
@@ -26,19 +28,23 @@ const summary = evidence.find((entry) => entry.id === projectId);
 </aside>}
 
 <style>
-  .project-evidence { background: var(--figure-surface); color: var(--figure-ink); padding: 1.5rem; border-radius: var(--radius-panel); min-width: 0; }
-  .eyebrow, .limit, dt span, .source-artifact p { color: var(--figure-secondary); }
+  .project-evidence { background: var(--figure-surface); color: var(--figure-ink); padding: 1.5rem; border-radius: var(--radius-panel); border: 1px solid var(--figure-border); border-top: 6px solid var(--accent); min-width: 0; }
+  .foot { border-top: 1px solid var(--figure-border); margin-top: 1.5rem; padding-top: .5rem; }
+  .foot p { margin: 0; }
+  .foot b { font-weight: 800; color: var(--figure-ink); }
+  dd { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .eyebrow, .basis, .limit, dt span, .source-artifact p { color: var(--figure-secondary); }
   .project-evidence p, .project-evidence a, dt, dd { font-size: 18px; line-height: 1.6; }
   .eyebrow { margin: 0; font-weight: 600; }
-  h2 { font-size: 40px; line-height: 1.06; margin: 1rem 0; }
+  h2 { font-size: 40px; line-height: 1.08; margin: 1rem 0; text-transform: none; }
   .basis { margin: 0; }
   dl { margin: 1.5rem 0; }
   dl > div { border-top: 1px solid var(--figure-border); padding: 1rem 0; }
-  dd { margin: .5rem 0 0; font-weight: 600; }
+  dd { margin: .5rem 0 0; font-weight: 400; }
   dt span { display: block; }
   dt a { font-weight: 600; }
-  a { color: var(--figure-ink); display: inline-flex; align-items: center; min-height: 44px; }
-  a:hover { color: var(--figure-secondary); }
+  a { color: var(--figure-ink); display: inline-flex; align-items: center; min-height: 44px; text-decoration-color: var(--figure-secondary); }
+  a:hover { background: var(--accent); color: #111214; }
   :focus-visible { outline-color: var(--figure-ink); }
   .source-artifact { border-top: 1px solid var(--figure-border); margin-top: 1.5rem; padding-top: 1rem; }
   .source-artifact p { margin: .5rem 0 0; }

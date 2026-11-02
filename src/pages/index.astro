@@ -18,10 +18,11 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 <BaseLayout title="Rahil Bhavan">
   <main id="main" class="home">
     <section class="wrap-wide hero">
+      <p class="kicker hero-kicker">Research and projects · University of Michigan</p>
       <h1 class="personal-name">Rahil Bhavan</h1>
       <div class="hero-grid">
         <div class="hero-copy">
-          <p class="hero-lead">A student trynna learn.</p>
+          <p class="hero-lead"><span class="hl">A student trynna learn.</span></p>
           <p>
             I study computer engineering and economics at the University of Michigan and co-founded{' '}
             <a href="https://prestorecovery.com">Presto</a>, which finds music royalties held for the wrong
@@ -102,14 +103,15 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
 <style>
   .home {
+    counter-reset: section;
     padding-bottom: 5rem;
   }
 
   .personal-name {
-    font-size: clamp(4rem, 13vw, 11rem);
+    font-size: clamp(3.5rem, 12vw, 10rem);
     line-height: 0.95;
-    letter-spacing: -0.01em;
-    margin: 1.5rem 0 2.5rem;
+    font-stretch: 100%;
+    margin: 0 0 2.5rem;
   }
 
   .hero-grid {
@@ -124,12 +126,15 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
     max-width: 38rem;
   }
 
+  .hero-kicker {
+    margin-top: 3rem;
+  }
+
   .hero-lead {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.06;
-    text-transform: uppercase;
-    color: var(--accent);
+    font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--ink);
   }
 
   .hero-actions {
@@ -151,6 +156,7 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
     padding: 1.5rem;
     background: var(--surface);
     border-radius: 12px;
+    border-top: 4px solid var(--ink);
   }
 
   .latest .label {
@@ -169,7 +175,7 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .latest-title a:hover {
     text-decoration: underline;
-    text-decoration-color: var(--accent);
+    text-decoration-color: var(--link);
   }
 
   .latest-result {
@@ -190,6 +196,19 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .block {
     margin-top: 5rem;
+    counter-increment: section;
+  }
+
+  .block-head h2::before {
+    content: counter(section, decimal-leading-zero);
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--secondary);
   }
 
   .block-head {
@@ -236,14 +255,14 @@ const writing = groupWriting(await getCollection('blog', ({ data }) => !data.dra
 
   .writing-title {
     font-size: 1.125rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--ink);
     text-decoration: none;
   }
 
   .writing-title:hover {
     text-decoration: underline;
-    text-decoration-color: var(--accent);
+    text-decoration-color: var(--link);
   }
 
   .writing-meta {

@@ -6,6 +6,8 @@ const blog = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
+    // Words of the title that name the finding; they carry the yellow highlighter. Must appear in the title.
+    highlight: z.string().optional(),
     description: z.string(),
     publishDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
@@ -24,6 +26,8 @@ const projects = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
+    // Words of the title that name the finding; they carry the yellow highlighter. Must appear in the title.
+    highlight: z.string().optional(),
     // Short line for list views (home, /projects). Aim for under 80 characters.
     tagline: z.string(),
     // Longer summary for <meta name="description"> and the case page header.

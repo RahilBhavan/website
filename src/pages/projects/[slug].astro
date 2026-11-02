@@ -3,7 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Toc from '../../components/Toc.astro';
 import ProjectEvidence from '../../components/ProjectEvidence.astro';
 import { getCollection, render } from 'astro:content';
-import { demoLabel, groupWriting, monthYear, slug, statusLabel } from '../../lib/content';
+import { demoLabel, groupWriting, monthYear, slug, splitTitle, statusLabel } from '../../lib/content';
+import evidence from '../../data/project-evidence.json';
 
 export const prerender = true;
 
@@ -27,6 +28,9 @@ const studyPages = new Set([
 ]);
 const isStudy = studyPages.has(slug(project.id));
 const sections = headings.filter((heading) => heading.depth === 2);
+const [titleBefore, titleKey, titleAfter] = splitTitle(data.title, data.highlight);
+// The hero number is the finding's own value, so it shows only when an evidence row is marked `"hero": true`; a first row picked by position can contradict the finding sentence.
+const hero = isStudy ? evidence.find((entry) => entry.id === slug(project.id))?.rows.find((row) => (row as { hero?: boolean }).hero) : undefined;
 
 const writing = groupWriting(
   await getCollection('blog', (post) => !post.data.draft && post.data.project?.id === slug(project.id))
@@ -49,8 +53,9 @@ const facts = [
         {data.kind && <span>{data.kind}</span>}
         <time datetime={data.completedDate.toISOString()}>{monthYear(data.completedDate)}</time>
       </p>
-      <h1>{data.title}</h1>
+      <h1>{titleBefore}{titleKey && <span class="hl">{titleKey}</span>}{titleAfter}</h1>
       {isStudy && <p class="finding-label">The finding</p>}
+      {hero && <p class="hero-number" aria-hidden="true">{hero.value}</p>}
       <p class="result">{data.result}</p>
       {(data.demoUrl || data.githubUrl) && (
         <p class="case-links">
@@ -208,7 +213,7 @@ const facts = [
 
   .write-up-title {
     padding-top: 2rem;
-    border-top: 1px solid var(--border);
+    border-top: 4px solid var(--ink);
     margin-bottom: 1.5rem;
   }
 
@@ -237,11 +242,13 @@ const facts = [
     text-wrap: balance;
   }
   .write-up-shortcut { display: inline-flex; align-items: center; min-height: 44px; margin-top: 1rem; font-size: .9375rem; color: var(--secondary); }
-  .finding-label { color: var(--accent); font-size: .875rem; margin: 0 0 .5rem; font-weight: 600; }
+  .finding-label { color: var(--secondary); font-size: .875rem; margin: 0 0 .5rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .hero-number { margin: 0 0 .75rem; font-size: clamp(3.5rem, 9vw, 7rem); line-height: 1; font-weight: 800; color: var(--hero); letter-spacing: -.01em; overflow-wrap: anywhere; }
   .project-study .result { max-width: 48ch; font-size: clamp(1.25rem, 2.2vw, 1.625rem); line-height: 1.5; }
   .project-study .case-links { margin-top: 2rem; }
   .project-study .case-links a { padding: .75rem 1rem; border: 1px solid var(--border); text-decoration: none; border-radius: var(--radius-control); }
   .project-study .case-links .primary { border-color: var(--accent); }
+  .project-study .case-links a:not(.primary) { text-decoration: none; }
   .project-study .case-layout { margin-top: 4rem; gap: 4rem; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
   .project-study .case-layout.no-figure { grid-template-columns: minmax(0, 56rem); }
   .project-study .facts > div { padding: 1.5rem 0; grid-template-columns: 8rem minmax(0, 1fr); }
@@ -251,11 +258,13 @@ const facts = [
   .study-index { align-self: start; position: sticky; top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem; }
   .study-index ol { list-style: none; margin-top: 1rem; }
   .study-index li a { display: grid; grid-template-columns: 1.5rem 1fr; gap: .5rem; align-items: baseline; min-height: 44px; padding: .625rem 0; font-size: .9375rem; text-decoration: none; color: var(--secondary); }
-  .study-index a:hover, .study-index a:focus-visible { color: var(--accent); }
-  .study-index li span { font-size: .875rem; }
+  .study-index a:hover, .study-index a:focus-visible { color: var(--on-accent); }
+  .study-index li span { font-family: var(--font-mono); font-size: .875rem; }
   .index-back { display: inline-flex; min-height: 44px; align-items: center; font-size: .875rem; margin-top: 1.5rem; }
   .study-article { min-width: 0; }
-  .project-study .write-up-title { font-size: .875rem; font-family: inherit; text-transform: none; color: var(--secondary); padding-top: 2rem; }
+  .project-study .write-up-title { font-size: .875rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--secondary); padding-top: 2rem; }
+  .project-study :global(.prose) { counter-reset: section; }
+  .project-study :global(.prose h2)::before { counter-increment: section; content: counter(section, decimal-leading-zero); display: block; margin-bottom: .5rem; font-family: var(--font-mono); font-size: .875rem; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: var(--secondary); }
   .project-study :global(.prose h2) { margin-top: 4rem; padding-top: 1rem; scroll-margin-top: 2rem; }
   .project-study :global(.prose h2:first-child) { margin-top: 0; }
   .project-study :global(.prose) { max-width: 66ch; line-height: 1.6; }

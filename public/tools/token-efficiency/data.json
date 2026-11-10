@@ -1,0 +1,25 @@
+{
+  "as_of": "2026-11-10T16:07:26.005698+00:00",
+  "status_only_turns": 145,
+  "status_only_input": {
+    "input_tokens": 62006408,
+    "cached_input_tokens": 61115520,
+    "output_tokens": 13878
+  },
+  "packet_characters": {
+    "runtime": 1759,
+    "fraud": 5787
+  },
+  "instruction_bytes": {
+    "before": 19829,
+    "after": 10547
+  },
+  "runtime_lifetime_input": 247791488,
+  "runtime_other_input_unclassified": 185785080,
+  "scope": "Selected local session lifetime counters. No measured after-period token savings. No fresh provider session mode.",
+  "methodology": "Conservative status-only classifier; owner-attributed cumulative maxima. Cached input is a subset of input. Session lifetime totals are not daily spend.",
+  "source_hashes": {
+    "local_audit": "d8e1811f47a6f05bd15c514366bd38e8a12ddc4f141d5842f86a635c975f586c",
+    "installation_receipt": "3ddcf136997eb4d2c6ffa8709639af183a687ba35d36f07382cdbd7240e3e41e"
+  }
+}

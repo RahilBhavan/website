@@ -1,0 +1,48 @@
+---
+title: "Stop asking a model to wait"
+description: "An audit found 62.0M input tokens across 145 status-only turns. The replacement uses deterministic wakeups, compact checkpoints and scoped instructions; actual savings remain unmeasured."
+publishDate: 2026-11-10T12:00:00Z
+tags: ["AI engineering", "agents", "measurement"]
+---
+
+import QslRoute from '../../components/token-efficiency/QslRoute.astro';
+
+<QslRoute />
+
+A model should not need a growing conversation just to check whether the machine has enough memory to work.
+
+An audit of my local agent setup found 145 measured turns whose only tool call checked capacity. Together they used 62,006,408 input tokens, including 61,115,520 cached tokens, plus 13,878 output tokens. Those are candidates for eliminating unnecessary model calls. They are not a dollar-loss estimate.
+
+**[Explore the interactive guide and graphs →](/tools/token-efficiency)**
+
+The guide covers waiting, progress polling, continuation context, review scope, instruction loading and accounting. Each section separates the observed problem, the implemented replacement and its limits.
+
+## Let a process wait; wake the model for a decision
+
+The two enabled build loops now receive readiness events from a small local watcher. Blocked capacity and unchanged commands invoke no model. Exact process identities and durable result paths help the owner reconcile existing work instead of launching a duplicate.
+
+Each checkpoint arms one request generation. Attempts are recorded before delivery, and uncertain deliveries are not automatically resent. Actual heavy work still passes through the shared workload gate.
+
+One live event reached the existing runtime owner, which completed its turn and armed a new command wait. The fraud owner stayed asleep while its eight watched commands were unchanged. That proves the observed continuation round trip, not that a pending project regression passed or that the service has stayed healthy since.
+
+## Carry the next decision, not a copied transcript
+
+Compact packets point to the preserved contract, canonical build state, source references, pending commands and next action. The observed packets were 1,759 and 5,787 characters. Character counts are not token counts.
+
+Fresh-session conversion did not work: the supported update API did not persist the setting. The owners still use continuing sessions. The packets improve the handoff record, but I cannot claim the context reset happened.
+
+## Load the relevant instructions and keep required checks
+
+Detailed workflows moved behind a task router. The always-loaded instruction file fell from 19,829 to 10,547 bytes, a 46.8% reduction in file size. The original task sections were preserved. The app-injected skill catalog remained unchanged.
+
+Review follow-ups now target changed artifacts and invalidated checks. Mandatory independent reviews, exact-head acceptance and original repair limits still apply. A requested council is not automatically waste, and an older acceptance cannot cover a changed required head.
+
+## Measure the outcome before claiming savings
+
+Ten targeted tests passed across the watcher and audit. They covered duplicate suppression, restarted ticks, uncertain delivery, cooldown, command completion, process identity, disabled owners and a real HTTP fixture.
+
+The audit covers a selected local session sample. Lifetime session input is not daily spend or account-wide usage. Cached input is already included in Codex input, so adding it again would double-count it.
+
+Actual after-period token savings, dollar savings and productivity gains remain unmeasured. The next useful comparison is model calls per checked slice, status-only input, retries, wall time and human corrections.
+
+[Read the public methods and limitations](/tools/token-efficiency/methods.html). [Inspect the exact chart values](/tools/token-efficiency/data.json).

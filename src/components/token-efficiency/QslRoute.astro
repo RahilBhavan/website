@@ -1,0 +1,40 @@
+---
+// design-owner: QSL Route 5.0.0; scoped to this new article, not a site-wide migration.
+---
+<span class="token-efficiency-scope" hidden></span>
+<style is:global>
+  html:has(.token-efficiency-scope) {
+    --canvas: #E8EEF2;
+    --surface: #E8EEF2;
+    --ink: #142C4D;
+    --secondary: #142C4D;
+    --border: #142C4D;
+    --accent: #A62B18;
+    --on-accent: #FFF8EF;
+    --link: #142C4D;
+    --focus: #A62B18;
+    --hero: #142C4D;
+    --radius-control: 0;
+    --radius-panel: 0;
+    --figure-surface: #E8EEF2;
+    --figure-ink: #142C4D;
+    --figure-secondary: #142C4D;
+    --figure-border: #142C4D;
+  }
+  body:has(.token-efficiency-scope) :is(.meta, .kicker, .label) { font-size: 14px; }
+  body:has(.token-efficiency-scope) h1 { font-weight: 650; }
+  @media (prefers-color-scheme: dark) {
+    html:has(.token-efficiency-scope) {
+      --canvas: #142C4D;
+      --surface: #142C4D;
+      --ink: #E8EEF2;
+      --secondary: #E8EEF2;
+      --border: #E8EEF2;
+      --accent: #FFF8EF;
+      --on-accent: #142C4D;
+      --link: #E8EEF2;
+      --focus: #FFF8EF;
+      --hero: #E8EEF2;
+    }
+  }
+</style>

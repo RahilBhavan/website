@@ -3,7 +3,7 @@
   "selection": "User asked to add the exact explainer to the website; public edition keeps the charts and removes machine-local operational references.",
   "sources": "Dated local audit and installation snapshots, 2026-11-10. Aggregate data and source hashes bundled publicly.",
   "artifacts": {
-    "public/tools/token-efficiency/guide.css": "d00227865144126b645d49159c1377136394f25490ad4ce0175a59870081f466",
+    "public/tools/token-efficiency/guide.css": "42d488d93bd71ae0ee3faf08474347ebd4cbfcaff188a72a74694ab73e6b9a7b",
     "public/tools/token-efficiency/guide.js": "13c521d4a2cdb66d07eb0e7114874cbebd472f6ff7a5db341fa77db496f02005",
     "public/tools/token-efficiency/index.html": "cb54860e4f9f4c751f794a34bbcbe48088339d59857b3193dab5ef84417f7220",
     "public/tools/token-efficiency/data.json": "cb42fb5ff32d21a660852a3c57d969b450dd1cd94dcfe742502fb49fb0b3fe54",

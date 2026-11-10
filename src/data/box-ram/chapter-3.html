@@ -1,0 +1,40 @@
+
+
+<h3>3.1 Read every claim at the right strength</h3>
+<p>A setting being present, a mechanism behaving in a test, and a better user experience are three different findings.</p>
+<p>For example, observing a scope proves placement at that moment. A contained failure test can establish signal or lease behavior for its tested scenario. Neither establishes that the desktop is smoother during a real build. The guide preserves these distinctions because the next engineering decision depends on them.</p>
+<p>The records also come from different times. The November 9 research baseline lists kernel <code>7.2.5-3-omarchy</code>. The guide&#x27;s authoring-time readback reports <code>7.2.15-1-omarchy</code>. This is a freshness difference; the records do not establish why it changed. Do not pool measurements across those environments as if they were one controlled trial.</p>
+<h3>3.2 What the rollout verified</h3>
+<p>The <a href="#sources">RAM verification record</a> includes tested handling of normal exit, nonzero exit, termination, wrapper death, descendant lease retention, placement and mixed-version behavior. Its final activation section supersedes earlier staged-language passages in that same document. Read the final sections before concluding that the rollout remained uninstalled.</p>
+<p>One contained fixture used a 256 MiB exercise with a 128 MiB soft threshold. The record reports peak RAM 134,995,968 bytes, peak swap 178,356,224 bytes, 1,423 high events, equal checksum and no OOM/max events. This demonstrates specific reclaim/throttling behavior in that contained test. It does not select a safe cap for an actual repository.</p>
+<p>This distinction is particularly important for a threshold that can affect job completion time. A test built to cross a boundary answers whether the boundary is exercised. A representative project trial answers whether using that boundary is worthwhile.</p>
+<p>The activation record also preserves ticket continuity and checks on the exact installed artifacts. These are implementation reliability observations. They do not quantify responsiveness, future victim choice or long-term absence of leaks.</p>
+<h3>3.3 What the compression snapshot means</h3>
+<p>Earlier in the November 10 investigation, zram&#x27;s counters showed 5,264,244,736 original bytes and 1,473,019,904 bytes of physical allocation including overhead.</p>
+<p>Using binary GiB, divide bytes by 1,073,741,824:</p>
+<ul>
+<li>Original page contents: approximately 4.903 GiB.</li>
+<li>zram allocation: approximately 1.372 GiB.</li>
+<li>Difference: approximately 3.531 GiB.</li>
+<li>Original-to-allocated ratio: approximately 3.57 to 1.</li>
+</ul>
+<p>The arithmetic compares the same compressed-store contents with their uncompressed size. It does not measure the entire host&#x27;s net savings against a no-swap experiment. That counterfactual would change placement, caching and possibly application behavior. It also does not establish the compression CPU cost or the latency of retrieving those pages.</p>
+<p>The right interpretation is that compression is currently useful for capacity for these contents. It supplies a reason to retain the baseline, while leaving responsiveness and sustainable pressure as separate questions. The <a href="#sources">original explainer</a> preserves this snapshot. Later counters will differ as workloads run.</p>
+<h3>3.4 What the responsiveness probe did</h3>
+<p>The probe connected to the running Hyprland Unix socket and sent read-only monitor queries at a nominal five requests per second. Each request had a 500 ms socket timeout. It measured elapsed reply time with a monotonic clock and recorded whether the display was on. It also sampled pressure counters and available memory, and measured lateness relative to its requested wake-up schedule.</p>
+<p>Two consecutive nominal 60-second windows produced 301 samples each, including an initial sample and the endpoint. The display-on sample count was zero throughout. The existing load was an SSRD CPU job and a browser test batch; it was not a controlled idle baseline or a newly admitted build.</p>
+<p>First-window reply times were p50 0.137 ms, p95 0.170 ms, p99 0.196 ms, maximum 2.037 ms. The repeat produced p50 0.145 ms, p95 0.199 ms, p99 1.744 ms, maximum 4.063 ms. There were no request errors. Maximum recorded wake-up lateness was 0.102 ms and then 1.453 ms.</p>
+<p>These are empirical sample summaries, using the probe&#x27;s percentile index rule. With 301 samples, the p99 tail is represented by only a few observations. The repeat&#x27;s larger tail is real sample variation; it is not evidence of a configuration regression because nothing was changed and the background workload was uncontrolled.</p>
+<p>The <a href="#sources">saved chart</a> compares p95 and maximum on a shared zero-based scale. The <a href="#sources">raw samples</a> and <a href="#sources">repeat samples</a> are the evidence behind it.</p>
+<h3>3.5 What that probe cannot tell us</h3>
+<p>A fast monitor-query reply does not establish smooth animation, timely input delivery or a completed frame. The query follows a different path from a displayed interaction. The display was deliberately kept off at the user&#x27;s request, so this test cannot evaluate visible smoothness.</p>
+<p>The roughly 200 ms sampling interval can also miss a stall that happens between requests. The timeout is a per-socket-operation guard, not an end-to-end watchdog for every possible execution state. Probe wake-up lateness describes this small process, not every application or CPU core. An uninterrupted two-minute observation cannot rule out rare freezes.</p>
+<p>Its defensible result is narrow: no long stall appeared in the sampled compositor control path under those existing workloads. That result is useful, but the exact request pattern defines its reach.</p>
+<h3>3.6 Pressure and the attempted build</h3>
+<p>During the first window, host counter deltas corresponded to approximately 0.610 seconds of CPU <code>some</code>, 0.133 seconds of memory <code>full</code>, and 0.194 seconds of I/O <code>full</code>. These are separate resource counters, not disjoint intervals to add together. Available memory sampled between approximately 10.90 and 11.47 GiB.</p>
+<p>These values establish that host pressure was not literally absent. They do not identify its source or show that the compositor suffered from it. Short host stalls and sub-millisecond typical compositor replies can coexist.</p>
+<p>The controlled Orbit workbench build used an isolated source copy and ordinary admission with a 120-second wait bound. It exited 75 because admission timed out. npm and the build command never executed. The gate snapshot had two running jobs and 22 queued tickets, including this task.</p>
+<p>That timeout proves this request did not start within its allowed wait. It does not prove the gate was broken, that every project waited equally, or that two slots are optimal. It does establish that queue delay is material and belongs in future evaluation.</p>
+<h3>3.7 The resulting decision</h3>
+<p>No settings were changed. The sampled path showed no long stall to fix, and the controlled build comparison did not happen. Changing priorities or RAM policy would therefore have lacked a demonstrated target.</p>
+<p>This is an evidence-based stop for that measurement slice, not a declaration that all performance work is finished. The next useful test must improve the observation: capture an actual admitted build and a comparable baseline, or measure the real visible interaction when an active display is acceptable.</p>

@@ -1,0 +1,28 @@
+{
+  "design_owner": "QSL Route 5.0.0",
+  "selection": "User asked to add the exact explainer to the website; public edition keeps the charts and removes machine-local operational references.",
+  "sources": "Dated local audit and installation snapshots, 2026-11-10. Aggregate data and source hashes bundled publicly.",
+  "artifacts": {
+    "public/tools/token-efficiency/guide.css": "d00227865144126b645d49159c1377136394f25490ad4ce0175a59870081f466",
+    "public/tools/token-efficiency/guide.js": "13c521d4a2cdb66d07eb0e7114874cbebd472f6ff7a5db341fa77db496f02005",
+    "public/tools/token-efficiency/index.html": "cb54860e4f9f4c751f794a34bbcbe48088339d59857b3193dab5ef84417f7220",
+    "public/tools/token-efficiency/data.json": "cb42fb5ff32d21a660852a3c57d969b450dd1cd94dcfe742502fb49fb0b3fe54",
+    "public/tools/token-efficiency/methods.html": "4a2453d1b7fc136139e335602ab5031574537c8df6c7e606ea34b9f507752195",
+    "src/components/token-efficiency/QslRoute.astro": "3cce0dfa1240e965c8db3b7ece17e6ec485643254394b90473e02da31b4b05ca",
+    "src/content/blog/stop-asking-a-model-to-wait.mdx": "0cc18b60568af99b1c36dcb7e5d440555cbae32d1191be303a372d218b7943f5",
+    "public/og/writing/stop-asking-a-model-to-wait.png": "e48d0db3f6f5b128d68882f4de6cdaf3365bde79da4e7e56c60b3c030f11173f"
+  },
+  "checks": {
+    "site_check": "Passed: Astro diagnostics/build, 85-page link check, 28 crosslinks, 14 unit tests",
+    "browser_behavior": "Local workload gate timed out before execution; repository GitHub CI will run the full Firefox suite, including three responsive guide interactions and no-JavaScript reading.",
+    "privacy": "No machine-local paths, task IDs or webhook credentials in public guide files",
+    "image": "1280x640 QSL Route card inspected full size and at 400px feed width",
+    "visual": "Built guide inspected at 1280px light and 390px dark; native article inspected at 390px with viewport-min-height normalized only in the QA export. No horizontal overflow observed. Local font loaded; preload/favicon requests in the derived export do not establish live failures."
+  },
+  "limits": [
+    "No measured token savings",
+    "Fresh-session setting did not persist",
+    "No global site design migration"
+  ],
+  "public_design_status": "User-selected explainer adapted to QSL Route; exact public artifact reviewed by author; ready for user review in PR."
+}

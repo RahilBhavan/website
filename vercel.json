@@ -68,6 +68,11 @@
       "source": "/toolkit",
       "destination": "/projects/strategy-capital-markets-toolkit",
       "permanent": false
+    },
+    {
+      "source": "/internships",
+      "destination": "/tools/internships",
+      "permanent": false
     }
   ]
 }

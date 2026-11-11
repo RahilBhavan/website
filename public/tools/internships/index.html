@@ -1,0 +1,259 @@
+<!doctype html>
+<!-- design-owner: QSL / Rahil Bhavan Research, Route variation, family 5.0.0 (rahil-design). Built by build.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Open internship, co-op and early-career postings from public employer job boards, searchable by field, term and location.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://rahilbhavan.com/tools/internships">
+<link rel="preload" href="/tools/internships/data.json" as="fetch" crossorigin>
+<title>Internship openings</title>
+<style>
+@font-face{font-family:Archivo;src:url(/fonts/Archivo-VF.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(/fonts/IBMPlexMono-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+:root{
+  --paper:#E8EEF2; /* design-lint: allow QSL Route paper token */
+  --ink:#142C4D; /* design-lint: allow QSL Route ink token */
+  --accent:#A62B18; /* design-lint: allow QSL Route accent token */
+  --on-accent:#FFF8EF; /* design-lint: allow QSL Route reversed text */
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.55 Archivo,sans-serif}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:16px;top:16px;background:var(--paper);padding:8px 12px;z-index:2}
+.site-nav{background:var(--ink);color:var(--paper)}
+.site-nav .wrap{display:flex;justify-content:space-between;gap:16px;padding-top:14px;padding-bottom:0;font:400 14px/1.4 "IBM Plex Mono",monospace}
+.site-nav a{display:inline-flex;align-items:center;min-height:44px}
+
+header.band{background:var(--ink);color:var(--paper)}
+header .wrap{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr);gap:40px;align-items:end;padding-top:56px;padding-bottom:40px}
+h1{font:850 clamp(44px,7.4vw,96px)/0.98 Archivo,sans-serif;letter-spacing:-0.02em;margin:0}
+.lede{margin:18px 0 0;max-width:36em;font-size:18px}
+.record{border-top:3px solid var(--paper);padding-top:14px;margin:0}
+.record div{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid var(--paper)}
+.record dt{font:400 14px/1.4 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:0.04em}
+.record dd{margin:0;font-weight:750;font-size:18px;text-align:right;white-space:nowrap}
+.direction{background:var(--accent);color:var(--on-accent);font-weight:650}
+.direction .wrap{padding-top:12px;padding-bottom:12px}
+
+.controls{position:sticky;top:0;z-index:1;background:var(--paper);border-bottom:2px solid var(--ink)}
+.controls .wrap{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr 1fr;gap:14px;padding-top:18px;padding-bottom:16px;align-items:end}
+label{display:block;font:400 14px/1.4 "IBM Plex Mono",monospace;margin-bottom:5px}
+input,select{width:100%;min-height:46px;font:400 17px/1.3 Archivo,sans-serif;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:0;padding:8px 10px}
+select{appearance:auto}
+.status{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:18px;padding-bottom:8px}
+.count{font-weight:750;font-size:20px;margin:0}
+button{font:650 16px/1.3 Archivo,sans-serif;min-height:46px;padding:10px 18px;cursor:pointer;border-radius:0}
+.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink)}
+
+ol.roles{list-style:none;margin:0;padding:0}
+.role{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.1fr) auto;gap:8px 28px;align-items:center;padding:18px 0;border-bottom:1px solid var(--ink)}
+.co{font-weight:750;font-size:18px;margin:0}
+.title{margin:2px 0 0;font-size:18px;overflow-wrap:anywhere}
+.meta{font:400 14px/1.6 "IBM Plex Mono",monospace;margin:0;overflow-wrap:anywhere}
+.meta span{display:block}
+.when{font:400 14px/1.6 "IBM Plex Mono",monospace;text-align:right;margin:0 0 6px}
+.due{font-weight:400;font-family:Archivo,sans-serif;font-size:16px}
+.go{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 18px;background:var(--accent);color:var(--on-accent);font-weight:650;text-decoration:none;white-space:nowrap}
+.go:hover{text-decoration:underline}
+.act{text-align:right}
+.more{display:flex;justify-content:center;padding:28px 0 8px}
+.more button{background:var(--ink);color:var(--paper);border:2px solid var(--ink)}
+.empty{padding:40px 0;font-size:18px}
+footer{margin-top:48px;background:var(--ink);color:var(--paper)}
+footer .wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding-top:36px;padding-bottom:44px}
+footer h2{font:750 22px/1.2 Archivo,sans-serif;margin:0 0 10px}
+footer p{margin:0 0 10px;max-width:38em}
+
+@media (max-width:900px){
+  header .wrap{grid-template-columns:1fr;gap:28px;padding-top:36px}
+  .controls{position:static}
+  .controls .wrap{grid-template-columns:1fr 1fr}
+  .controls .search{grid-column:1/-1}
+  .role{grid-template-columns:1fr;gap:6px}
+  .when,.act{text-align:left}
+  .go{width:100%}
+  footer .wrap{grid-template-columns:1fr;gap:20px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#results">Skip to roles</a>
+<nav class="site-nav" aria-label="Website"><div class="wrap"><a href="/">Rahil Bhavan</a><a href="/tools/internships/data.json">Download the list (JSON)</a></div></nav>
+<header class="band">
+  <div class="wrap">
+    <div>
+      <h1>Internship openings</h1>
+      <p class="lede">Open internship, co-op and early-career postings from employer job boards and public lists. Search, filter, and go straight to the employer's page.</p>
+    </div>
+    <dl class="record" id="record"></dl>
+  </div>
+</header>
+<div class="direction"><div class="wrap">Listings change daily. Check the employer's page before you apply.</div></div>
+
+<form class="controls" id="filters" role="search" onsubmit="return false">
+  <div class="wrap">
+    <div class="search"><label for="q">Company or role, e.g. Goldman data</label><input id="q" type="search" autocomplete="off"></div>
+    <div><label for="field">Field</label><select id="field"></select></div>
+    <div><label for="term">Term</label><select id="term"></select></div>
+    <div><label for="loc">Location, e.g. NY</label><input id="loc" type="search" autocomplete="off"></div>
+    <div><label for="sort">Sort</label><select id="sort">
+      <option value="seen">Recently checked</option>
+      <option value="due">Deadline soonest</option>
+      <option value="co">Company A–Z</option>
+    </select></div>
+  </div>
+</form>
+
+<main id="results" class="wrap" tabindex="-1">
+  <div class="status">
+    <p class="count" id="count" aria-live="polite">Loading roles…</p>
+    <button type="button" class="ghost" id="clear">Clear filters</button>
+  </div>
+  <ol class="roles" id="list"></ol>
+  <div class="more" id="more" hidden><button type="button" id="moreBtn">Show 50 more</button></div>
+  <noscript><p class="empty">This page needs JavaScript to search the list.</p></noscript>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <h2>Where these come from</h2>
+      <p>Postings are read from public employer job boards (Workday, Greenhouse, Lever, Ashby, SmartRecruiters and company career sites) and public GitHub internship lists. Each row shows the date the posting was last seen open.</p>
+      <p>Location, term and field come from the posting and can be missing or approximate. Blank means the posting didn't say.</p>
+    </div>
+    <div>
+      <h2>Before you apply</h2>
+      <p>Open the employer link and confirm the role is still open, the term, the location and the requirements. Some roles are for other class years or degrees.</p>
+      <p id="built"></p>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function failed(){
+    $("count").textContent = "The role list didn't load.";
+    $("list").innerHTML = '<li class="empty">Reload the page to try again. If it keeps failing, ask for a fresh copy of the list.</li>';
+  }
+  function load(){
+    fetch("/tools/internships/data.json").then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(start).catch(failed);
+  }
+  load();
+  function start(D){
+  var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmt(iso){ if(!iso) return ""; var p = iso.split("-"); return MON[+p[1]-1] + " " + (+p[2]) + ", " + p[0]; }
+  function range(a, b){ return a.slice(0,4) === b.slice(0,4) ? fmt(a).replace(/, \d{4}$/, "") + " – " + fmt(b) : fmt(a) + " – " + fmt(b); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  var today = new Date(); today = today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
+
+  var roles = D.roles.map(function(r){
+    var o = {co:D.companies[r[0]], role:r[1], loc:r[2], term:r[3], field:r[4], due:r[5], pay:r[6], url:r[7], kind:D.kinds[r[8]], seen:r[9]};
+    o.hay = (o.co + " " + o.role).toLowerCase();
+    o.locl = o.loc.toLowerCase();
+    return o;
+  });
+  var seenDates = roles.map(function(r){ return r.seen; }).filter(Boolean).sort();
+  var cos = {}; roles.forEach(function(r){ cos[r.co] = 1; });
+
+  $("record").innerHTML = [
+    ["Open roles", roles.length.toLocaleString("en-US")],
+    ["Employers", Object.keys(cos).length.toLocaleString("en-US")],
+    ["Seen open", seenDates.length ? range(seenDates[0], seenDates[seenDates.length-1]) : "Not recorded"]
+  ].map(function(x){ return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("");
+  $("built").textContent = "Page built " + fmt(D.built) + ". It does not update itself; ask for a fresh copy.";
+
+  function count(key, val){ return roles.filter(function(r){ return key === "term" ? r.term.split(" / ").indexOf(val) >= 0 : r[key] === val; }).length; }
+  function fill(sel, label, vals, key){
+    sel.innerHTML = '<option value="">' + label + "</option>" + vals.map(function(v){
+      return '<option value="' + esc(v) + '">' + esc(v) + " (" + count(key, v).toLocaleString("en-US") + ")</option>"; }).join("");
+  }
+  fill($("field"), "All fields", D.fields, "field");
+  fill($("term"), "Any term", D.terms, "term");
+
+  var PAGE = 50, shown = PAGE, current = [];
+  var ctl = {q:$("q"), field:$("field"), term:$("term"), loc:$("loc"), sort:$("sort")};
+
+  function readHash(){
+    var p = new URLSearchParams(location.hash.slice(1));
+    Object.keys(ctl).forEach(function(k){ if(p.has(k)) ctl[k].value = p.get(k); });
+  }
+  function writeHash(){
+    var p = new URLSearchParams();
+    Object.keys(ctl).forEach(function(k){ var v = ctl[k].value; if(v && !(k === "sort" && v === "seen")) p.set(k, v); });
+    var h = p.toString();
+    var u = new URL(location.href); u.hash = h; history.replaceState(null, "", u);
+  }
+
+  function apply(){
+    var words = ctl.q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    var locs = ctl.loc.value.toLowerCase().split(/\s*,\s*|\s+or\s+/).filter(Boolean);
+    var f = ctl.field.value, t = ctl.term.value, s = ctl.sort.value;
+    current = roles.filter(function(r){
+      if(f && r.field !== f) return false;
+      if(t && r.term.split(" / ").indexOf(t) < 0) return false;
+      for(var i = 0; i < words.length; i++) if(r.hay.indexOf(words[i]) < 0) return false;
+      if(locs.length && !locs.some(function(l){ return r.locl.indexOf(l) >= 0; })) return false;
+      return true;
+    });
+    current.sort(s === "co" ? function(a,b){ return a.co.localeCompare(b.co) || a.role.localeCompare(b.role); }
+      : s === "due" ? function(a,b){
+          var ad = a.due && a.due >= today ? a.due : "9999", bd = b.due && b.due >= today ? b.due : "9999";
+          return ad < bd ? -1 : ad > bd ? 1 : (b.seen > a.seen ? 1 : b.seen < a.seen ? -1 : 0); }
+      : function(a,b){ return b.seen > a.seen ? 1 : b.seen < a.seen ? -1 : a.co.localeCompare(b.co); });
+    shown = PAGE;
+    writeHash();
+    render();
+  }
+
+  function row(r){
+    var meta = [r.loc || "Location not listed", [r.term, r.field].filter(Boolean).join(" · "), r.pay].filter(Boolean);
+    var due = "";
+    if(r.due) due = '<span class="due">' + (r.due < today ? "Listed deadline passed: " : "Apply by ") + fmt(r.due) + "</span><br>";
+    return '<li class="role"><div><p class="co">' + esc(r.co) + '</p><p class="title">' + esc(r.role) + "</p></div>" +
+      '<p class="meta">' + meta.map(function(m){ return "<span>" + esc(m) + "</span>"; }).join("") + "</p>" +
+      '<div class="act"><p class="when">' + due + (r.seen ? "Seen open " + fmt(r.seen) : "Date not recorded") + "<br>" + esc(r.kind) + "</p>" +
+      '<a class="go" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Open posting<span class="skip"> for ' + esc(r.role) + " at " + esc(r.co) + " (opens in new tab)</span></a></div></li>";
+  }
+
+  function render(){
+    var n = current.length;
+    $("count").textContent = n === roles.length ? "Showing all " + n.toLocaleString("en-US") + " open roles"
+      : n.toLocaleString("en-US") + (n === 1 ? " role matches" : " roles match");
+    if(!n){
+      $("list").innerHTML = '<li class="empty">No open roles match these filters. Try fewer words, another location spelling, or clear the filters.</li>';
+      $("more").hidden = true; return;
+    }
+    $("list").innerHTML = current.slice(0, shown).map(row).join("");
+    $("more").hidden = shown >= n;
+    $("moreBtn").textContent = "Show " + Math.min(PAGE, n - shown) + " more (" + (n - shown).toLocaleString("en-US") + " left)";
+  }
+
+  var timer;
+  ["q","loc"].forEach(function(k){ ctl[k].addEventListener("input", function(){ clearTimeout(timer); timer = setTimeout(apply, 150); }); });
+  ["field","term","sort"].forEach(function(k){ ctl[k].addEventListener("change", apply); });
+  $("moreBtn").addEventListener("click", function(){
+    var first = shown; shown += PAGE; render();
+    var item = $("list").children[first]; if(item){ var a = item.querySelector("a"); if(a) a.focus(); }
+  });
+  $("clear").addEventListener("click", function(){
+    ctl.q.value = ""; ctl.loc.value = ""; ctl.field.value = ""; ctl.term.value = ""; ctl.sort.value = "seen"; apply(); ctl.q.focus();
+  });
+  window.addEventListener("hashchange", function(){ readHash(); apply(); });
+  readHash(); apply();
+  }
+})();
+</script>
+</body>
+</html>

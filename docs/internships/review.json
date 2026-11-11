@@ -1,0 +1,25 @@
+{
+  "design_owner": "QSL Route 5.0.0",
+  "selection": "User asked for a shareable internship list for their club, then asked to put it on the website. Route variation chosen for a reference collection; same variation as /tools/token-efficiency.",
+  "sources": "Generated 2026-11-11 from the operations hub's internship dashboard export by exports/internship-club-dashboard/build.py. Public employer job boards and public GitHub lists; each row keeps its last-seen-open date.",
+  "artifacts": {
+    "public/tools/internships/index.html": "1dd244247c93652c96782719f2297da116e88deffa7863ddd2c6a43a1a7f2192",
+    "public/tools/internships/data.json": "89e0b103d443f549427f169d51cb674cfb8b4254d5629fef4501c680d3c1bb19",
+    "tests/e2e/internships.spec.mjs": "2d9d04096226cc68c0dd1621c09d215e156e5e3e50759ba53685f3585414f14e",
+    "vercel.json": "121710952d13a592aaa31e0ea7bb1a50d284fcef79e25c7c0104e9f8d55c0b87"
+  },
+  "checks": {
+    "site_check": "Passed: bun run check (Astro diagnostics/build, 86-page link check, 28 crosslinks, 14 unit tests)",
+    "browser_behavior": "Passed in Firefox: full e2e suite 31/31 before the duplicate-collapse rebuild; internships spec 3/3 after it (1280px and 390px search, field filter, reload keeps filters, Show more focus, no horizontal overflow, no 4xx/page errors; failed data load shows a retry message)",
+    "privacy": "data.json scanned: no eligibility, resume, notes, scores, application history, email-sourced rows or referral links; tracking parameters stripped",
+    "contrast": "Ink on paper 11.98:1; reversed text on rust 6.69:1; rust on paper 6.02:1",
+    "visual": "Built page inspected at 1440x1000 and 390x844 with filters applied; site Archivo and IBM Plex Mono loaded; label row aligned after shortening the location label"
+  },
+  "limits": [
+    "Snapshot; does not update itself",
+    "Field labels come from source lists and are approximate",
+    "Same company, title and location are collapsed into one row",
+    "Not linked from site navigation; noindex"
+  ],
+  "public_design_status": "Author-reviewed exact artifact against QSL Route; no independent design review run."
+}

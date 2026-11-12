@@ -1,0 +1,42 @@
+
+<p>A research-backed guide for Rahil. Written November 10, 2026.</p>
+<p><strong>The recommendation:</strong> keep the layered architecture: coordinate heavy work before it starts, measure each job separately, retain kernel reclaim and compressed swap, preserve the services needed to control the machine, and tune from representative observations. This is a strong fit for a shared development desktop. It is not yet a demonstrated optimum, and several current numbers remain operating choices.</p>
+<p>The point is to keep useful work moving while the desktop and agent controls remain usable. Empty RAM is not the goal. Neither is maximum concurrency at any cost.</p>
+<h3>Read this in order</h3>
+<ol>
+<li><a href="#chapter-1">The problem and the research</a>: why contention produces delays; what TMO/Senpai and Hermes actually established; how to transfer their lessons without copying their settings.</li>
+<li><a href="#chapter-2">The mechanisms on BOX</a>: admission, cgroups, kernel reclaim, compressed swap, protection and failure recovery; how the layers interact.</li>
+<li><a href="#chapter-3">What the evidence proves</a>: actual configuration, rollout verification, compression arithmetic, responsiveness measurements, and the limits of each observation.</li>
+<li><a href="#chapter-4">Operate and diagnose the system</a>: commands, interpretation, failure patterns, job receipts, fairness and safe recovery.</li>
+<li><a href="#chapter-5">Improve it scientifically</a>: a practical experiment protocol, competing alternatives, acceptance criteria and a prioritized roadmap.</li>
+</ol>
+<p>Each chapter can also stand alone. The chapters are separate so the guide remains navigable and each source file stays below the repository&#x27;s file-size gate.</p>
+<h3>The argument in one page</h3>
+<p>The box hosts different kinds of work. A compositor must answer promptly. A build needs sustained resources and a correct result. An agent conversation needs to survive long enough to report, recover and coordinate. A policy that treats every allocation and process as equally urgent misses these differences.</p>
+<p>The chosen architecture addresses this through several distinct decisions:</p>
+<ul>
+<li><strong>Admission:</strong> defer some heavy work before it adds demand. The shared gate currently permits two participating heavy jobs, subject to available-memory and pressure checks.</li>
+<li><strong>Attribution:</strong> give newly launched participating host jobs their own systemd scopes. A job&#x27;s peak and events can then be examined without confusing them with the launching agent&#x27;s entire lifetime.</li>
+<li><strong>Reclaim and compression:</strong> retain MGLRU and zram so the kernel has ways to handle inactive memory instead of immediately depending on disk or killing work.</li>
+<li><strong>Containment and recovery:</strong> keep aggregate agent ceilings, distinguish the desktop session from the app kill domain, and bias out-of-memory selection away from the T3 server.</li>
+<li><strong>Evidence:</strong> record completed jobs, inspect short stalls as well as averages, and judge success by responsiveness, correctness and total completion time—including time in the queue.</li>
+</ul>
+<p>These are complementary controls. A queue cannot reclaim an application&#x27;s memory after admission. zram cannot prevent an unlimited set of jobs from demanding RAM. A cgroup cannot show whether the user liked the desktop response. Measurements cannot recover lost work. The layers address different failure modes.</p>
+<h3>What “best” can honestly mean here</h3>
+<p>There is no single scalar to maximize. More build concurrency can shorten a particular queue while increasing interference. Compression can preserve capacity while consuming CPU. Stronger protection can save one service by leaving less memory available to others. Earlier killing can shorten a freeze while discarding work.</p>
+<p>For this machine, a reasonable decision order is:</p>
+<ol>
+<li>Preserve correctness, personal data and required validation.</li>
+<li>Preserve usable desktop and control services.</li>
+<li>Keep background work recoverable and fairly served.</li>
+<li>Improve completed useful work per unit of time.</li>
+<li>Reduce memory consumption where it improves those outcomes.</li>
+</ol>
+<p>That ordering is an engineering recommendation grounded in the user&#x27;s mixed desktop workload. It is not a theorem from a paper. Calling a specific configuration best would require testing plausible alternatives against those goals under representative conditions.</p>
+<h3>Current evidence boundary</h3>
+<p>On November 10, the display-off probe completed 602 real compositor requests without a timeout. The largest sampled reply was 4.063 ms. This is a narrow finding about the control path under the existing SSRD CPU job and browser batch. It does not measure displayed frames, unlocked interaction or a completed build. The attempted controlled build timed out in the shared queue before executing.</p>
+<p>No host setting changed during that measurement or while authoring this guide. The guide makes recommendations and explains controls; it does not install them.</p>
+<h3>Evidence and source map</h3>
+<p>The primary local records are the <a href="#sources">RAM research investigation</a>, <a href="#sources">implementation plan</a>, <a href="#sources">activation and verification record</a>, and <a href="#sources">operating runbook</a>. The <a href="#sources">source-check note</a> verifies the research transfer limits.</p>
+<p>The <a href="#sources">responsiveness report</a>, <a href="#sources">raw first window</a>, <a href="#sources">raw repeat</a>, and <a href="#sources">authoring-time host snapshot</a> are local evidence. Exports are ignored/private and might not exist in a fresh clone. The <a href="#sources">saved responsiveness visualization</a> is a companion, not additional evidence.</p>
+<p>Research links appear beside the claims they support. Upstream documentation explains mechanisms; local source and observations establish whether BOX actually uses them. Historical snapshots are dated. New measurements should be appended with their own dates rather than silently replacing old results.</p>

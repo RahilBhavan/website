@@ -1,0 +1,60 @@
+
+
+<p>This chapter is a reading and operating checklist. It does not authorize killing another project&#x27;s job, changing required checks or creating recurring services. Use the shared gate for heavy work; lightweight inspection does not need a heavy-work reservation.</p>
+<h3>4.1 Begin with a question, then inspect</h3>
+<p>Decide what is slow: request-to-build completion, active build execution, returning to an idle application, compositor response, displayed interaction, or the T3 interface. These can have different causes.</p>
+<p>For example, a build that spent twenty minutes queued and two minutes executing has a different problem from a build that started promptly and spent twenty minutes running. Combining those into one elapsed number conceals the policy cost that needs attention.</p>
+<p>Start with these read-only commands:</p>
+<pre><code>python scripts/workload_budget.py status
+free -h
+swapon --show
+zramctl
+cat /proc/pressure/memory
+cat /proc/pressure/io
+cat /proc/pressure/cpu</code></pre>
+<p>In gate status, inspect running and queued projects, effective limits, live job memory and the admission-block reason. A null pressure-block reason does not mean the queue must drain immediately: slot count, project selection and compatibility can still prevent admission.</p>
+<p><code>MemAvailable</code> is the relevant input to the current gate. The guide&#x27;s earlier observation of roughly 1–2 GiB free alongside much more available memory is not contradictory. These fields answer different questions; do not replace the implemented admission input with a visually alarming free-memory number.</p>
+<h3>4.2 Launch a heavy job through the ordinary path</h3>
+<p>From the repository root:</p>
+<pre><code>python scripts/workload_budget.py run \
+  --project main --wait-seconds 3600 \
+  -- python -m unittest discover -s tests -v</code></pre>
+<p>This is an example full-suite command, not something to run merely for inspection. Choose the actual required build/test command and its real project identifier. A consistent identifier makes service history and receipts easier to interpret.</p>
+<p>Do not create a private state directory to get around a busy production gate. Fixture directories are for tests of the scheduler, not a second real-work budget. Do not wrap an interactive agent conversation or long-lived server and hold a heavy slot indefinitely.</p>
+<p>Wait bounds should match the task. Exit 75 on admission timeout means the workload did not obtain a reservation within that bound. Check logs before treating it as a failing build. Conversely, an admitted command&#x27;s own failure remains a real failure; admission does not excuse it.</p>
+<h3>4.3 Verify the placement and policy</h3>
+<p>Read the actual policy and its loader interpretation:</p>
+<pre><code>cat ~/.local/state/host-workload/policy.json
+cat ~/.local/state/host-workload/limits.json
+python - &lt;&lt;&#x27;PY&#x27;
+from pathlib import Path
+from scripts.workload_scope import load_policy
+print(load_policy(Path.home() / &#x27;.local/state/host-workload&#x27;))
+PY</code></pre>
+<p>A missing limits override is allowed; the source defaults then apply. Do not create a file just because the <code>cat</code> command reports it absent. Policy warnings deserve attention because the launch path currently can fall back without printing all of them.</p>
+<p>For a running ticket, use its exact unit from status:</p>
+<pre><code>systemctl --user show hostjob-EXACT_TICKET_PREFIX.scope \
+  -p ControlGroup -p Slice -p PartOf -p MemoryHigh -p MemoryMax</code></pre>
+<p>The placeholder must be replaced with a real observed unit. Check the reported ancestry before drawing conclusions about inherited ceilings. A job outside the T3 agents slice is not contained by that slice merely because it was launched from the same user account.</p>
+<h3>4.4 Interpret receipts without overclaiming</h3>
+<pre><code>python scripts/workload_telemetry.py report --since-hours 24</code></pre>
+<p>The report summarizes recorded completed jobs and flags insufficient data below five receipts per project. Five is a local minimum for discussion, not statistical certification. A set of five tiny warm jobs might be unrepresentative of a cold production build.</p>
+<p>Receipts bracket the top-level command with before/after reads. They are not continuous traces. A descendant that outlives that command can keep the lease while later memory use falls outside the completed receipt&#x27;s measurement interval. This makes a receipt useful but incomplete for some lifecycle patterns.</p>
+<p>Look at placement and cgroup scope. An inherited/container record can include other processes. A job peak with its own scope is stronger attribution than a shared parent peak, but even then it does not by itself explain a host-wide slowdown.</p>
+<p>Do not sum nested cgroup rows. A parent&#x27;s accounting already includes its descendants. Adding both can manufacture a memory shortage that the host never had. Compare disjoint populations or clearly identify a parent total and its breakdown.</p>
+<h3>4.5 Reproduce the lightweight response measurement</h3>
+<pre><code>python exports/desktop-response-20261110/probe.py \
+  --seconds 60 --out /absolute/path/to/new-response-sample.json</code></pre>
+<p>The probe is a saved task artifact, not an installed service or guaranteed permanent API. Run it as the desktop user with the actual Wayland/Hyprland session environment. It intentionally avoids opening applications or turning on the display. Exports may be absent on another clone.</p>
+<p>Write to a new output path so the original samples remain intact. Record build execution timestamps separately. A probe that ran entirely while a build waited in the queue is a queued-work observation, not a during-build result.</p>
+<h3>4.6 Diagnose by the pattern of evidence</h3>
+<p><strong>Compositor requests slow while memory stalls rise:</strong> inspect the tested job&#x27;s pressure, peak and reclaim events. Determine whether it is actually participating and correctly placed. Consider a contained lower-concurrency or soft-limit trial only after reproducing the overlap.</p>
+<p><strong>Requests stay fast but the display freezes:</strong> the control-path probe is insufficient. Capture presentation or interaction timing and inspect graphics-related evidence. The November 9 record found blocked graphics paths; today&#x27;s socket replies neither reproduce nor rule out that intermittent issue. Do not treat every freeze as RAM pressure.</p>
+<p><strong>Build execution is acceptable but queues are long:</strong> inspect slot owners, live descendants, reservation age, project identities and gate coverage. Determine whether a long-lived service was accidentally classified as finite heavy work. Preserve active jobs while investigating. Raising concurrency can hide this issue while creating a new resource problem.</p>
+<p><strong>zram allocation rises and idle-app return becomes slow:</strong> collect return latency, swap activity and CPU/pressure evidence. A favorable compression ratio is not enough. Reuse-heavy work can pay a cost that a capacity snapshot misses.</p>
+<p><strong>A job dies despite apparently healthy host memory:</strong> inspect its own boundary and events, plus ancestors and kernel/oomd logs. A local group can hit a limit independently of total host headroom. Do not automatically raise global limits.</p>
+<p><strong>No receipts appear:</strong> check policy validity, module availability, inherited placement and old in-memory wrappers. Historical container mounts can preserve old code. Do not restart busy runners to fix bookkeeping without the job-preserving procedure in the <a href="#sources">runbook</a>.</p>
+<h3>4.7 Recovery and change discipline</h3>
+<p>Back up the exact target and record its value before an experiment. Change only the owned setting, and restore it only if it still matches the experiment&#x27;s value. Other agents share the machine and may have made a newer authorized change.</p>
+<p>The runbook documents a narrow rollback for the T3 oomd preference. Avoid broad <code>systemctl revert</code>: it can remove unrelated protection and priority drop-ins. Similarly, deleting ticket files is not a safe substitute for proving that the corresponding processes and inherited lease ended.</p>
+<p>Avoid swapping everything back into RAM, dropping caches, or restarting services merely to create a cleaner-looking memory reading. Such actions disturb the workload and can invalidate the comparison. A useful performance intervention should have a specified symptom, measurable result and recoverable scope.</p>

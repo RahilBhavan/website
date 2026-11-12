@@ -1,0 +1,72 @@
+
+
+<h3>5.1 Define success before changing a setting</h3>
+<p>A future experiment should answer one question: does a specified policy improve the work Rahil actually needs to do, at an acceptable cost to background progress?</p>
+<p>Select a primary outcome before looking at results. Examples include the delay when returning to an idle browser, the worst reproducible freeze during an admitted build, or request-to-result time for a particular project. Then specify secondary outcomes and failure conditions.</p>
+<p>A proposed decision rule is: accept a change only if it repeatedly improves the chosen latency problem, preserves correct job results and control-service survival, and has an explicitly acceptable queue/execution cost. This guide does not invent a user-approved latency budget or allowable build slowdown. Agree on those costs when a real trade-off appears. Basic correctness and unexpected-kill failures should not be traded away for a nicer average.</p>
+<p>If the baseline does not reproduce a problem, an experiment can still characterize capacity, but it should not be described as fixing an observed stall.</p>
+<h3>5.2 Freeze a representative workload</h3>
+<p>Choose one actual build with a known successful result, toolchain and source revision. Keep its input data and output verification stable. Use disk-backed task scratch, not RAM-backed <code>/tmp</code>, for substantial dependency trees and build output.</p>
+<p>Separate these phases:</p>
+<ol>
+<li>Queue admission.</li>
+<li>Dependency preparation, if required.</li>
+<li>Build execution.</li>
+<li>Correctness checks.</li>
+<li>Return to previously idle applications.</li>
+</ol>
+<p>This separation prevents a dependency download from masquerading as compiler time and prevents a queued command from masquerading as measured load. If network access is part of the real task, report it separately rather than pretending it is controlled.</p>
+<p>Record whether the run is warm or cold. Do not indiscriminately purge host caches to manufacture a cold trial. Prefer an isolated input/output directory and document the cache state you can actually control. A warm incremental build and a clean build answer different questions; both may matter.</p>
+<p>Record concurrent work and versions. A busy shared host cannot always produce a clean laboratory comparison. That is a reason to expose confounders and repeat matched trials, not to stop other people&#x27;s jobs without authority.</p>
+<h3>5.3 Establish baseline and treatment windows</h3>
+<p>Collect a comparable no-new-build window, then a window overlapping confirmed build execution. Keep the probe, duration and user activity consistent. The current display-off request remains authoritative: keep the screen off unless the user later chooses a visible-interaction trial.</p>
+<p>For an actual policy comparison, use at least three alternating matched pairs as an initial local protocol. This is a proposed starting design, not a power calculation or a guarantee of significance. Alternate the order where practical so warmer caches or background drift do not always favor the treatment.</p>
+<p>A useful series might be baseline, treatment, treatment, baseline, baseline, treatment. Preserve each raw result. Do not repeatedly rerun only unfavorable observations until the average becomes attractive. If a run is invalidated by a documented external event, retain it and explain exclusion before computing a replacement result.</p>
+<p>Continue the observation after the build. Reopen the same previously idle work when permitted. A policy that improves active-build latency but makes the next interaction much worse may simply move the cost outside the original measurement window.</p>
+<h3>5.4 Capture the minimum useful measurements</h3>
+<p>Keep the measurement burden proportionate. Start with timestamps, raw compositor replies, probe wake-up lateness, host and job pressure deltas, job peak memory, swap use, exit status and correctness. Add detailed counters only when they distinguish competing causes.</p>
+<p>For suspected reclaim problems, useful additions include reclaim events, major faults, working-set refaults, compaction activity and swap-in/out. For a suspected CPU problem, collect per-group scheduling pressure and actual process placement. For graphics symptoms, use a presentation-aware method instead of interpreting socket replies as frames.</p>
+<p>For each trial, preserve:</p>
+<ul>
+<li>Exact workload revision, command identity, tool versions and source/build directory.</li>
+<li>Queue request, admission, execution start/end and observation interval.</li>
+<li>Treatment value, prior value, owning scope and rollback condition.</li>
+<li>Raw latency samples, error count, empirical percentiles and maximum.</li>
+<li>Resource counters with units, scope and interval.</li>
+<li>Correctness result, killed units and any unexpected failure.</li>
+<li>Concurrent-work changes, cache state and other confounders.</li>
+</ul>
+<p>Do not save credentials in full command arguments or logs. The existing receipt design intentionally records command identity without keeping unrestricted argv text.</p>
+<h3>5.5 Evaluate candidates in an informative order</h3>
+<h4>Candidate A: coverage and identity consistency</h4>
+<p>First establish whether the workloads causing pressure use the real gate and whether project aliases split accounting. If the relevant build bypasses coordination, adjusting the gate&#x27;s limit may have little effect on it.</p>
+<p>This is often a better first engineering question than changing kernel policy. It tests whether the intended control reaches the work. Preserve required checks and the current job-preserving runner procedures while improving entry points.</p>
+<h4>Candidate B: classify finite jobs versus long-lived services</h4>
+<p>The November 10 build could not get a slot within two minutes. Investigate whether the running reservations represent genuine finite heavy work and whether surviving descendants legitimately retain their leases.</p>
+<p>If a service was mistakenly launched as a finite heavy job, repair the entry-point classification for future launches. Do not weaken lease safety just to clear a queue. The reservation protects against a real resource overlap; removal requires understanding who still owns the work.</p>
+<h4>Candidate C: one versus two admissions</h4>
+<p>Two slots are a current user-selected operating setting, not a measured safe capacity for every job mix. A future comparison should report combined job completion, queue wait and responsiveness. One job might preserve headroom but cause excessive waits; two may improve throughput or merely create interference.</p>
+<p>Do not infer the answer from the current timeout alone. That observation contains no measurement of how the same jobs would complete under the other setting. A fair comparison needs the same relevant work and must preserve active job ownership while changing only future admission.</p>
+<h4>Candidate D: a measured per-project soft threshold</h4>
+<p>Use receipts to understand a project&#x27;s peak distribution and bursts before proposing a threshold. An empty <code>memory_high</code> map is currently honest: there is no selected production value.</p>
+<p>If a candidate is tested, begin with a disposable job scope, retain headroom, verify correctness and observe the reuse phase. A drop in resident memory alone is insufficient. The threshold may simply make the build spend more time reclaiming. Avoid simultaneously changing concurrency, protection and compression so the outcome remains interpretable.</p>
+<h4>Candidate E: effective interactive protection</h4>
+<p>If evidence shows the control server or desktop losing useful state during heavy work, inspect the entire ancestry. A large child declaration is not proof of equally large effective protection. Any ancestor adjustment affects other descendants and has a wider blast radius than a disposable job trial.</p>
+<p>A proposed change should name who benefits, who can lose reclaimable capacity, and what measurement will show the result. Do not exempt every agent from recovery: that would undermine the purpose of distinguishing control services from restartable work.</p>
+<h4>Candidate F: bounded proactive reclaim</h4>
+<p>Only after the preceding evidence exists should a small, contained reclaim trial be considered. The earlier research proposed 64 MiB as an initial local test request, not a validated production target. It is not a recommendation to install a timer that repeatedly reclaims that amount.</p>
+<p>A controller would need a clear managed scope, feedback, a rate budget, backoff, delayed-cost observation and rollback. It would also need to show value beyond the kernel baseline and existing admission policy. Calling a fixed reclaim loop “Senpai” would misrepresent both the research and the local implementation.</p>
+<h4>Candidate G: alternative compression, DAMON or THP</h4>
+<p>These are later experiments, selected by evidence rather than novelty. A compression comparison should include CPU cost and resume latency. A topology comparison should distinguish zram from zswap with disk backing. A THP trial should follow evidence implicating allocation/compaction behavior.</p>
+<p>DAMON_RECLAIM is intended as selective proactive reclamation under light pressure, with controls for age, rate and activation. It complements ordinary reclaim rather than replacing it. Monitoring first can help establish whether its view of cold memory is useful here. The feature&#x27;s existence does not establish a benefit for this workload. <a href="https://docs.kernel.org/admin-guide/mm/damon/reclaim.html">Kernel DAMON reclaim guide</a>.</p>
+<h3>5.6 Compare realistic alternatives fairly</h3>
+<p><strong>No cooperative gate:</strong> less explicit queueing, but no coordination of participating heavy starts. This is attractive only if measured interference is acceptable and some other mechanism provides a suitable budget. The earlier pressure incident makes removing coordination a poor unsupported first move.</p>
+<p><strong>Only hard job caps:</strong> clearer containment, but a badly chosen boundary can terminate correct work. Caps need a recovery plan and a measured basis. A per-job limit also does not automatically provide a host aggregate budget.</p>
+<p><strong>Only nicer CPU scheduling:</strong> potentially useful if CPU contention is the cause, but it does not address every memory or I/O failure. Verify the implicated resource before treating priority as a general cure.</p>
+<p><strong>More compressed capacity:</strong> can hold more suitable inactive data, but cannot make unlimited active demand fit. The existing logical zram size is not a promise of usable additional RAM.</p>
+<p><strong>More physical RAM or another host:</strong> plausible if measured working demand repeatedly exceeds a reasonable local budget. This guide supplies no purchasing recommendation or expected hardware gain. Establish demand, responsiveness and queue costs first, then compare the cost of hardware with the cost of waiting or moving work.</p>
+<p>The layered policy is the best-supported starting architecture among these choices for the current evidence. Its exact configuration remains an experimentable engineering decision.</p>
+<h3>5.7 Stop conditions and an honest recommendation</h3>
+<p>Stop a trial on an unexpected kill, incorrect result, severe sustained stalls or an explicit user interruption. Restore only the owned experimental setting and preserve diagnostic evidence. Do not restart shared control services merely to complete a benchmark.</p>
+<p>If a result is smaller than ordinary run-to-run variability, call it inconclusive. If responsiveness improves while total completion worsens, report both and decide whether that trade-off is acceptable. If nothing improves, retaining the baseline is a valid result.</p>
+<p>For BOX today, the recommended next step is a properly timed observation around an admitted representative build. The display-off control path currently provides no demonstrated stall to tune. Fair queue participation, trustworthy job boundaries and transparent completion costs are more useful than claiming that the current RAM numbers are already optimal.</p>

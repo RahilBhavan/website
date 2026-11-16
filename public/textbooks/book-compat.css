@@ -54,14 +54,15 @@ html[data-library] .machine-frame{background:#f5f5ef;--canvas:#f5f5ef;--surface:
 html[data-library] .machine-note{color:#52545a}
 html[data-library] .chip-s.shared{background:#e9e9e2!important;color:#111214!important}
 html[data-library=rwa-regression] .token-chip{color:#111214!important;background:#e9e9e2!important;border:1px solid #52545a}
-html[data-library=rwa-regression] .callout{background:#202124;color:#f5f5ef}
+html[data-library=rwa-regression] .callout{background:#142E28;color:#F4F5EF}
+html[data-library=rwa-regression] .callout :is(a,.label){color:#F4F5EF}
 html[data-library=rwa-regression] .interactive [style*="color:var(--good)"]{color:#111214!important}
 html[data-library=cuda] .rel-chip{color:#b7b8b1!important;background:#202124!important;border-color:#424348!important}
 html[data-library=cuda] :is(.num,.var){color:var(--ink)!important}
 html[data-library=cuda] .formula{background:#202124;color:#f5f5ef}
 html[data-library=cuda] .formula *{color:inherit!important}
 html[data-library=strategy-bitcoin] #result{background:#202124;color:#f5f5ef}
-html[data-library] :is(a.primary,.skip,.cover-cta){background:#ffe500!important;color:#111214!important}
+html[data-library] :is(a.primary,.skip,.cover-cta){background:#DFFF5E!important;color:#142E28!important}
 html[data-library] :is(a.primary,.cover-cta) *{color:#111214!important}
 html[data-library] :is(figure,.figure){--color-accent:#ffe500;--color-accent-dark:#111214}
 html[data-library] .node.dark :is(small,.v,.s,b,a){color:#f5f5ef!important}
@@ -86,3 +87,23 @@ html[data-library] :is(figure,.figure,.interactive) :is(small,.meta,.src,.source
 html[data-library=cortex-m] .top :is(a,small,.eyebrow),html[data-library=cortex-m] footer:not(.library-footnote) a{color:#F4F5EF}
 html[data-library=cortex-m] pre code{color:inherit}
 html[data-library=cortex-m] .library-footnote{background:#F4F5EF;color:#466357}
+
+/* Paper reading roles for the remaining imported-book aliases. */
+html[data-library=tokenization]{--sub:#466357;--yellow:#142E28}
+html[data-library=strategy] .pill{background:#DFFF5E;color:#142E28}
+html[data-library=strategy] .node b{color:inherit}
+html[data-library=ssrd] .start-reading,html[data-library=ssrd] .start-reading:hover{background:#DFFF5E;color:#142E28!important}
+html[data-library=ssrd] .start-reading *{color:#142E28!important}
+html[data-library=cuda] .learning-path-arrow{color:#466357}
+html[data-library=cuda] .bitlayout .bit.sign{color:#6e153d}
+html[data-library=cuda] .code-block pre{color:#F4F5EF}
+html[data-library=cuda] .code-block pre [style*="color: var(--"],html[data-library=cuda] .code-block pre [style*="color:var(--"]{color:inherit!important}
+html[data-library=cuda] .code-linenums{color:#b6c2b5}
+html[data-library=cuda] pre[style]{background:#e6eadf!important;color:#142E28!important}
+html[data-library=cuda] .code-block pre [style*="color:var(--text"],html[data-library=cuda] .code-block pre [style*="color: var(--text"]{color:#F4F5EF!important}
+html[data-library=strategy] .warn b{color:#9b2c2c}
+html[data-library=cuda] .figure [style*="background:var(--bg-code)"]{color:#F4F5EF!important}
+/* Keep complete display words on phones instead of splitting the kit's heavy face. */
+@media(max-width:680px){
+ html[data-library] :is(h1,.cover h1,.book-hero h1){font-size:clamp(1.875rem,7.7vw,3.25rem);overflow-wrap:normal;word-break:normal;hyphens:none}
+}

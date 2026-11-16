@@ -57,6 +57,9 @@
   "public/og/writing/why-strategys-15-2-year-dividend-runway-depends-on-one-gate.png": "26a507415648acaf1bd8f9dec995d017253581eb9d89eea78498214fb67b1fbf",
   "public/og/writing/why-would-a-1inch-limit-order-with-a-stop-loss-never-fill.png": "9b47c4dd011b87f4f62838d55413842bf54d545704238fa810d98525aabfdb7c",
   "public/og/writing/would-per-block-clearing-have-stopped-a-week-of-sandwiches.png": "d3e2506eb58b885b4fce705128451345b96407dfc82cb9378b9b79630af7dc21",
-  "public/textbooks/book-compat.css": "7fae76fe134618a3e271cad928b6c35169f75b1ced12c38a08098f299d5f53c8",
-  "tests/e2e/reader-contrast.spec.mjs": "33981336a78099686b31663d4439d7ac39cc96842617ddcbad491c1c876b4495"
+  "public/textbooks/book-compat.css": "ccc09a03fd3bef888d623997fea4aee5a22c3def097d4df5d787a7f573fd791a",
+  "tests/e2e/reader-contrast.spec.mjs": "b1ad7523b988c3fdce74d66d427e1025deebc565303620062b1de5b1d0fcb605",
+  "scripts/textbooks/build.mjs": "e8b8436a6190aeda2e51f7ad52ad2c5c97d7f3274cdf6e42c526956dd221c2a2",
+  "docs/textbook-build.json": "a8addb5d5a3d02213b46dbe8224e0278eb2b1d30b633ae0009ea10e5c39f4c10",
+  "tests/e2e/contrast.mjs": "873a717e03423b221b1b1c4aa3632138d9b47d18ef58327be45f91abb02d05a1"
 }

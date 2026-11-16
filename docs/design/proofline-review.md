@@ -16,3 +16,9 @@ Checks exercised:
 - `git diff --check` passed. Exact source/card SHA-256 values are in `proofline-hashes.json`; generated screenshots and layout diagnostics are retained in the local review bundle.
 
 Limits: Chromium/Safari were not exercised; no audience usability study, refreshed factual audit, external redirect test or independent review of this website revision. Imported textbook source diagrams and standalone project tools are preserved. Publication and final design acceptance remain separate from local checks.
+
+## Publication preparation and shared repair 1/1
+
+Rahil explicitly requested “make it live” after the exact desktop/phone preview was supplied, authorizing this design and publication. The independent Claude Opus review of head `9fd46a2` found four reader-cascade contrast regressions: old yellow body links, grey small text, Cortex-M light cover/footer copy on paper, and pale inline code. The one repair pass sets paper-reading text to green/secondary green, restores green dark bands, uses accessible red inline code, and preserves light code/links in dark contexts. The shared library footer explicitly stays on paper.
+
+`bun run check` and all 33 Firefox tests pass after repair. New regression tests inspect actual cascaded foreground/background contrast for links, small print, code, cover text and footer paragraphs in RISC-V and Cortex-M at 390px. Exact 390px RISC-V body links, Cortex-M cover and inline code were visually inspected. Original reviewer notes were corroborated by source inspection. Repair hashes are included. This consumes the shared repair allowance; a fresh independent re-check will determine whether the blockers are resolved.

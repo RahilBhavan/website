@@ -12,7 +12,7 @@ html[data-library]{
  --color-figure-surface:#F4F5EF;--color-figure-ink:#142E28;--color-figure-secondary:#466357;
  --figure-surface:#F4F5EF;--figure-ink:#142E28;--figure-secondary:#466357;
  --fig-surface:#F4F5EF;--fig-ink:#142E28;--fig-secondary:#466357;
- --navy:#F4F5EF;--teal:#142E28;--amber:#142E28;--coral:#ffb5b5;
+ --navy:#142E28;--teal:#142E28;--amber:#142E28;--coral:#9b2c2c;
  --bg-base:#F4F5EF!important;--bg-elev-1:#e6eadf!important;--bg-elev-2:#e6eadf!important;--bg-elev-3:#e6eadf!important;
  --canvas-soft:#e6eadf!important;--surface-card:#e6eadf!important;--surface-strong:#e6eadf!important;
  --text-primary:#142E28!important;--text-secondary:#466357!important;--text-tertiary:#466357!important;--text-muted:#466357!important;
@@ -77,7 +77,7 @@ html[data-library] .scroll-region{overflow-x:auto;max-width:100%;min-width:0;ove
 html[data-library] .scroll-region:focus-visible{outline:3px solid #142E28;outline-offset:3px}
 html[data-library] .scroll-region svg{min-width:var(--diagram-min,420px);width:100%;height:auto}
 html[data-library] .scroll-region table{width:100%}
-html[data-library] .top{background:#F4F5EF;border-color:#b6c2b5;padding:48px 24px 24px}
+html[data-library] .top{background:#142E28;border-color:#b6c2b5;padding:48px 24px 24px}
 html[data-library] .panel{box-shadow:none}
 html[data-library] .progress,html[data-library] #progress-bar{display:none}
 html[data-library] .cover-orb,html[data-library] .orb,html[data-library] .cover-glow{display:none}

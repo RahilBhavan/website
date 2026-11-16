@@ -1,7 +1,7 @@
 {
   "src/layouts/BaseLayout.astro": "ac6841bdbc96b4af93dc6230456496e2cf76e84304a895181aa5f5de49cde178",
   "src/pages/index.astro": "5c99c28564d6b5f7544046de3c179e3f4f4d857584b1c4f46f023ed027ed088c",
-  "public/textbooks/reader.css": "2cd46b15090ab2ae7c410ffbddcba9aae8a957b3211f598cf0db6d89461fb685",
+  "public/textbooks/reader.css": "00c146c134c738367750926264360849eb3cd2ea595cde84c2a8943e80800317",
   "public/og/8-bit-computer-from-ttl-logic.png": "ff758ce071f579d5aa42e8325bc56d91852df570fceddbeaffcd14fad2c2240f",
   "public/og/beefy-yield-fidelity.png": "d1fa9530fa648a106239d98b7cf149b0e7e5e91887a32f2d266e1b2e6b484349",
   "public/og/cortex-m-replay-recording-rare-firmware-races.png": "beb8472527ff0e7bba0cb0a03f32beab72ae515f39a0e256c19e5ee3da9e7602",
@@ -56,5 +56,7 @@
   "public/og/writing/why-i-built-a-drone-for-zimbabwes-roads-part-1.png": "299dc502505a4f141fe1cf6a8064d402d7aac0b054985c1539d2deb561ef46d3",
   "public/og/writing/why-strategys-15-2-year-dividend-runway-depends-on-one-gate.png": "26a507415648acaf1bd8f9dec995d017253581eb9d89eea78498214fb67b1fbf",
   "public/og/writing/why-would-a-1inch-limit-order-with-a-stop-loss-never-fill.png": "9b47c4dd011b87f4f62838d55413842bf54d545704238fa810d98525aabfdb7c",
-  "public/og/writing/would-per-block-clearing-have-stopped-a-week-of-sandwiches.png": "d3e2506eb58b885b4fce705128451345b96407dfc82cb9378b9b79630af7dc21"
+  "public/og/writing/would-per-block-clearing-have-stopped-a-week-of-sandwiches.png": "d3e2506eb58b885b4fce705128451345b96407dfc82cb9378b9b79630af7dc21",
+  "public/textbooks/book-compat.css": "7fae76fe134618a3e271cad928b6c35169f75b1ced12c38a08098f299d5f53c8",
+  "tests/e2e/reader-contrast.spec.mjs": "33981336a78099686b31663d4439d7ac39cc96842617ddcbad491c1c876b4495"
 }

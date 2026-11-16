@@ -42,8 +42,8 @@ html[data-library=cuda] .figure-caption{font-size:16px!important;color:#52545a}
 html[data-library=cuda] .figure{--text-primary:#111214;--text-secondary:#52545a;--text-tertiary:#52545a;--muted:#52545a;--ink:#111214}
 html[data-library=cuda] .figure [class*="controls"]{background:#e9e9e2!important;color:#111214!important}
 html[data-library=cuda] .figure [class*="controls"] *{color:#111214!important}
-html[data-library] a{color:#ffe500}
-html[data-library] small,html[data-library] .eyebrow,html[data-library] .foot{color:#b7b8b1}
+html[data-library] a{color:#142E28}
+html[data-library] small,html[data-library] .eyebrow,html[data-library] .foot{color:#466357}
 html[data-library] :is(figure,.figure,.interactive){--canvas:#f5f5ef;--surface:#e9e9e2;--paper:#f5f5ef;--paper-ink:#111214;--paper-muted:#52545a}
 html[data-library] :is(figure,.figure,.interactive) :is(a,small,.eyebrow){color:#111214}
 html[data-library] table{background:#f5f5ef;color:#111214}
@@ -81,3 +81,8 @@ html[data-library=ssrd] .start-link,html[data-library=ssrd] .start-link *{color:
 html[data-library=ssrd] .start-reading,html[data-library=ssrd] .start-reading *{color:#111214!important}
 html[data-library] :is(figure,.figure,.interactive) :is(small,.meta,.src,.source,.tag,.fig-label,td,th){font-size:14px}
 @media print{html[data-library] :is(article[hidden],section[hidden]){display:block!important}html[data-library] .scroll-region.has-overflow:before{display:none}}
+
+/* Cortex-M retains dark cover/footer bands; inherited paper-page roles stop here. */
+html[data-library=cortex-m] .top :is(a,small,.eyebrow),html[data-library=cortex-m] footer:not(.library-footnote) a{color:#F4F5EF}
+html[data-library=cortex-m] pre code{color:inherit}
+html[data-library=cortex-m] .library-footnote{background:#F4F5EF;color:#466357}

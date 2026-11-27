@@ -73,6 +73,11 @@
       "source": "/internships",
       "destination": "/tools/internships",
       "permanent": false
+    },
+    {
+      "source": "/strategy-credit",
+      "destination": "/tools/strategy-credit",
+      "permanent": false
     }
   ]
 }
